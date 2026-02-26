@@ -2,6 +2,11 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+const rawCorsOrigins =
+  process.env.CORS_ORIGINS ||
+  process.env.CORS_ORIGIN ||
+  'http://localhost:4200,http://127.0.0.1:4200';
+
 const env = {
   port: Number(process.env.PORT) || 3000,
   db: {
@@ -15,7 +20,10 @@ const env = {
     secret: process.env.JWT_SECRET || 'dev-secret-change-me',
     expiresIn: process.env.JWT_EXPIRES_IN || '8h'
   },
-  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:4200'
+  corsOrigins: rawCorsOrigins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
 };
 
 module.exports = env;

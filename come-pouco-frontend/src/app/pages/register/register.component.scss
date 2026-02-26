@@ -2,16 +2,16 @@
   display: block;
 }
 
-.login-page {
+.register-page {
   min-height: 100vh;
   display: grid;
   place-items: center;
   padding: 1.5rem;
-  background: linear-gradient(145deg, #fdf7ec, #eaf4ff);
+  background: linear-gradient(145deg, #ecfeff, #fff7ed);
 }
 
-.login-card {
-  width: min(100%, 420px);
+.register-card {
+  width: min(100%, 460px);
   background: #ffffff;
   border-radius: 16px;
   padding: 2rem;
@@ -48,7 +48,7 @@ input {
 }
 
 input:focus {
-  outline: 2px solid #f59e0b;
+  outline: 2px solid #14b8a6;
   border-color: transparent;
 }
 
@@ -77,15 +77,6 @@ button[disabled] {
   margin-top: 0.75rem;
   color: #dc2626;
   font-weight: 600;
-}
-
-.hint {
-  margin-top: 1rem;
-  font-size: 0.9rem;
-  color: #4b5563;
-  background: #f3f4f6;
-  border-radius: 8px;
-  padding: 0.75rem;
 }
 
 .register-link {

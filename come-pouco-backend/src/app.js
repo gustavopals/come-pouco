@@ -1,11 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const routes = require('./routes');
-const env = require('./config/env');
 
 const app = express();
 
-app.use(cors({ origin: env.corsOrigin }));
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use('/api', routes);
 

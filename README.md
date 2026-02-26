@@ -47,4 +47,9 @@ App em `http://localhost:4200`.
 - E-mail: `admin@comepouco.local`
 - Senha: `123456`
 
-Fluxo implementado: usuário abre a aplicação, faz login e é direcionado para `/home`.
+## Fluxo implementado
+
+- `GET /login`: login de usuário existente.
+- `GET /register`: cadastro de novo usuário.
+- `GET /home`: rota protegida após autenticação.
+- interceptor HTTP no frontend para enviar `Authorization: Bearer <token>` automaticamente.

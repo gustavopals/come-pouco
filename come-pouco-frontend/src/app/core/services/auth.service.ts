@@ -1,10 +1,10 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { AuthUser, LoginResponse } from '../models/auth.model';
+import { AuthResponse, AuthUser, RegisterPayload } from '../models/auth.model';
 
 const TOKEN_KEY = 'come_pouco_token';
 const USER_KEY = 'come_pouco_user';
@@ -22,24 +22,29 @@ export class AuthService {
     return this.currentUserSignal.asReadonly();
   }
 
-  login(email: string, password: string): Observable<LoginResponse> {
+  login(email: string, password: string): Observable<AuthResponse> {
     return this.http
-      .post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, password })
+      .post<AuthResponse>(`${environment.apiUrl}/auth/login`, { email, password })
+      .pipe(tap((response) => this.setSession(response)));
+  }
+
+  register(payload: RegisterPayload): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${environment.apiUrl}/auth/register`, payload)
       .pipe(tap((response) => this.setSession(response)));
   }
 
   me(): Observable<{ user: AuthUser }> {
-    return this.http
-      .get<{ user: AuthUser }>(`${environment.apiUrl}/auth/me`, {
-        headers: this.buildAuthHeaders()
+    return this.http.get<{ user: AuthUser }>(`${environment.apiUrl}/auth/me`).pipe(
+      tap(({ user }) => {
+        this.currentUserSignal.set(user);
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
       })
-      .pipe(tap(({ user }) => this.currentUserSignal.set(user)));
+    );
   }
 
   logout(): void {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    this.currentUserSignal.set(null);
+    this.clearSession();
     this.router.navigate(['/login']);
   }
 
@@ -47,7 +52,17 @@ export class AuthService {
     return Boolean(localStorage.getItem(TOKEN_KEY));
   }
 
-  private setSession(response: LoginResponse): void {
+  getToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
+  }
+
+  clearSession(): void {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    this.currentUserSignal.set(null);
+  }
+
+  private setSession(response: AuthResponse): void {
     localStorage.setItem(TOKEN_KEY, response.token);
     localStorage.setItem(USER_KEY, JSON.stringify(response.user));
     this.currentUserSignal.set(response.user);
@@ -66,11 +81,5 @@ export class AuthService {
       localStorage.removeItem(USER_KEY);
       return null;
     }
-  }
-
-  private buildAuthHeaders(): HttpHeaders {
-    return new HttpHeaders({
-      Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) ?? ''}`
-    });
   }
 }
