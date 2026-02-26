@@ -52,4 +52,5 @@ App em `http://localhost:4200`.
 - `GET /login`: login de usuário existente.
 - `GET /register`: cadastro de novo usuário.
 - `GET /home`: rota protegida após autenticação.
+- `GET /users`: CRUD de usuários (listar, criar, editar e excluir).
 - interceptor HTTP no frontend para enviar `Authorization: Bearer <token>` automaticamente.

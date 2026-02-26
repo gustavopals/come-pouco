@@ -8,16 +8,35 @@
   padding: 2rem;
 }
 
-header {
+.menu-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
 }
 
-h1 {
+.menu-header h1 {
   margin: 0;
   color: #1e293b;
+}
+
+nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+nav a {
+  text-decoration: none;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+nav a.active {
+  background: #0f766e;
+  color: #fff;
 }
 
 button {
@@ -38,6 +57,18 @@ main {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
 }
 
+main h2 {
+  margin-top: 0;
+  color: #1e293b;
+}
+
 .error {
   color: #dc2626;
+}
+
+@media (max-width: 700px) {
+  .menu-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

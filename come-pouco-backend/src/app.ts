@@ -7,7 +7,7 @@ import HttpError from './utils/httpError';
 
 const app = express();
 
-app.use(cors({ origin: env.corsOrigins }));
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use('/api', routes);
 

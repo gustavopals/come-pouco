@@ -1,10 +1,17 @@
 <section class="home-page">
-  <header>
-    <h1>Home</h1>
-    <button type="button" (click)="logout()">Sair</button>
+  <header class="menu-header">
+    <h1>Come Pouco</h1>
+
+    <nav>
+      <a routerLink="/home" routerLinkActive="active">Home</a>
+      <a routerLink="/users" routerLinkActive="active">Usuários</a>
+      <button type="button" (click)="logout()">Sair</button>
+    </nav>
   </header>
 
   <main>
+    <h2>Home</h2>
+
     <p *ngIf="!errorMessage">
       Bem-vindo,
       <strong>{{ authService.currentUser()?.fullName || 'Usuário' }}</strong>

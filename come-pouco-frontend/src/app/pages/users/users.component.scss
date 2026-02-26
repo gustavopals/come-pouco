@@ -1,0 +1,162 @@
+:host {
+  display: block;
+}
+
+.users-page {
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: linear-gradient(160deg, #f0f9ff, #f0fdf4);
+}
+
+.menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.menu-header h1 {
+  margin: 0;
+  color: #1f2937;
+}
+
+nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+nav a {
+  text-decoration: none;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+nav a.active {
+  background: #0f766e;
+  color: #fff;
+}
+
+main {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(280px, 420px) 1fr;
+}
+
+.form-card,
+.table-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+h2 {
+  margin-top: 0;
+  color: #1f2937;
+}
+
+form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+label {
+  margin-top: 0.5rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+input {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+input:focus {
+  outline: 2px solid #14b8a6;
+  border-color: transparent;
+}
+
+small {
+  min-height: 1rem;
+  color: #dc2626;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  background: #0f766e;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #1d4ed8;
+}
+
+button.danger {
+  background: #dc2626;
+}
+
+button[disabled] {
+  opacity: 0.75;
+  cursor: progress;
+}
+
+.error {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.success {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.6rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+@media (max-width: 900px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

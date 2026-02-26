@@ -1,0 +1,88 @@
+<section class="users-page">
+  <header class="menu-header">
+    <h1>Come Pouco</h1>
+
+    <nav>
+      <a routerLink="/home" routerLinkActive="active">Home</a>
+      <a routerLink="/users" routerLinkActive="active">Usuários</a>
+      <button type="button" (click)="logout()">Sair</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="form-card">
+      <h2>{{ isCreateMode() ? 'Cadastrar usuário' : 'Editar usuário' }}</h2>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <label for="fullName">Nome completo</label>
+        <input id="fullName" type="text" formControlName="fullName" placeholder="Nome" />
+        <small *ngIf="form.controls.fullName.touched && form.controls.fullName.invalid">
+          Informe ao menos 3 caracteres.
+        </small>
+
+        <label for="email">E-mail</label>
+        <input id="email" type="email" formControlName="email" placeholder="email@dominio.com" />
+        <small *ngIf="form.controls.email.touched && form.controls.email.invalid">
+          Informe um e-mail válido.
+        </small>
+
+        <label for="password">
+          Senha {{ isCreateMode() ? '(obrigatória)' : '(opcional para alterar)' }}
+        </label>
+        <input id="password" type="password" formControlName="password" placeholder="Mínimo 6 caracteres" />
+        <small *ngIf="form.controls.password.touched && form.controls.password.invalid">
+          A senha precisa ter no mínimo 6 caracteres.
+        </small>
+
+        <div class="actions">
+          <button type="submit" [disabled]="isSaving">
+            {{ isSaving ? 'Salvando...' : (isCreateMode() ? 'Cadastrar' : 'Salvar alterações') }}
+          </button>
+
+          <button type="button" class="secondary" *ngIf="!isCreateMode()" (click)="cancelEdit()">
+            Cancelar edição
+          </button>
+        </div>
+      </form>
+
+      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+      <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
+    </section>
+
+    <section class="table-card">
+      <div class="table-header">
+        <h2>Usuários cadastrados</h2>
+        <button type="button" class="secondary" (click)="loadUsers()">Atualizar</button>
+      </div>
+
+      <p *ngIf="isLoading">Carregando usuários...</p>
+
+      <table *ngIf="!isLoading && users.length">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>E-mail</th>
+            <th>Criado em</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let user of users; trackBy: trackByUserId">
+            <td>{{ user.id }}</td>
+            <td>{{ user.fullName }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td class="row-actions">
+              <button type="button" class="secondary" (click)="startEdit(user)">Editar</button>
+              <button type="button" class="danger" (click)="removeUser(user)">Excluir</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p *ngIf="!isLoading && !users.length">Nenhum usuário cadastrado.</p>
+    </section>
+  </main>
+</section>
