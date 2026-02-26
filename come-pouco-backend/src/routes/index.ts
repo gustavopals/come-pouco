@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import authMiddleware from '../middlewares/auth.middleware';
+import affiliateLinkRouter from './affiliate-link.routes';
 import authRouter from './auth.routes';
 import userRouter from './user.routes';
 
@@ -12,5 +13,6 @@ router.get('/health', (_req, res) => {
 
 router.use('/auth', authRouter);
 router.use('/users', authMiddleware, userRouter);
+router.use('/affiliate-links', authMiddleware, affiliateLinkRouter);
 
 export default router;

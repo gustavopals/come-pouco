@@ -1,0 +1,86 @@
+<section class="affiliate-links-page">
+  <header class="menu-header">
+    <h1>Come Pouco</h1>
+
+    <nav>
+      <a routerLink="/home" routerLinkActive="active">Home</a>
+      <a routerLink="/users" routerLinkActive="active">Usuários</a>
+      <a routerLink="/affiliate-links" routerLinkActive="active">Links Afiliados</a>
+      <button type="button" (click)="logout()">Sair</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="form-card">
+      <h2>{{ isCreateMode() ? 'Cadastro de links de afiliados' : 'Editar link de afiliado' }}</h2>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <label for="originalLink">Link original</label>
+        <input id="originalLink" type="url" formControlName="originalLink" placeholder="https://..." />
+
+        <label for="productImage">Imagem do produto</label>
+        <input id="productImage" type="url" formControlName="productImage" placeholder="https://..." />
+
+        <label for="catchyPhrase">Frase chamativa</label>
+        <textarea id="catchyPhrase" rows="3" formControlName="catchyPhrase" placeholder="Texto de venda"></textarea>
+
+        <label for="affiliateLink">Link afiliado</label>
+        <input id="affiliateLink" type="url" formControlName="affiliateLink" placeholder="https://..." />
+
+        <div class="actions">
+          <button type="submit" [disabled]="isSaving">
+            {{ isSaving ? 'Salvando...' : (isCreateMode() ? 'Cadastrar' : 'Salvar alterações') }}
+          </button>
+          <button type="button" class="secondary" *ngIf="!isCreateMode()" (click)="cancelEdit()">
+            Cancelar edição
+          </button>
+        </div>
+      </form>
+
+      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+      <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
+    </section>
+
+    <section class="table-card">
+      <div class="table-header">
+        <h2>Registros cadastrados</h2>
+        <button type="button" class="secondary" (click)="loadLinks()">Atualizar</button>
+      </div>
+
+      <p *ngIf="isLoading">Carregando registros...</p>
+
+      <table *ngIf="!isLoading && links.length">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Imagem</th>
+            <th>Frase</th>
+            <th>Link original</th>
+            <th>Link afiliado</th>
+            <th>Atualizado em</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let link of links; trackBy: trackById">
+            <td>{{ link.id }}</td>
+            <td>
+              <img [src]="link.productImage" alt="Produto" />
+            </td>
+            <td>{{ link.catchyPhrase }}</td>
+            <td><a [href]="link.originalLink" target="_blank" rel="noreferrer">Abrir</a></td>
+            <td><a [href]="link.affiliateLink" target="_blank" rel="noreferrer">Abrir</a></td>
+            <td>{{ link.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td class="row-actions">
+              <button type="button" class="secondary" (click)="startEdit(link)">Editar</button>
+              <button type="button" class="danger" (click)="remove(link)">Excluir</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p *ngIf="!isLoading && !links.length">Nenhum link cadastrado.</p>
+    </section>
+  </main>
+</section>

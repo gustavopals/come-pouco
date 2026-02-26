@@ -2,10 +2,10 @@
   display: block;
 }
 
-.users-page {
+.affiliate-links-page {
   min-height: 100vh;
   padding: 1.5rem;
-  background: linear-gradient(160deg, #f0f9ff, #f0fdf4);
+  background: linear-gradient(160deg, #fff7ed, #ecfeff);
 }
 
 .menu-header {
@@ -43,8 +43,8 @@ nav a.active {
 
 main {
   display: grid;
+  grid-template-columns: minmax(300px, 430px) 1fr;
   gap: 1rem;
-  grid-template-columns: minmax(280px, 420px) 1fr;
 }
 
 .form-card,
@@ -71,20 +71,18 @@ label {
   color: #374151;
 }
 
-input {
+input,
+textarea {
   padding: 0.65rem 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 8px;
+  font-family: inherit;
 }
 
-input:focus {
+input:focus,
+textarea:focus {
   outline: 2px solid #14b8a6;
   border-color: transparent;
-}
-
-small {
-  min-height: 1rem;
-  color: #dc2626;
 }
 
 .actions {
@@ -144,6 +142,15 @@ td {
   text-align: left;
   padding: 0.6rem;
   border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+td img {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
 }
 
 .row-actions {
@@ -151,7 +158,7 @@ td {
   gap: 0.45rem;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   main {
     grid-template-columns: 1fr;
   }

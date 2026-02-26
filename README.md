@@ -53,4 +53,5 @@ App em `http://localhost:4200`.
 - `GET /register`: cadastro de novo usuário.
 - `GET /home`: rota protegida após autenticação.
 - `GET /users`: CRUD de usuários (listar, criar, editar e excluir).
+- `GET /affiliate-links`: CRUD de links de afiliados (link original, imagem, frase chamativa e link afiliado).
 - interceptor HTTP no frontend para enviar `Authorization: Bearer <token>` automaticamente.
