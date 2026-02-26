@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: come-pouco-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: come_pouco_db
+      POSTGRES_USER: come_pouco_user
+      POSTGRES_PASSWORD: come_pouco_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+
+volumes:
+  postgres_data:

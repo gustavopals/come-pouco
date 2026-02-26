@@ -1,0 +1,16 @@
+<section class="home-page">
+  <header>
+    <h1>Home</h1>
+    <button type="button" (click)="logout()">Sair</button>
+  </header>
+
+  <main>
+    <p *ngIf="!errorMessage">
+      Bem-vindo,
+      <strong>{{ authService.currentUser()?.fullName || 'Usuário' }}</strong>
+      ({{ authService.currentUser()?.email }})
+    </p>
+
+    <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  </main>
+</section>

@@ -1,0 +1,31 @@
+<section class="login-page">
+  <div class="login-card">
+    <h1>Come Pouco</h1>
+    <p>Acesse com seu usuário de teste para entrar na home.</p>
+
+    <form [formGroup]="loginForm" (ngSubmit)="submit()">
+      <label for="email">E-mail</label>
+      <input id="email" type="email" formControlName="email" placeholder="admin@comepouco.local" />
+      <small *ngIf="loginForm.controls.email.touched && loginForm.controls.email.invalid">
+        Informe um e-mail válido.
+      </small>
+
+      <label for="password">Senha</label>
+      <input id="password" type="password" formControlName="password" placeholder="******" />
+      <small *ngIf="loginForm.controls.password.touched && loginForm.controls.password.invalid">
+        A senha é obrigatória.
+      </small>
+
+      <button type="submit" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Entrando...' : 'Entrar' }}
+      </button>
+    </form>
+
+    <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+    <div class="hint">
+      Usuário: <strong>admin@comepouco.local</strong><br />
+      Senha: <strong>123456</strong>
+    </div>
+  </div>
+</section>

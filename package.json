@@ -1,0 +1,14 @@
+{
+  "name": "come-pouco",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo do projeto Come Pouco",
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "dev:backend": "npm --prefix come-pouco-backend run dev",
+    "dev:frontend": "npm --prefix come-pouco-frontend start",
+    "build:frontend": "npm --prefix come-pouco-frontend run build",
+    "check:backend": "npm --prefix come-pouco-backend run check"
+  }
+}

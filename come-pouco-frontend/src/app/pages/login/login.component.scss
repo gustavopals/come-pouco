@@ -1,0 +1,89 @@
+:host {
+  display: block;
+}
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: linear-gradient(145deg, #fdf7ec, #eaf4ff);
+}
+
+.login-card {
+  width: min(100%, 420px);
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: #1f2937;
+}
+
+p {
+  margin: 0.4rem 0 1.5rem;
+  color: #4b5563;
+}
+
+form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+label {
+  margin-top: 0.5rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+input {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+input:focus {
+  outline: 2px solid #f59e0b;
+  border-color: transparent;
+}
+
+small {
+  min-height: 1rem;
+  color: #dc2626;
+}
+
+button {
+  margin-top: 0.75rem;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: #0f766e;
+  cursor: pointer;
+}
+
+button[disabled] {
+  opacity: 0.75;
+  cursor: progress;
+}
+
+.error {
+  margin-top: 0.75rem;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.hint {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 0.75rem;
+}

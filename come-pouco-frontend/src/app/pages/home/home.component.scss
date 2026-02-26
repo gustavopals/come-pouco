@@ -1,0 +1,43 @@
+:host {
+  display: block;
+}
+
+.home-page {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #f0fdfa, #e0f2fe);
+  padding: 2rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+h1 {
+  margin: 0;
+  color: #1e293b;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  color: #fff;
+  background: #ef4444;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+main {
+  margin-top: 2rem;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+}
+
+.error {
+  color: #dc2626;
+}
