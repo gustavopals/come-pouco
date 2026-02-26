@@ -1,7 +1,24 @@
-const authService = require('../services/auth.service');
-const HttpError = require('../utils/httpError');
+import { NextFunction, Request, Response } from 'express';
 
-const login = async (req, res, next) => {
+import * as authService from '../services/auth.service';
+import HttpError from '../utils/httpError';
+
+interface LoginBody {
+  email?: string;
+  password?: string;
+}
+
+interface RegisterBody {
+  fullName?: string;
+  email?: string;
+  password?: string;
+}
+
+const login = async (
+  req: Request<Record<string, never>, unknown, LoginBody>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const { email, password } = req.body;
 
@@ -16,7 +33,11 @@ const login = async (req, res, next) => {
   }
 };
 
-const register = async (req, res, next) => {
+const register = async (
+  req: Request<Record<string, never>, unknown, RegisterBody>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const { fullName, email, password } = req.body;
 
@@ -35,8 +56,12 @@ const register = async (req, res, next) => {
   }
 };
 
-const me = async (req, res, next) => {
+const me = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (!req.userId) {
+      throw new HttpError(401, 'Token não informado.');
+    }
+
     const user = await authService.getUserById(req.userId);
 
     if (!user) {
@@ -55,8 +80,4 @@ const me = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  login,
-  register,
-  me
-};
+export { login, register, me };

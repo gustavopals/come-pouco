@@ -1,11 +1,11 @@
 # Come Pouco Monorepo
 
-Estrutura inicial com frontend Angular, backend Node.js + Express e PostgreSQL em Docker.
+Estrutura inicial com frontend Angular, backend Node.js + Express + TypeScript e PostgreSQL em Docker.
 
 ## Estrutura
 
 - `come-pouco-frontend`: app Angular com tela de login e home protegida.
-- `come-pouco-backend`: API Express com autenticação JWT e conexão com Postgres.
+- `come-pouco-backend`: API Express em TypeScript com autenticação JWT e conexão com Postgres.
 - `database/init/01-init.sql`: criação de tabela e seed de usuário de teste.
 - `docker-compose.yml`: ambiente local do PostgreSQL.
 

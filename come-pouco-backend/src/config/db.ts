@@ -1,5 +1,6 @@
-const { Pool } = require('pg');
-const env = require('./env');
+import { Pool } from 'pg';
+
+import env from './env';
 
 const pool = new Pool({
   host: env.db.host,
@@ -9,8 +10,9 @@ const pool = new Pool({
   password: env.db.password
 });
 
-const checkDatabaseConnection = async () => {
+const checkDatabaseConnection = async (): Promise<void> => {
   const client = await pool.connect();
+
   try {
     await client.query('SELECT 1');
   } finally {
@@ -18,7 +20,4 @@ const checkDatabaseConnection = async () => {
   }
 };
 
-module.exports = {
-  pool,
-  checkDatabaseConnection
-};
+export { pool, checkDatabaseConnection };

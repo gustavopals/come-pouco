@@ -1,4 +1,5 @@
-const dotenv = require('dotenv');
+import type { SignOptions } from 'jsonwebtoken';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -7,7 +8,23 @@ const rawCorsOrigins =
   process.env.CORS_ORIGIN ||
   'http://localhost:4200,http://127.0.0.1:4200';
 
-const env = {
+interface EnvConfig {
+  port: number;
+  db: {
+    host: string;
+    port: number;
+    database: string;
+    user: string;
+    password: string;
+  };
+  jwt: {
+    secret: string;
+    expiresIn: SignOptions['expiresIn'];
+  };
+  corsOrigins: string[];
+}
+
+const env: EnvConfig = {
   port: Number(process.env.PORT) || 3000,
   db: {
     host: process.env.DB_HOST || 'localhost',
@@ -18,7 +35,7 @@ const env = {
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'dev-secret-change-me',
-    expiresIn: process.env.JWT_EXPIRES_IN || '8h'
+    expiresIn: (process.env.JWT_EXPIRES_IN || '8h') as SignOptions['expiresIn']
   },
   corsOrigins: rawCorsOrigins
     .split(',')
@@ -26,4 +43,4 @@ const env = {
     .filter(Boolean)
 };
 
-module.exports = env;
+export default env;
