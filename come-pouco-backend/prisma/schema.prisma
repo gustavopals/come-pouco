@@ -33,3 +33,16 @@ model AffiliateLink {
 
   @@map("affiliate_links")
 }
+
+model PurchasePlatform {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(120)
+  description String
+  isActive    Boolean  @default(true) @map("is_active")
+  apiLink     String   @map("api_link")
+  accessKey   String   @map("access_key")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("purchase_platforms")
+}

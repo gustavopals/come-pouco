@@ -1,0 +1,133 @@
+<section class="page-shell">
+  <mat-toolbar color="primary" class="app-toolbar">
+    <strong>Come Pouco</strong>
+    <span class="toolbar-spacer"></span>
+    <a mat-button routerLink="/home" routerLinkActive="nav-link-active">Home</a>
+    <a mat-button routerLink="/users" routerLinkActive="nav-link-active">Usuários</a>
+    <a mat-button routerLink="/purchase-platforms" routerLinkActive="nav-link-active">Plataforma de Compras</a>
+    <a mat-button routerLink="/affiliate-links" routerLinkActive="nav-link-active">Links Afiliados</a>
+    <button mat-flat-button color="warn" type="button" (click)="logout()">Sair</button>
+  </mat-toolbar>
+
+  <main class="page-main admin-grid">
+    <mat-card appearance="outlined" class="form-card">
+      <mat-card-header>
+        <mat-card-title>
+          {{ isCreateMode() ? 'Cadastrar Plataforma de Compras' : 'Editar Plataforma de Compras' }}
+        </mat-card-title>
+        <mat-card-subtitle>Configure integrações com plataformas externas de compra.</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <form [formGroup]="form" (ngSubmit)="submit()" class="entity-form">
+          <mat-form-field appearance="outline">
+            <mat-label>Nome</mat-label>
+            <input matInput type="text" formControlName="name" placeholder="Ex: Marketplace X" />
+            <mat-error *ngIf="form.controls.name.touched && form.controls.name.invalid">Nome inválido.</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Descrição</mat-label>
+            <textarea matInput rows="3" formControlName="description" placeholder="Resumo da integração"></textarea>
+            <mat-error *ngIf="form.controls.description.touched && form.controls.description.invalid">
+              Descrição inválida.
+            </mat-error>
+          </mat-form-field>
+
+          <mat-slide-toggle formControlName="isActive">Ativo?</mat-slide-toggle>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Link da API</mat-label>
+            <input matInput type="url" formControlName="apiLink" placeholder="https://api.exemplo.com" />
+            <mat-error *ngIf="form.controls.apiLink.touched && form.controls.apiLink.invalid">
+              Link da API inválido.
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Chave de acesso</mat-label>
+            <input matInput type="text" formControlName="accessKey" placeholder="api-key" />
+            <mat-error *ngIf="form.controls.accessKey.touched && form.controls.accessKey.invalid">
+              Chave de acesso inválida.
+            </mat-error>
+          </mat-form-field>
+
+          <div class="entity-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
+              {{ isSaving ? 'Salvando...' : (isCreateMode() ? 'Cadastrar' : 'Salvar alterações') }}
+            </button>
+            <button mat-stroked-button type="button" *ngIf="!isCreateMode()" (click)="cancelEdit()">
+              Cancelar edição
+            </button>
+          </div>
+        </form>
+
+        <p class="status-block status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+        <p class="status-block status-success" *ngIf="successMessage">{{ successMessage }}</p>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined" class="table-card">
+      <mat-card-header class="table-header">
+        <div>
+          <mat-card-title>Plataformas cadastradas</mat-card-title>
+          <mat-card-subtitle>{{ totalPlatforms }} registro(s)</mat-card-subtitle>
+        </div>
+        <div class="toolbar-spacer"></div>
+        <button mat-stroked-button type="button" (click)="loadPlatforms()">Atualizar</button>
+      </mat-card-header>
+
+      <mat-card-content>
+        <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+
+        <div class="table-shell" *ngIf="!isLoading && platforms.length">
+          <table mat-table [dataSource]="platforms" class="data-table">
+            <ng-container matColumnDef="id">
+              <th mat-header-cell *matHeaderCellDef>ID</th>
+              <td mat-cell *matCellDef="let platform"><span class="id-pill">#{{ platform.id }}</span></td>
+            </ng-container>
+
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Nome</th>
+              <td mat-cell *matCellDef="let platform" class="strong-cell">{{ platform.name }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Ativo?</th>
+              <td mat-cell *matCellDef="let platform">
+                <span [class.status-active]="platform.isActive" [class.status-inactive]="!platform.isActive">
+                  {{ platform.isActive ? 'Ativo' : 'Inativo' }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="apiLink">
+              <th mat-header-cell *matHeaderCellDef>Link da API</th>
+              <td mat-cell *matCellDef="let platform">
+                <a [href]="platform.apiLink" target="_blank" rel="noreferrer">Abrir</a>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="updatedAt">
+              <th mat-header-cell *matHeaderCellDef>Atualizado em</th>
+              <td mat-cell *matCellDef="let platform">{{ platform.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Ações</th>
+              <td mat-cell *matCellDef="let platform" class="row-actions">
+                <button mat-stroked-button type="button" (click)="startEdit(platform)">Editar</button>
+                <button mat-flat-button color="warn" type="button" (click)="remove(platform)">Excluir</button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
+        </div>
+
+        <p class="empty-state" *ngIf="!isLoading && !platforms.length">Nenhuma plataforma cadastrada.</p>
+      </mat-card-content>
+    </mat-card>
+  </main>
+</section>

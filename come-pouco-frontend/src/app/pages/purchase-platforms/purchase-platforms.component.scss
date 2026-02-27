@@ -1,0 +1,107 @@
+:host {
+  display: block;
+}
+
+.admin-grid {
+  display: grid;
+  gap: 1.15rem;
+  grid-template-columns: minmax(330px, 480px) 1fr;
+}
+
+.form-card,
+.table-card {
+  border-radius: 18px;
+}
+
+.form-card {
+  background: linear-gradient(165deg, #f2f8ff 0%, #ffffff 38%);
+}
+
+.table-card {
+  background: linear-gradient(165deg, #f7faff 0%, #ffffff 32%);
+}
+
+mat-card-header {
+  padding-bottom: 0.65rem;
+}
+
+.entity-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.entity-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding-top: 0.35rem;
+}
+
+.table-shell {
+  margin-top: 0.9rem;
+  border: 1px solid rgba(20, 83, 116, 0.15);
+  border-radius: 14px;
+  overflow: auto;
+  background: #fff;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 760px;
+}
+
+.data-table .mat-mdc-header-row {
+  background: #eaf3ff;
+}
+
+.data-table .mat-mdc-header-cell {
+  color: #154266;
+  font-weight: 700;
+}
+
+.data-table .mat-mdc-row:hover {
+  background: rgba(20, 83, 116, 0.06);
+}
+
+.id-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #dff0ff;
+  color: #0f3d62;
+  font-weight: 700;
+}
+
+.strong-cell {
+  font-weight: 700;
+  color: #123f61;
+}
+
+.status-active {
+  color: #166534;
+  font-weight: 700;
+}
+
+.status-inactive {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  margin-top: 1rem;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+@media (max-width: 1200px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
