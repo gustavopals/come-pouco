@@ -1,89 +1,112 @@
-<section class="users-page">
-  <header class="menu-header">
-    <h1>Come Pouco</h1>
+<section class="page-shell">
+  <mat-toolbar color="primary" class="app-toolbar">
+    <strong>Come Pouco</strong>
+    <span class="toolbar-spacer"></span>
+    <a mat-button routerLink="/home" routerLinkActive="nav-link-active">Home</a>
+    <a mat-button routerLink="/users" routerLinkActive="nav-link-active">Usuários</a>
+    <a mat-button routerLink="/affiliate-links" routerLinkActive="nav-link-active">Links Afiliados</a>
+    <button mat-flat-button color="warn" type="button" (click)="logout()">Sair</button>
+  </mat-toolbar>
 
-    <nav>
-      <a routerLink="/home" routerLinkActive="active">Home</a>
-      <a routerLink="/users" routerLinkActive="active">Usuários</a>
-      <a routerLink="/affiliate-links" routerLinkActive="active">Links Afiliados</a>
-      <button type="button" (click)="logout()">Sair</button>
-    </nav>
-  </header>
+  <main class="page-main admin-grid">
+    <mat-card appearance="outlined" class="form-card">
+      <mat-card-header>
+        <mat-card-title>{{ isCreateMode() ? 'Cadastrar usuário' : 'Editar usuário' }}</mat-card-title>
+        <mat-card-subtitle>Gerencie credenciais e dados de acesso da equipe.</mat-card-subtitle>
+      </mat-card-header>
 
-  <main>
-    <section class="form-card">
-      <h2>{{ isCreateMode() ? 'Cadastrar usuário' : 'Editar usuário' }}</h2>
+      <mat-card-content>
+        <form [formGroup]="form" (ngSubmit)="submit()" class="entity-form">
+          <mat-form-field appearance="outline">
+            <mat-label>Nome completo</mat-label>
+            <input matInput type="text" formControlName="fullName" placeholder="Nome" />
+            <mat-error *ngIf="form.controls.fullName.touched && form.controls.fullName.invalid">
+              Informe ao menos 3 caracteres.
+            </mat-error>
+          </mat-form-field>
 
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <label for="fullName">Nome completo</label>
-        <input id="fullName" type="text" formControlName="fullName" placeholder="Nome" />
-        <small *ngIf="form.controls.fullName.touched && form.controls.fullName.invalid">
-          Informe ao menos 3 caracteres.
-        </small>
+          <mat-form-field appearance="outline">
+            <mat-label>E-mail</mat-label>
+            <input matInput type="email" formControlName="email" placeholder="email@dominio.com" />
+            <mat-error *ngIf="form.controls.email.touched && form.controls.email.invalid">
+              Informe um e-mail válido.
+            </mat-error>
+          </mat-form-field>
 
-        <label for="email">E-mail</label>
-        <input id="email" type="email" formControlName="email" placeholder="email@dominio.com" />
-        <small *ngIf="form.controls.email.touched && form.controls.email.invalid">
-          Informe um e-mail válido.
-        </small>
+          <mat-form-field appearance="outline">
+            <mat-label>Senha {{ isCreateMode() ? '(obrigatória)' : '(opcional para alterar)' }}</mat-label>
+            <input matInput type="password" formControlName="password" placeholder="Mínimo 6 caracteres" />
+            <mat-hint *ngIf="!isCreateMode()">Preencha apenas se quiser trocar a senha.</mat-hint>
+            <mat-error *ngIf="form.controls.password.touched && form.controls.password.invalid">
+              A senha precisa ter no mínimo 6 caracteres.
+            </mat-error>
+          </mat-form-field>
 
-        <label for="password">
-          Senha {{ isCreateMode() ? '(obrigatória)' : '(opcional para alterar)' }}
-        </label>
-        <input id="password" type="password" formControlName="password" placeholder="Mínimo 6 caracteres" />
-        <small *ngIf="form.controls.password.touched && form.controls.password.invalid">
-          A senha precisa ter no mínimo 6 caracteres.
-        </small>
+          <div class="entity-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
+              {{ isSaving ? 'Salvando...' : (isCreateMode() ? 'Cadastrar' : 'Salvar alterações') }}
+            </button>
+            <button mat-stroked-button type="button" *ngIf="!isCreateMode()" (click)="cancelEdit()">
+              Cancelar edição
+            </button>
+          </div>
+        </form>
 
-        <div class="actions">
-          <button type="submit" [disabled]="isSaving">
-            {{ isSaving ? 'Salvando...' : (isCreateMode() ? 'Cadastrar' : 'Salvar alterações') }}
-          </button>
+        <p class="status-block status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+        <p class="status-block status-success" *ngIf="successMessage">{{ successMessage }}</p>
+      </mat-card-content>
+    </mat-card>
 
-          <button type="button" class="secondary" *ngIf="!isCreateMode()" (click)="cancelEdit()">
-            Cancelar edição
-          </button>
+    <mat-card appearance="outlined" class="table-card">
+      <mat-card-header class="table-header">
+        <div>
+          <mat-card-title>Usuários cadastrados</mat-card-title>
+          <mat-card-subtitle>{{ totalUsers }} registro(s)</mat-card-subtitle>
         </div>
-      </form>
+        <div class="toolbar-spacer"></div>
+        <button mat-stroked-button type="button" (click)="loadUsers()">Atualizar</button>
+      </mat-card-header>
 
-      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
-      <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
-    </section>
+      <mat-card-content>
+        <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
 
-    <section class="table-card">
-      <div class="table-header">
-        <h2>Usuários cadastrados</h2>
-        <button type="button" class="secondary" (click)="loadUsers()">Atualizar</button>
-      </div>
+        <div class="table-shell" *ngIf="!isLoading && users.length">
+          <table mat-table [dataSource]="users" class="data-table">
+            <ng-container matColumnDef="id">
+              <th mat-header-cell *matHeaderCellDef>ID</th>
+              <td mat-cell *matCellDef="let user"><span class="id-pill">#{{ user.id }}</span></td>
+            </ng-container>
 
-      <p *ngIf="isLoading">Carregando usuários...</p>
+            <ng-container matColumnDef="fullName">
+              <th mat-header-cell *matHeaderCellDef>Nome</th>
+              <td mat-cell *matCellDef="let user" class="strong-cell">{{ user.fullName }}</td>
+            </ng-container>
 
-      <table *ngIf="!isLoading && users.length">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nome</th>
-            <th>E-mail</th>
-            <th>Criado em</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
+            <ng-container matColumnDef="email">
+              <th mat-header-cell *matHeaderCellDef>E-mail</th>
+              <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+            </ng-container>
 
-        <tbody>
-          <tr *ngFor="let user of users; trackBy: trackByUserId">
-            <td>{{ user.id }}</td>
-            <td>{{ user.fullName }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
-            <td class="row-actions">
-              <button type="button" class="secondary" (click)="startEdit(user)">Editar</button>
-              <button type="button" class="danger" (click)="removeUser(user)">Excluir</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            <ng-container matColumnDef="createdAt">
+              <th mat-header-cell *matHeaderCellDef>Criado em</th>
+              <td mat-cell *matCellDef="let user">{{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+            </ng-container>
 
-      <p *ngIf="!isLoading && !users.length">Nenhum usuário cadastrado.</p>
-    </section>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Ações</th>
+              <td mat-cell *matCellDef="let user" class="row-actions">
+                <button mat-stroked-button type="button" (click)="startEdit(user)">Editar</button>
+                <button mat-flat-button color="warn" type="button" (click)="removeUser(user)">Excluir</button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
+        </div>
+
+        <p class="empty-state" *ngIf="!isLoading && !users.length">Nenhum usuário cadastrado.</p>
+      </mat-card-content>
+    </mat-card>
   </main>
 </section>

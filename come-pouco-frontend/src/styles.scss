@@ -1,1 +1,147 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --app-font-family: 'Manrope Variable', 'Manrope', 'Segoe UI', sans-serif;
+  --brand-ocean-900: #0f2942;
+  --brand-ocean-700: #145374;
+  --brand-teal-500: #0ea5a4;
+  --brand-citrus-500: #ff8a3d;
+  --brand-citrus-200: #ffe6cd;
+  --brand-mint-100: #e8fff7;
+  --brand-ink: #16253a;
+  --app-bg-a: #eef8ff;
+  --app-bg-b: #f4fff9;
+
+  --mat-sys-body-large-font: var(--app-font-family);
+  --mat-sys-body-medium-font: var(--app-font-family);
+  --mat-sys-body-small-font: var(--app-font-family);
+  --mat-sys-display-large-font: var(--app-font-family);
+  --mat-sys-display-medium-font: var(--app-font-family);
+  --mat-sys-display-small-font: var(--app-font-family);
+  --mat-sys-headline-large-font: var(--app-font-family);
+  --mat-sys-headline-medium-font: var(--app-font-family);
+  --mat-sys-headline-small-font: var(--app-font-family);
+  --mat-sys-label-large-font: var(--app-font-family);
+  --mat-sys-label-medium-font: var(--app-font-family);
+  --mat-sys-label-small-font: var(--app-font-family);
+  --mat-sys-title-large-font: var(--app-font-family);
+  --mat-sys-title-medium-font: var(--app-font-family);
+  --mat-sys-title-small-font: var(--app-font-family);
+
+  --mat-sys-body-large: var(--mat-sys-body-large-weight) var(--mat-sys-body-large-size) /
+    var(--mat-sys-body-large-line-height) var(--app-font-family);
+  --mat-sys-body-medium: var(--mat-sys-body-medium-weight) var(--mat-sys-body-medium-size) /
+    var(--mat-sys-body-medium-line-height) var(--app-font-family);
+  --mat-sys-body-small: var(--mat-sys-body-small-weight) var(--mat-sys-body-small-size) /
+    var(--mat-sys-body-small-line-height) var(--app-font-family);
+  --mat-sys-display-large: var(--mat-sys-display-large-weight) var(--mat-sys-display-large-size) /
+    var(--mat-sys-display-large-line-height) var(--app-font-family);
+  --mat-sys-display-medium: var(--mat-sys-display-medium-weight) var(--mat-sys-display-medium-size) /
+    var(--mat-sys-display-medium-line-height) var(--app-font-family);
+  --mat-sys-display-small: var(--mat-sys-display-small-weight) var(--mat-sys-display-small-size) /
+    var(--mat-sys-display-small-line-height) var(--app-font-family);
+  --mat-sys-headline-large: var(--mat-sys-headline-large-weight) var(--mat-sys-headline-large-size) /
+    var(--mat-sys-headline-large-line-height) var(--app-font-family);
+  --mat-sys-headline-medium: var(--mat-sys-headline-medium-weight) var(--mat-sys-headline-medium-size) /
+    var(--mat-sys-headline-medium-line-height) var(--app-font-family);
+  --mat-sys-headline-small: var(--mat-sys-headline-small-weight) var(--mat-sys-headline-small-size) /
+    var(--mat-sys-headline-small-line-height) var(--app-font-family);
+  --mat-sys-label-large: var(--mat-sys-label-large-weight) var(--mat-sys-label-large-size) /
+    var(--mat-sys-label-large-line-height) var(--app-font-family);
+  --mat-sys-label-medium: var(--mat-sys-label-medium-weight) var(--mat-sys-label-medium-size) /
+    var(--mat-sys-label-medium-line-height) var(--app-font-family);
+  --mat-sys-label-small: var(--mat-sys-label-small-weight) var(--mat-sys-label-small-size) /
+    var(--mat-sys-label-small-line-height) var(--app-font-family);
+  --mat-sys-title-large: var(--mat-sys-title-large-weight) var(--mat-sys-title-large-size) /
+    var(--mat-sys-title-large-line-height) var(--app-font-family);
+  --mat-sys-title-medium: var(--mat-sys-title-medium-weight) var(--mat-sys-title-medium-size) /
+    var(--mat-sys-title-medium-line-height) var(--app-font-family);
+  --mat-sys-title-small: var(--mat-sys-title-small-weight) var(--mat-sys-title-small-size) /
+    var(--mat-sys-title-small-line-height) var(--app-font-family);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--app-font-family);
+  background: radial-gradient(circle at 10% 10%, #dff6ff, transparent 40%),
+    radial-gradient(circle at 88% 10%, #ffe9d2, transparent 42%),
+    radial-gradient(circle at 55% 105%, #dcfff1, transparent 45%),
+    linear-gradient(145deg, #f8fbff, var(--app-bg-b));
+  color: var(--brand-ink);
+}
+
+.page-shell {
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.page-main {
+  margin: 1.25rem auto 0;
+  width: min(1200px, 100%);
+}
+
+.app-toolbar {
+  border-radius: 18px;
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  box-shadow: 0 12px 28px rgba(22, 37, 58, 0.22);
+}
+
+.app-toolbar.mat-toolbar.mat-primary {
+  background: linear-gradient(120deg, var(--brand-ocean-700), var(--brand-teal-500));
+  color: #fff;
+}
+
+.app-toolbar .mat-mdc-button-base {
+  border-radius: 10px;
+}
+
+.app-toolbar .mat-mdc-unelevated-button.mat-warn {
+  --mdc-filled-button-container-color: var(--brand-citrus-500);
+  --mdc-filled-button-label-text-color: #1f1308;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.nav-link-active {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.status-block {
+  margin-top: 1rem;
+}
+
+.status-error {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.status-success {
+  color: #166534;
+  font-weight: 700;
+}
+
+.mat-mdc-card {
+  border-radius: 20px !important;
+  border: 1px solid rgba(20, 83, 116, 0.12);
+  box-shadow: 0 10px 26px rgba(15, 41, 66, 0.12) !important;
+}
+
+@media (max-width: 860px) {
+  .page-shell {
+    padding: 0.75rem;
+  }
+
+  .app-toolbar {
+    border-radius: 14px;
+  }
+}

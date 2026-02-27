@@ -1,7 +1,15 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { UpdateUserPayload, User } from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -10,7 +18,20 @@ import { UserService } from '../../core/services/user.service';
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DatePipe],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterLink,
+    RouterLinkActive,
+    DatePipe,
+    MatButtonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatProgressBarModule,
+    MatTableModule,
+    MatToolbarModule
+  ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss'
 })
@@ -19,6 +40,7 @@ export class UsersComponent implements OnInit {
   private readonly userService = inject(UserService);
   protected readonly authService = inject(AuthService);
 
+  protected readonly displayedColumns: string[] = ['id', 'fullName', 'email', 'createdAt', 'actions'];
   protected users: User[] = [];
   protected isLoading = false;
   protected isSaving = false;
@@ -36,20 +58,30 @@ export class UsersComponent implements OnInit {
     this.loadUsers();
   }
 
+  protected get totalUsers(): number {
+    return this.users.length;
+  }
+
   protected loadUsers(): void {
     this.isLoading = true;
     this.errorMessage = '';
 
-    this.userService.listUsers().subscribe({
-      next: ({ users }) => {
-        this.users = users;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        this.errorMessage = error?.error?.message || 'Não foi possível carregar os usuários.';
-        this.isLoading = false;
-      }
-    });
+    this.userService
+      .listUsers()
+      .pipe(
+        finalize(() => {
+          this.isLoading = false;
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          this.users = Array.isArray(response?.users) ? response.users : [];
+        },
+        error: (error) => {
+          this.errorMessage = error?.error?.message || 'Não foi possível carregar os usuários.';
+          this.users = [];
+        }
+      });
   }
 
   protected startCreate(): void {
@@ -156,10 +188,6 @@ export class UsersComponent implements OnInit {
 
   protected logout(): void {
     this.authService.logout();
-  }
-
-  protected trackByUserId(_index: number, user: User): number {
-    return user.id;
   }
 
   protected isCreateMode(): boolean {

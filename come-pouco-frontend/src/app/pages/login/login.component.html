@@ -1,36 +1,46 @@
-<section class="login-page">
-  <div class="login-card">
-    <h1>Come Pouco</h1>
-    <p>Acesse com seu usuário de teste para entrar na home.</p>
+<section class="page-shell auth-shell">
+  <mat-card class="auth-card" appearance="raised">
+    <mat-card-header>
+      <mat-card-title>Come Pouco</mat-card-title>
+      <mat-card-subtitle>Acesse com seu usuário para entrar na área administrativa.</mat-card-subtitle>
+    </mat-card-header>
 
-    <form [formGroup]="loginForm" (ngSubmit)="submit()">
-      <label for="email">E-mail</label>
-      <input id="email" type="email" formControlName="email" placeholder="admin@comepouco.local" />
-      <small *ngIf="loginForm.controls.email.touched && loginForm.controls.email.invalid">
-        Informe um e-mail válido.
-      </small>
+    <mat-card-content>
+      <form [formGroup]="loginForm" (ngSubmit)="submit()" class="auth-form">
+        <mat-form-field appearance="outline">
+          <mat-label>E-mail</mat-label>
+          <input matInput type="email" formControlName="email" placeholder="admin@comepouco.local" />
+          <mat-error *ngIf="loginForm.controls.email.touched && loginForm.controls.email.invalid">
+            Informe um e-mail válido.
+          </mat-error>
+        </mat-form-field>
 
-      <label for="password">Senha</label>
-      <input id="password" type="password" formControlName="password" placeholder="******" />
-      <small *ngIf="loginForm.controls.password.touched && loginForm.controls.password.invalid">
-        A senha é obrigatória.
-      </small>
+        <mat-form-field appearance="outline">
+          <mat-label>Senha</mat-label>
+          <input matInput type="password" formControlName="password" placeholder="******" />
+          <mat-error *ngIf="loginForm.controls.password.touched && loginForm.controls.password.invalid">
+            A senha é obrigatória.
+          </mat-error>
+        </mat-form-field>
 
-      <button type="submit" [disabled]="isSubmitting">
-        {{ isSubmitting ? 'Entrando...' : 'Entrar' }}
-      </button>
-    </form>
+        <button mat-flat-button color="primary" type="submit" [disabled]="isSubmitting">
+          {{ isSubmitting ? 'Entrando...' : 'Entrar' }}
+        </button>
+      </form>
 
-    <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+      <p class="status-block status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
 
-    <div class="hint">
-      Usuário: <strong>admin@comepouco.local</strong><br />
-      Senha: <strong>123456</strong>
-    </div>
+      <mat-divider></mat-divider>
 
-    <p class="register-link">
-      Ainda não tem conta?
-      <a routerLink="/register">Cadastre-se</a>
-    </p>
-  </div>
+      <div class="credentials-hint">
+        Usuário: <strong>admin@comepouco.local</strong><br />
+        Senha: <strong>123456</strong>
+      </div>
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <span>Ainda não tem conta?</span>
+      <a mat-button color="primary" routerLink="/register">Cadastre-se</a>
+    </mat-card-actions>
+  </mat-card>
 </section>

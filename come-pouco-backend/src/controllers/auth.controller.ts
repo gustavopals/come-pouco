@@ -71,7 +71,7 @@ const me = async (req: Request, res: Response, next: NextFunction): Promise<void
     res.status(200).json({
       user: {
         id: user.id,
-        fullName: user.full_name,
+        fullName: user.fullName,
         email: user.email
       }
     });

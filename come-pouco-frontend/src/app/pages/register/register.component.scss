@@ -2,90 +2,45 @@
   display: block;
 }
 
-.register-page {
-  min-height: 100vh;
+.auth-shell {
   display: grid;
   place-items: center;
-  padding: 1.5rem;
-  background: linear-gradient(145deg, #ecfeff, #fff7ed);
+  position: relative;
 }
 
-.register-card {
-  width: min(100%, 460px);
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+.auth-shell::before {
+  content: '';
+  position: absolute;
+  inset: auto 8% 8% auto;
+  width: 260px;
+  height: 260px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 138, 61, 0.2), transparent 70%);
+  pointer-events: none;
 }
 
-h1 {
-  margin: 0;
-  font-size: 1.8rem;
-  color: #1f2937;
+.auth-card {
+  width: min(520px, 100%);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fffaf3 0%, #ffffff 18%);
+  border-top: 4px solid #ff8a3d;
 }
 
-p {
-  margin: 0.4rem 0 1.5rem;
-  color: #4b5563;
+.auth-card mat-card-title {
+  color: #0f2942;
 }
 
-form {
+.auth-form {
   display: grid;
-  gap: 0.5rem;
-}
-
-label {
-  margin-top: 0.5rem;
-  font-weight: 600;
-  color: #374151;
-}
-
-input {
-  padding: 0.65rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.95rem;
-}
-
-input:focus {
-  outline: 2px solid #14b8a6;
-  border-color: transparent;
-}
-
-small {
-  min-height: 1rem;
-  color: #dc2626;
-}
-
-button {
+  gap: 0.65rem;
   margin-top: 0.75rem;
-  border: 0;
-  border-radius: 8px;
-  padding: 0.75rem;
-  font-weight: 700;
-  color: #fff;
-  background: #0f766e;
-  cursor: pointer;
 }
 
-button[disabled] {
-  opacity: 0.75;
-  cursor: progress;
+.auth-form button {
+  margin-top: 0.35rem;
+  min-height: 44px;
 }
 
-.error {
-  margin-top: 0.75rem;
-  color: #dc2626;
-  font-weight: 600;
-}
-
-.register-link {
-  margin-top: 1rem;
-  margin-bottom: 0;
-}
-
-.register-link a {
-  color: #0f766e;
-  font-weight: 700;
-  text-decoration: none;
+mat-card-actions {
+  padding: 0 1rem 1rem;
 }

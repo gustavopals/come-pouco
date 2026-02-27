@@ -1,14 +1,16 @@
-import { pool } from '../config/db';
+import { Prisma } from '@prisma/client';
+
+import prisma from '../config/prisma';
 import HttpError from '../utils/httpError';
 
-interface AffiliateLinkRow {
+interface AffiliateLinkRecord {
   id: number;
-  original_link: string;
-  product_image: string;
-  catchy_phrase: string;
-  affiliate_link: string;
-  created_at: Date | string;
-  updated_at: Date | string;
+  originalLink: string;
+  productImage: string;
+  catchyPhrase: string;
+  affiliateLink: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface AffiliateLinkOutput {
@@ -35,33 +37,39 @@ interface UpdateAffiliateLinkInput {
   affiliateLink?: string;
 }
 
-const toISOString = (value: Date | string): string => {
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  return new Date(value).toISOString();
-};
-
-const toAffiliateLinkOutput = (row: AffiliateLinkRow): AffiliateLinkOutput => ({
-  id: row.id,
-  originalLink: row.original_link,
-  productImage: row.product_image,
-  catchyPhrase: row.catchy_phrase,
-  affiliateLink: row.affiliate_link,
-  createdAt: toISOString(row.created_at),
-  updatedAt: toISOString(row.updated_at)
+const toAffiliateLinkOutput = (link: AffiliateLinkRecord): AffiliateLinkOutput => ({
+  id: link.id,
+  originalLink: link.originalLink,
+  productImage: link.productImage,
+  catchyPhrase: link.catchyPhrase,
+  affiliateLink: link.affiliateLink,
+  createdAt: link.createdAt.toISOString(),
+  updatedAt: link.updatedAt.toISOString()
 });
 
-const listAffiliateLinks = async (): Promise<AffiliateLinkOutput[]> => {
-  const query = `
-    SELECT id, original_link, product_image, catchy_phrase, affiliate_link, created_at, updated_at
-    FROM affiliate_links
-    ORDER BY id DESC
-  `;
+const mapPrismaError = (error: unknown): never => {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+    throw new HttpError(404, 'Link de afiliado não encontrado.');
+  }
 
-  const result = await pool.query<AffiliateLinkRow>(query);
-  return result.rows.map(toAffiliateLinkOutput);
+  throw error;
+};
+
+const listAffiliateLinks = async (): Promise<AffiliateLinkOutput[]> => {
+  const links = await prisma.affiliateLink.findMany({
+    orderBy: { id: 'desc' },
+    select: {
+      id: true,
+      originalLink: true,
+      productImage: true,
+      catchyPhrase: true,
+      affiliateLink: true,
+      createdAt: true,
+      updatedAt: true
+    }
+  });
+
+  return links.map(toAffiliateLinkOutput);
 };
 
 const createAffiliateLink = async ({
@@ -70,72 +78,79 @@ const createAffiliateLink = async ({
   catchyPhrase,
   affiliateLink
 }: CreateAffiliateLinkInput): Promise<AffiliateLinkOutput> => {
-  const query = `
-    INSERT INTO affiliate_links (original_link, product_image, catchy_phrase, affiliate_link)
-    VALUES ($1, $2, $3, $4)
-    RETURNING id, original_link, product_image, catchy_phrase, affiliate_link, created_at, updated_at
-  `;
+  const link = await prisma.affiliateLink.create({
+    data: {
+      originalLink: originalLink.trim(),
+      productImage: productImage.trim(),
+      catchyPhrase: catchyPhrase.trim(),
+      affiliateLink: affiliateLink.trim()
+    },
+    select: {
+      id: true,
+      originalLink: true,
+      productImage: true,
+      catchyPhrase: true,
+      affiliateLink: true,
+      createdAt: true,
+      updatedAt: true
+    }
+  });
 
-  const values = [originalLink.trim(), productImage.trim(), catchyPhrase.trim(), affiliateLink.trim()];
-  const result = await pool.query<AffiliateLinkRow>(query, values);
-
-  return toAffiliateLinkOutput(result.rows[0]);
+  return toAffiliateLinkOutput(link);
 };
 
 const updateAffiliateLink = async (
   id: number,
   { originalLink, productImage, catchyPhrase, affiliateLink }: UpdateAffiliateLinkInput
 ): Promise<AffiliateLinkOutput> => {
-  const updates: string[] = [];
-  const values: string[] = [];
+  const updateData: Prisma.AffiliateLinkUpdateInput = {};
 
   if (originalLink !== undefined) {
-    updates.push(`original_link = $${updates.length + 1}`);
-    values.push(originalLink.trim());
+    updateData.originalLink = originalLink.trim();
   }
 
   if (productImage !== undefined) {
-    updates.push(`product_image = $${updates.length + 1}`);
-    values.push(productImage.trim());
+    updateData.productImage = productImage.trim();
   }
 
   if (catchyPhrase !== undefined) {
-    updates.push(`catchy_phrase = $${updates.length + 1}`);
-    values.push(catchyPhrase.trim());
+    updateData.catchyPhrase = catchyPhrase.trim();
   }
 
   if (affiliateLink !== undefined) {
-    updates.push(`affiliate_link = $${updates.length + 1}`);
-    values.push(affiliateLink.trim());
+    updateData.affiliateLink = affiliateLink.trim();
   }
 
-  if (!updates.length) {
+  if (!Object.keys(updateData).length) {
     throw new HttpError(400, 'Informe ao menos um campo para atualização.');
   }
 
-  values.push(String(id));
+  try {
+    const link = await prisma.affiliateLink.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        originalLink: true,
+        productImage: true,
+        catchyPhrase: true,
+        affiliateLink: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
 
-  const query = `
-    UPDATE affiliate_links
-    SET ${updates.join(', ')}, updated_at = NOW()
-    WHERE id = $${values.length}
-    RETURNING id, original_link, product_image, catchy_phrase, affiliate_link, created_at, updated_at
-  `;
-
-  const result = await pool.query<AffiliateLinkRow>(query, values);
-
-  if (!result.rows[0]) {
-    throw new HttpError(404, 'Link de afiliado não encontrado.');
+    return toAffiliateLinkOutput(link);
+  } catch (error) {
+    return mapPrismaError(error);
   }
-
-  return toAffiliateLinkOutput(result.rows[0]);
 };
 
 const deleteAffiliateLink = async (id: number): Promise<void> => {
-  const result = await pool.query('DELETE FROM affiliate_links WHERE id = $1', [id]);
-
-  if (!result.rowCount) {
-    throw new HttpError(404, 'Link de afiliado não encontrado.');
+  try {
+    await prisma.affiliateLink.delete({ where: { id } });
+  } catch (error) {
+    return mapPrismaError(error);
   }
 };
 

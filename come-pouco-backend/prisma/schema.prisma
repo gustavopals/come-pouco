@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  fullName     String   @map("full_name") @db.VarChar(120)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@map("users")
+}
+
+model AffiliateLink {
+  id            Int      @id @default(autoincrement())
+  originalLink  String   @map("original_link")
+  productImage  String   @map("product_image")
+  catchyPhrase  String   @map("catchy_phrase") @db.VarChar(255)
+  affiliateLink String   @map("affiliate_link")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("affiliate_links")
+}

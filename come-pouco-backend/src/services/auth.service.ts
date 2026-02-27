@@ -1,21 +1,16 @@
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-import { pool } from '../config/db';
 import env from '../config/env';
+import prisma from '../config/prisma';
 import HttpError from '../utils/httpError';
 
-interface UserRow {
+interface UserRecord {
   id: number;
-  full_name: string;
+  fullName: string;
   email: string;
-  password_hash: string;
-}
-
-interface UserPublicRow {
-  id: number;
-  full_name: string;
-  email: string;
+  passwordHash?: string;
 }
 
 interface LoginInput {
@@ -38,7 +33,7 @@ interface AuthResponse {
   };
 }
 
-const buildAuthResponse = (user: UserPublicRow): AuthResponse => {
+const buildAuthResponse = (user: UserRecord): AuthResponse => {
   const token = jwt.sign({ sub: user.id, email: user.email }, env.jwt.secret, {
     expiresIn: env.jwt.expiresIn
   });
@@ -47,32 +42,34 @@ const buildAuthResponse = (user: UserPublicRow): AuthResponse => {
     token,
     user: {
       id: user.id,
-      fullName: user.full_name,
+      fullName: user.fullName,
       email: user.email
     }
   };
 };
 
-const findUserByEmail = async (email: string): Promise<UserRow | null> => {
-  const query = `
-    SELECT id, full_name, email, password_hash
-    FROM users
-    WHERE email = $1
-    LIMIT 1
-  `;
+const findUserByEmail = async (email: string): Promise<UserRecord | null> => {
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      passwordHash: true
+    }
+  });
 
-  const result = await pool.query<UserRow>(query, [email.toLowerCase()]);
-  return result.rows[0] || null;
+  return user;
 };
 
 const login = async ({ email, password }: LoginInput): Promise<AuthResponse> => {
   const user = await findUserByEmail(email.trim().toLowerCase());
 
-  if (!user) {
+  if (!user || !user.passwordHash) {
     throw new HttpError(401, 'E-mail ou senha inválidos.');
   }
 
-  const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+  const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
   if (!isPasswordValid) {
     throw new HttpError(401, 'E-mail ou senha inválidos.');
@@ -86,19 +83,23 @@ const register = async ({ fullName, email, password }: RegisterInput): Promise<A
   const safeEmail = email.trim().toLowerCase();
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const query = `
-    INSERT INTO users (full_name, email, password_hash)
-    VALUES ($1, $2, $3)
-    RETURNING id, full_name, email
-  `;
-
   try {
-    const result = await pool.query<UserPublicRow>(query, [safeFullName, safeEmail, passwordHash]);
-    return buildAuthResponse(result.rows[0]);
-  } catch (error) {
-    const dbError = error as { code?: string };
+    const user = await prisma.user.create({
+      data: {
+        fullName: safeFullName,
+        email: safeEmail,
+        passwordHash
+      },
+      select: {
+        id: true,
+        fullName: true,
+        email: true
+      }
+    });
 
-    if (dbError.code === '23505') {
+    return buildAuthResponse(user);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       throw new HttpError(409, 'Já existe um usuário com este e-mail.');
     }
 
@@ -106,16 +107,17 @@ const register = async ({ fullName, email, password }: RegisterInput): Promise<A
   }
 };
 
-const getUserById = async (userId: number): Promise<UserPublicRow | null> => {
-  const query = `
-    SELECT id, full_name, email
-    FROM users
-    WHERE id = $1
-    LIMIT 1
-  `;
+const getUserById = async (userId: number): Promise<UserRecord | null> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      fullName: true,
+      email: true
+    }
+  });
 
-  const result = await pool.query<UserPublicRow>(query, [userId]);
-  return result.rows[0] || null;
+  return user;
 };
 
 export { login, register, getUserById };

@@ -1,7 +1,15 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import {
   AffiliateLink,
@@ -14,7 +22,20 @@ import { AffiliateLinkService } from '../../core/services/affiliate-link.service
 @Component({
   selector: 'app-affiliate-links',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DatePipe],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterLink,
+    RouterLinkActive,
+    DatePipe,
+    MatButtonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatProgressBarModule,
+    MatTableModule,
+    MatToolbarModule
+  ],
   templateUrl: './affiliate-links.component.html',
   styleUrl: './affiliate-links.component.scss'
 })
@@ -23,6 +44,15 @@ export class AffiliateLinksComponent implements OnInit {
   private readonly affiliateLinkService = inject(AffiliateLinkService);
   protected readonly authService = inject(AuthService);
 
+  protected readonly displayedColumns: string[] = [
+    'id',
+    'productImage',
+    'catchyPhrase',
+    'originalLink',
+    'affiliateLink',
+    'updatedAt',
+    'actions'
+  ];
   protected links: AffiliateLink[] = [];
   protected isLoading = false;
   protected isSaving = false;
@@ -41,20 +71,30 @@ export class AffiliateLinksComponent implements OnInit {
     this.loadLinks();
   }
 
+  protected get totalLinks(): number {
+    return this.links.length;
+  }
+
   protected loadLinks(): void {
     this.isLoading = true;
     this.errorMessage = '';
 
-    this.affiliateLinkService.list().subscribe({
-      next: ({ links }) => {
-        this.links = links;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        this.errorMessage = error?.error?.message || 'Não foi possível carregar os links.';
-        this.isLoading = false;
-      }
-    });
+    this.affiliateLinkService
+      .list()
+      .pipe(
+        finalize(() => {
+          this.isLoading = false;
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          this.links = Array.isArray(response?.links) ? response.links : [];
+        },
+        error: (error) => {
+          this.errorMessage = error?.error?.message || 'Não foi possível carregar os links.';
+          this.links = [];
+        }
+      });
   }
 
   protected startCreate(): void {
@@ -174,10 +214,6 @@ export class AffiliateLinksComponent implements OnInit {
 
   protected isCreateMode(): boolean {
     return this.editingLinkId === null;
-  }
-
-  protected trackById(_index: number, link: AffiliateLink): number {
-    return link.id;
   }
 
   private isValidUrl(value: string): boolean {

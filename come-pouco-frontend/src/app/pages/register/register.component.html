@@ -1,43 +1,57 @@
-<section class="register-page">
-  <div class="register-card">
-    <h1>Criar Conta</h1>
-    <p>Cadastre-se para acessar a home do Come Pouco.</p>
+<section class="page-shell auth-shell">
+  <mat-card class="auth-card" appearance="raised">
+    <mat-card-header>
+      <mat-card-title>Criar Conta</mat-card-title>
+      <mat-card-subtitle>Cadastre-se para acessar os módulos do Come Pouco.</mat-card-subtitle>
+    </mat-card-header>
 
-    <form [formGroup]="registerForm" (ngSubmit)="submit()">
-      <label for="fullName">Nome completo</label>
-      <input id="fullName" type="text" formControlName="fullName" placeholder="Seu nome" />
-      <small *ngIf="registerForm.controls.fullName.touched && registerForm.controls.fullName.invalid">
-        Informe ao menos 3 caracteres.
-      </small>
+    <mat-card-content>
+      <form [formGroup]="registerForm" (ngSubmit)="submit()" class="auth-form">
+        <mat-form-field appearance="outline">
+          <mat-label>Nome completo</mat-label>
+          <input matInput type="text" formControlName="fullName" placeholder="Seu nome" />
+          <mat-error *ngIf="registerForm.controls.fullName.touched && registerForm.controls.fullName.invalid">
+            Informe ao menos 3 caracteres.
+          </mat-error>
+        </mat-form-field>
 
-      <label for="email">E-mail</label>
-      <input id="email" type="email" formControlName="email" placeholder="voce@email.com" />
-      <small *ngIf="registerForm.controls.email.touched && registerForm.controls.email.invalid">
-        Informe um e-mail válido.
-      </small>
+        <mat-form-field appearance="outline">
+          <mat-label>E-mail</mat-label>
+          <input matInput type="email" formControlName="email" placeholder="voce@email.com" />
+          <mat-error *ngIf="registerForm.controls.email.touched && registerForm.controls.email.invalid">
+            Informe um e-mail válido.
+          </mat-error>
+        </mat-form-field>
 
-      <label for="password">Senha</label>
-      <input id="password" type="password" formControlName="password" placeholder="Mínimo 6 caracteres" />
-      <small *ngIf="registerForm.controls.password.touched && registerForm.controls.password.invalid">
-        A senha precisa ter no mínimo 6 caracteres.
-      </small>
+        <mat-form-field appearance="outline">
+          <mat-label>Senha</mat-label>
+          <input matInput type="password" formControlName="password" placeholder="Mínimo 6 caracteres" />
+          <mat-error *ngIf="registerForm.controls.password.touched && registerForm.controls.password.invalid">
+            A senha precisa ter no mínimo 6 caracteres.
+          </mat-error>
+        </mat-form-field>
 
-      <label for="confirmPassword">Confirmar senha</label>
-      <input id="confirmPassword" type="password" formControlName="confirmPassword" placeholder="Repita sua senha" />
-      <small *ngIf="registerForm.controls.confirmPassword.touched && registerForm.controls.confirmPassword.invalid">
-        Confirme a senha.
-      </small>
+        <mat-form-field appearance="outline">
+          <mat-label>Confirmar senha</mat-label>
+          <input matInput type="password" formControlName="confirmPassword" placeholder="Repita sua senha" />
+          <mat-error
+            *ngIf="registerForm.controls.confirmPassword.touched && registerForm.controls.confirmPassword.invalid"
+          >
+            Confirme a senha.
+          </mat-error>
+        </mat-form-field>
 
-      <button type="submit" [disabled]="isSubmitting">
-        {{ isSubmitting ? 'Criando conta...' : 'Cadastrar' }}
-      </button>
-    </form>
+        <button mat-flat-button color="primary" type="submit" [disabled]="isSubmitting">
+          {{ isSubmitting ? 'Criando conta...' : 'Cadastrar' }}
+        </button>
+      </form>
 
-    <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+      <p class="status-block status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+    </mat-card-content>
 
-    <p class="register-link">
-      Já tem conta?
-      <a routerLink="/login">Entrar</a>
-    </p>
-  </div>
+    <mat-card-actions align="end">
+      <span>Já tem conta?</span>
+      <a mat-button color="primary" routerLink="/login">Entrar</a>
+    </mat-card-actions>
+  </mat-card>
 </section>
