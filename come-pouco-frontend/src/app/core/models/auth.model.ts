@@ -1,7 +1,10 @@
+import type { UserRole } from './user-role.model';
+
 export interface AuthUser {
   id: number;
   fullName: string;
   email: string;
+  role: UserRole;
 }
 
 export interface AuthResponse {

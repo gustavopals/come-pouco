@@ -5,6 +5,7 @@ import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { AuthResponse, AuthUser, RegisterPayload } from '../models/auth.model';
+import type { UserRole } from '../models/user-role.model';
 
 const TOKEN_KEY = 'come_pouco_token';
 const USER_KEY = 'come_pouco_user';
@@ -52,6 +53,14 @@ export class AuthService {
     return Boolean(localStorage.getItem(TOKEN_KEY));
   }
 
+  hasRole(role: UserRole): boolean {
+    return this.currentUserSignal()?.role === role;
+  }
+
+  isAdmin(): boolean {
+    return this.hasRole('ADMIN');
+  }
+
   getToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
   }
@@ -76,7 +85,14 @@ export class AuthService {
     }
 
     try {
-      return JSON.parse(stored) as AuthUser;
+      const parsed = JSON.parse(stored) as Partial<AuthUser>;
+
+      if (!parsed || (parsed.role !== 'ADMIN' && parsed.role !== 'USER')) {
+        localStorage.removeItem(USER_KEY);
+        return null;
+      }
+
+      return parsed as AuthUser;
     } catch {
       localStorage.removeItem(USER_KEY);
       return null;

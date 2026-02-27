@@ -4,12 +4,14 @@ import jwt from 'jsonwebtoken';
 
 import env from '../config/env';
 import prisma from '../config/prisma';
+import type { UserRole } from '../types/user-role';
 import HttpError from '../utils/httpError';
 
 interface UserRecord {
   id: number;
   fullName: string;
   email: string;
+  role: UserRole;
   passwordHash?: string;
 }
 
@@ -30,11 +32,12 @@ interface AuthResponse {
     id: number;
     fullName: string;
     email: string;
+    role: UserRole;
   };
 }
 
 const buildAuthResponse = (user: UserRecord): AuthResponse => {
-  const token = jwt.sign({ sub: user.id, email: user.email }, env.jwt.secret, {
+  const token = jwt.sign({ sub: user.id, email: user.email, role: user.role }, env.jwt.secret, {
     expiresIn: env.jwt.expiresIn
   });
 
@@ -43,7 +46,8 @@ const buildAuthResponse = (user: UserRecord): AuthResponse => {
     user: {
       id: user.id,
       fullName: user.fullName,
-      email: user.email
+      email: user.email,
+      role: user.role
     }
   };
 };
@@ -55,6 +59,7 @@ const findUserByEmail = async (email: string): Promise<UserRecord | null> => {
       id: true,
       fullName: true,
       email: true,
+      role: true,
       passwordHash: true
     }
   });
@@ -88,12 +93,14 @@ const register = async ({ fullName, email, password }: RegisterInput): Promise<A
       data: {
         fullName: safeFullName,
         email: safeEmail,
-        passwordHash
+        passwordHash,
+        role: 'USER'
       },
       select: {
         id: true,
         fullName: true,
-        email: true
+        email: true,
+        role: true
       }
     });
 
@@ -113,7 +120,8 @@ const getUserById = async (userId: number): Promise<UserRecord | null> => {
     select: {
       id: true,
       fullName: true,
-      email: true
+      email: true,
+      role: true
     }
   });
 

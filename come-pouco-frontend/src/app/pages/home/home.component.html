@@ -3,7 +3,7 @@
     <strong>Come Pouco</strong>
     <span class="toolbar-spacer"></span>
     <a mat-button routerLink="/home" routerLinkActive="nav-link-active">Home</a>
-    <a mat-button routerLink="/users" routerLinkActive="nav-link-active">Usuários</a>
+    <a mat-button routerLink="/users" routerLinkActive="nav-link-active" *ngIf="authService.isAdmin()">Usuários</a>
     <a mat-button routerLink="/affiliate-links" routerLinkActive="nav-link-active">Links Afiliados</a>
     <button mat-flat-button color="warn" type="button" (click)="logout()">Sair</button>
   </mat-toolbar>
@@ -19,19 +19,20 @@
         <p *ngIf="!errorMessage">
           Bem-vindo,
           <strong>{{ authService.currentUser()?.fullName || 'Usuário' }}</strong>
-          ({{ authService.currentUser()?.email }}).
+          ({{ authService.currentUser()?.email }}) -
+          perfil <strong>{{ authService.currentUser()?.role === 'ADMIN' ? 'Administrador' : 'Usuário padrão' }}</strong>.
         </p>
 
         <p class="status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
 
         <mat-chip-set>
-          <mat-chip routerLink="/users">Gestão de usuários</mat-chip>
+          <mat-chip routerLink="/users" *ngIf="authService.isAdmin()">Gestão de usuários</mat-chip>
           <mat-chip routerLink="/affiliate-links">Gestão de afiliados</mat-chip>
         </mat-chip-set>
       </mat-card-content>
 
       <mat-card-actions>
-        <a mat-stroked-button routerLink="/users">Ir para usuários</a>
+        <a mat-stroked-button routerLink="/users" *ngIf="authService.isAdmin()">Ir para usuários</a>
         <a mat-flat-button color="primary" routerLink="/affiliate-links">Ir para afiliados</a>
       </mat-card-actions>
     </mat-card>

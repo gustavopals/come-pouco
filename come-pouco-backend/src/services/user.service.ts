@@ -2,12 +2,14 @@ import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 import prisma from '../config/prisma';
+import type { UserRole } from '../types/user-role';
 import HttpError from '../utils/httpError';
 
 interface UserRecord {
   id: number;
   fullName: string;
   email: string;
+  role: UserRole;
   createdAt: Date;
 }
 
@@ -15,6 +17,7 @@ interface UserOutput {
   id: number;
   fullName: string;
   email: string;
+  role: UserRole;
   createdAt: string;
 }
 
@@ -22,18 +25,21 @@ interface CreateUserInput {
   fullName: string;
   email: string;
   password: string;
+  role: UserRole;
 }
 
 interface UpdateUserInput {
   fullName?: string;
   email?: string;
   password?: string;
+  role?: UserRole;
 }
 
 const toUserOutput = (user: UserRecord): UserOutput => ({
   id: user.id,
   fullName: user.fullName,
   email: user.email,
+  role: user.role,
   createdAt: user.createdAt.toISOString()
 });
 
@@ -58,6 +64,7 @@ const listUsers = async (): Promise<UserOutput[]> => {
       id: true,
       fullName: true,
       email: true,
+      role: true,
       createdAt: true
     }
   });
@@ -65,7 +72,7 @@ const listUsers = async (): Promise<UserOutput[]> => {
   return users.map(toUserOutput);
 };
 
-const createUser = async ({ fullName, email, password }: CreateUserInput): Promise<UserOutput> => {
+const createUser = async ({ fullName, email, password, role }: CreateUserInput): Promise<UserOutput> => {
   const safeFullName = fullName.trim();
   const safeEmail = email.trim().toLowerCase();
   const passwordHash = await bcrypt.hash(password, 10);
@@ -75,12 +82,14 @@ const createUser = async ({ fullName, email, password }: CreateUserInput): Promi
       data: {
         fullName: safeFullName,
         email: safeEmail,
-        passwordHash
+        passwordHash,
+        role
       },
       select: {
         id: true,
         fullName: true,
         email: true,
+        role: true,
         createdAt: true
       }
     });
@@ -102,6 +111,10 @@ const updateUser = async (userId: number, data: UpdateUserInput): Promise<UserOu
     updateData.email = data.email.trim().toLowerCase();
   }
 
+  if (data.role !== undefined) {
+    updateData.role = data.role;
+  }
+
   if (data.password !== undefined && data.password !== '') {
     updateData.passwordHash = await bcrypt.hash(data.password, 10);
   }
@@ -118,6 +131,7 @@ const updateUser = async (userId: number, data: UpdateUserInput): Promise<UserOu
         id: true,
         fullName: true,
         email: true,
+        role: true,
         createdAt: true
       }
     });

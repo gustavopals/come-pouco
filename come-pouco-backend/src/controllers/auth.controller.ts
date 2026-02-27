@@ -72,7 +72,8 @@ const me = async (req: Request, res: Response, next: NextFunction): Promise<void
       user: {
         id: user.id,
         fullName: user.fullName,
-        email: user.email
+        email: user.email,
+        role: user.role
       }
     });
   } catch (error) {

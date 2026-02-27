@@ -2,9 +2,10 @@ import { NextFunction, Request, Response } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 
 import env from '../config/env';
+import prisma from '../config/prisma';
 import HttpError from '../utils/httpError';
 
-const authMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
+const authMiddleware = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   try {
     const authorization = req.headers.authorization;
 
@@ -24,13 +25,24 @@ const authMiddleware = (req: Request, _res: Response, next: NextFunction): void 
       throw new HttpError(401, 'Token inválido ou expirado.');
     }
 
-    const userId = Number((decoded as JwtPayload).sub);
+    const payload = decoded as JwtPayload;
+    const userId = Number(payload.sub);
 
     if (Number.isNaN(userId)) {
       throw new HttpError(401, 'Token inválido ou expirado.');
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true }
+    });
+
+    if (!user) {
+      throw new HttpError(401, 'Token inválido ou expirado.');
+    }
+
     req.userId = userId;
+    req.userRole = user.role;
     next();
   } catch (error) {
     const authError = error as { name?: string };

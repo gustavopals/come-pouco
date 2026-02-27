@@ -6,12 +6,14 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { UpdateUserPayload, User } from '../../core/models/user.model';
+import { USER_ROLE_LABEL, type UserRole } from '../../core/models/user-role.model';
 import { AuthService } from '../../core/services/auth.service';
 import { UserService } from '../../core/services/user.service';
 
@@ -29,6 +31,7 @@ import { UserService } from '../../core/services/user.service';
     MatFormFieldModule,
     MatInputModule,
     MatProgressBarModule,
+    MatSelectModule,
     MatTableModule,
     MatToolbarModule
   ],
@@ -40,7 +43,8 @@ export class UsersComponent implements OnInit {
   private readonly userService = inject(UserService);
   protected readonly authService = inject(AuthService);
 
-  protected readonly displayedColumns: string[] = ['id', 'fullName', 'email', 'createdAt', 'actions'];
+  protected readonly displayedColumns: string[] = ['id', 'fullName', 'email', 'role', 'createdAt', 'actions'];
+  protected readonly roleOptions: UserRole[] = ['ADMIN', 'USER'];
   protected users: User[] = [];
   protected isLoading = false;
   protected isSaving = false;
@@ -51,7 +55,8 @@ export class UsersComponent implements OnInit {
   protected readonly form = this.formBuilder.group({
     fullName: ['', [Validators.required, Validators.minLength(3)]],
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.minLength(6)]]
+    password: ['', [Validators.minLength(6)]],
+    role: ['USER' as UserRole, [Validators.required]]
   });
 
   ngOnInit(): void {
@@ -86,7 +91,7 @@ export class UsersComponent implements OnInit {
 
   protected startCreate(): void {
     this.editingUserId = null;
-    this.form.reset({ fullName: '', email: '', password: '' });
+    this.form.reset({ fullName: '', email: '', password: '', role: 'USER' });
   }
 
   protected startEdit(user: User): void {
@@ -96,7 +101,8 @@ export class UsersComponent implements OnInit {
     this.form.reset({
       fullName: user.fullName,
       email: user.email,
-      password: ''
+      password: '',
+      role: user.role
     });
   }
 
@@ -110,10 +116,15 @@ export class UsersComponent implements OnInit {
       return;
     }
 
-    const { fullName, email, password } = this.form.getRawValue();
+    const { fullName, email, password, role } = this.form.getRawValue();
 
     if (this.isCreateMode() && !password) {
       this.errorMessage = 'A senha é obrigatória para criar usuário.';
+      return;
+    }
+
+    if (!role) {
+      this.errorMessage = 'Selecione um perfil para o usuário.';
       return;
     }
 
@@ -123,7 +134,7 @@ export class UsersComponent implements OnInit {
 
     if (this.isCreateMode()) {
       this.userService
-        .createUser({ fullName: fullName!, email: email!, password: password! })
+        .createUser({ fullName: fullName!, email: email!, password: password!, role })
         .subscribe({
           next: ({ user }) => {
             this.isSaving = false;
@@ -142,7 +153,8 @@ export class UsersComponent implements OnInit {
 
     const payload: UpdateUserPayload = {
       fullName: fullName || undefined,
-      email: email || undefined
+      email: email || undefined,
+      role
     };
 
     if (password) {
@@ -192,5 +204,9 @@ export class UsersComponent implements OnInit {
 
   protected isCreateMode(): boolean {
     return this.editingUserId === null;
+  }
+
+  protected roleLabel(role: UserRole): string {
+    return USER_ROLE_LABEL[role];
   }
 }
