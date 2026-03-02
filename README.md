@@ -1,24 +1,36 @@
 # Come Pouco Monorepo
 
-Estrutura inicial com frontend Angular, backend Node.js + Express + TypeScript, Prisma ORM e PostgreSQL em Docker.
+Estrutura com frontend Angular, backend Node.js + Express + TypeScript, Prisma ORM e PostgreSQL em Docker.
 
 ## Estrutura
 
-- `come-pouco-frontend`: app Angular com tela de login e home protegida.
-- `come-pouco-backend`: API Express em TypeScript com autenticação JWT, Prisma ORM e conexão com Postgres.
-- `database/init/01-init.sql`: criação de tabela e seed de usuário de teste.
+- `come-pouco-frontend`: app Angular.
+- `come-pouco-backend`: API Express + Prisma.
+- `database/init/*.sql`: inicializacao do banco para ambiente Docker.
 - `docker-compose.yml`: ambiente local do PostgreSQL.
 
-## Pré-requisitos
+## Pre-requisitos
 
 - Node.js 22+
 - npm 10+
 - Docker + Docker Compose
 
-## Subir banco de dados
+## Banco de dados
 
 ```bash
 docker compose up -d
+```
+
+Ordem recomendada para subir o ambiente:
+
+1. `docker compose up -d`
+2. `npx prisma migrate deploy`
+3. `npm run dev:backend`
+
+Para resetar em DEV quando houver mudancas de schema:
+
+```bash
+docker compose down -v && docker compose up -d
 ```
 
 ## Backend
@@ -46,14 +58,117 @@ App em `http://localhost:4200`.
 
 ## Credenciais de teste
 
-- E-mail: `admin@comepouco.local`
-- Senha: `123456`
+- Usuario: `admin`
+- Senha: `comepouco102030@`
 
-## Fluxo implementado
+## Novas variaveis de ambiente (backend)
 
-- `POST /api/auth/login`: login de usuário existente.
-- `POST /api/auth/register`: cadastro de novo usuário.
-- `GET /api/auth/me`: rota protegida para dados do usuário autenticado.
-- `GET/POST/PUT/DELETE /api/users`: CRUD de usuários.
-- `GET/POST/PUT/DELETE /api/affiliate-links`: CRUD de links de afiliados.
-- interceptor HTTP no frontend para enviar `Authorization: Bearer <token>` automaticamente.
+- `APP_ENV=development|production`
+- `TRUSTED_DEVICE_DAYS=30`
+- `TWOFA_ENCRYPTION_KEY=<chave forte>`
+
+## Hardening de Auth (producao)
+
+- Backend agora retorna falhas com `{ message, errorCode, details? }` (details apenas em `development`).
+- Interceptor do frontend faz logout automatico somente para:
+  - `AUTH_TOKEN_INVALID`
+  - `AUTH_TOKEN_EXPIRED`
+- Guia de baseline Prisma para ambientes legados:
+  - `come-pouco-backend/docs/db-baseline.md`
+
+### ErrorCodes de Auth
+
+- `AUTH_TOKEN_MISSING`
+- `AUTH_TOKEN_INVALID`
+- `AUTH_TOKEN_EXPIRED`
+- `AUTH_INVALID_REQUEST`
+- `AUTH_INVALID_CREDENTIALS`
+- `AUTH_INVALID_PASSWORD`
+- `AUTH_INVALID_USERNAME`
+- `AUTH_INVALID_2FA_CODE`
+- `AUTH_2FA_NOT_ENABLED`
+- `AUTH_2FA_ALREADY_ENABLED`
+- `AUTH_2FA_SETUP_NOT_STARTED`
+- `AUTH_2FA_SETUP_EXPIRED`
+- `AUTH_2FA_STATE_INVALID`
+- `AUTH_TRUSTED_DEVICE_NOT_FOUND`
+- `AUTH_IDENTIFIER_CONFLICT`
+- `AUTH_USER_NOT_FOUND`
+- `AUTH_SCHEMA_OUTDATED`
+- `AUTH_FORBIDDEN`
+
+## Recursos implementados
+
+- Auth JWT com `ADMIN` (global) e `USER`.
+- Multi-empresa:
+  - `Company`
+  - `companyId` e `companyRole` (`OWNER`/`EMPLOYEE`) no usuario.
+  - Escopo de visualizacao/autorizacao em `affiliate-links` no backend.
+- Shopee integration:
+  - `POST /api/integrations/shopee/generate-shortlinks`
+  - suporte a `SHOPEE_MOCK=true` para testes sem credenciais reais.
+  - resolucao de plataforma por Empresa via `Company.shopeePlatformId`.
+  - suporte a `mockMode` por plataforma (se ligado, gera shortlinks simulados).
+
+## Principais endpoints
+
+- `POST /api/auth/login`
+- `POST /api/auth/login/2fa`
+- `POST /api/auth/register`
+- `GET /api/auth/me`
+- `POST /api/auth/2fa/setup`
+- `POST /api/auth/2fa/confirm`
+- `POST /api/auth/2fa/disable`
+- `GET /api/auth/trusted-devices`
+- `DELETE /api/auth/trusted-devices/:id`
+- `POST /api/admin/users/:id/reset-2fa` (ADMIN)
+- `GET/POST/PUT/DELETE /api/users`
+- `POST /api/users/employees` (OWNER cria funcionario da propria empresa)
+- `GET/POST/PUT /api/companies` (ADMIN)
+- `GET/POST/PUT/DELETE /api/affiliate-links`
+- `GET/POST/PUT/DELETE /api/purchase-platforms`
+- `POST /api/integrations/shopee/generate-shortlinks`
+
+## Exemplo cURL Shopee
+
+```bash
+curl -X POST "http://localhost:3000/api/integrations/shopee/generate-shortlinks" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "originUrls": [
+      "https://example.com/produto-1",
+      "https://example.com/produto-2"
+    ],
+    "subId1": "maria"
+  }'
+```
+
+Observacao: `platformId` continua opcional para ADMIN (override manual). Para OWNER/EMPLOYEE, a API usa automaticamente a configuracao da Empresa.
+
+## Teste manual (sem credenciais reais)
+
+1. No backend, configure no `.env`: `SHOPEE_MOCK=true`.
+2. Suba o banco: `docker compose up -d`.
+3. Rode backend e frontend.
+4. Como ADMIN:
+   - cadastre uma plataforma SHOPEE ativa em `Plataforma de Compras`.
+   - ligue `Modo Sandbox (Mock)` para testes sem credenciais reais.
+   - crie a empresa `Empresa A` em `Empresas`.
+   - vincule a `Plataforma Shopee` na empresa.
+   - crie um usuario OWNER da `Empresa A` em `Usuarios`.
+5. Faca login como OWNER:
+   - abra `Minha Empresa`.
+   - crie 2 funcionarios (EMPLOYEE).
+6. Faca login como EMPLOYEE1:
+   - gere links (ate 10) em `Affiliate Links`.
+7. Faca login como EMPLOYEE2:
+   - gere links tambem.
+8. Faca login como OWNER:
+   - verifique que enxerga os links dos dois funcionarios e coluna `Criado por`.
+9. Faca login como EMPLOYEE1:
+   - verifique que nao enxerga os links do EMPLOYEE2.
+10. Volte como ADMIN e desligue `Modo Sandbox (Mock)` na plataforma:
+   - com credenciais reais validas, o fluxo passa a usar chamada real da Shopee.
+11. Faca login como ADMIN:
+   - verifique que enxerga todos os links.
