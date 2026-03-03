@@ -97,6 +97,44 @@ App em `http://localhost:4200`.
 - `AUTH_SCHEMA_OUTDATED`
 - `AUTH_FORBIDDEN`
 
+## Smoke pos-deploy (automatizado)
+
+Script pronto para validar o backend apos deploy:
+
+```bash
+npm run smoke:postdeploy
+```
+
+Para testar em um ambiente remoto (ex: Coolify), informe a URL da API:
+
+```bash
+POST_DEPLOY_SMOKE_BASE_URL="https://seu-dominio/api" npm run smoke:postdeploy
+```
+
+Variaveis suportadas:
+
+- `POST_DEPLOY_SMOKE_BASE_URL` (padrao: `http://localhost:3000/api`)
+- `POST_DEPLOY_SMOKE_TIMEOUT_MS` (padrao: `15000`)
+- `POST_DEPLOY_SMOKE_ADMIN_IDENTIFIER` (padrao: `admin`)
+- `POST_DEPLOY_SMOKE_ADMIN_PASSWORD`
+- `POST_DEPLOY_SMOKE_ADMIN_2FA_CODE` (se ADMIN usa 2FA)
+- `POST_DEPLOY_SMOKE_COMPANY_NAME` (padrao: `Smoke Test Company`)
+- `POST_DEPLOY_SMOKE_OWNER_PASSWORD`
+- `POST_DEPLOY_SMOKE_EMPLOYEE_PASSWORD`
+- `POST_DEPLOY_SMOKE_KEEP_DATA=true` (mantem dados criados)
+
+Cobertura principal do smoke:
+
+- `health` da API
+- login/admin + `/auth/me`
+- plataforma SHOPEE mock ativa (reuso/criacao)
+- empresa de smoke vinculada a plataforma
+- criacao de OWNER + EMPLOYEE
+- geracao e persistencia de shortlink Shopee
+- setup/confirmacao de 2FA do OWNER
+- login com challenge 2FA
+- cleanup de usuarios/plataforma criados (quando `KEEP_DATA=false`)
+
 ## Recursos implementados
 
 - Auth JWT com `ADMIN` (global) e `USER`.

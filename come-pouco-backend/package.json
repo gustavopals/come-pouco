@@ -14,7 +14,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "auth:check": "node scripts/auth-hardening-check.js",
-    "auth:smoke": "node scripts/auth-smoke-test.js"
+    "auth:smoke": "node scripts/auth-smoke-test.js",
+    "smoke:postdeploy": "node scripts/post-deploy-smoke.js"
   },
   "keywords": [
     "express",

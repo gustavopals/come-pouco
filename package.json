@@ -9,6 +9,7 @@
     "dev:backend": "npm --prefix come-pouco-backend run dev",
     "dev:frontend": "npm --prefix come-pouco-frontend start",
     "build:frontend": "npm --prefix come-pouco-frontend run build",
-    "check:backend": "npm --prefix come-pouco-backend run check"
+    "check:backend": "npm --prefix come-pouco-backend run check",
+    "smoke:postdeploy": "npm --prefix come-pouco-backend run smoke:postdeploy"
   }
 }
