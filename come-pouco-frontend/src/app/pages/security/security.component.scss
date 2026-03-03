@@ -1,0 +1,55 @@
+.security-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.setup-block,
+.backup-block {
+  margin-top: 16px;
+}
+
+.qr-preview {
+  width: 220px;
+  height: 220px;
+  border-radius: 8px;
+  display: block;
+  margin: 8px 0 12px;
+}
+
+.stack-form {
+  display: grid;
+  gap: 10px;
+  max-width: 360px;
+}
+
+.codes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.codes-grid code {
+  display: block;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+}
+
+.devices-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.device-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.device-item p {
+  margin: 2px 0;
+}

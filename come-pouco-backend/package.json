@@ -4,14 +4,17 @@
   "description": "API do projeto Come Pouco",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "prisma migrate dev && ts-node-dev --respawn --transpile-only src/server.ts",
     "postinstall": "prisma generate",
     "build": "prisma generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
+    "start:prod": "prisma migrate deploy && node dist/server.js",
     "check": "tsc --noEmit -p tsconfig.json",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:deploy": "prisma migrate deploy"
+    "prisma:deploy": "prisma migrate deploy",
+    "auth:check": "node scripts/auth-hardening-check.js",
+    "auth:smoke": "node scripts/auth-smoke-test.js"
   },
   "keywords": [
     "express",

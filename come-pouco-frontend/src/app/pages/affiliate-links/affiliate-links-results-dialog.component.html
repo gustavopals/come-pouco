@@ -1,0 +1,56 @@
+<h2 mat-dialog-title>Resultados da geracao</h2>
+
+<mat-dialog-content>
+  <div class="copy-toolbar">
+    <button mat-flat-button color="primary" type="button" (click)="copyAll()">Copiar tudo</button>
+    <span class="copied-message" *ngIf="copiedMessage">{{ copiedMessage }}</span>
+  </div>
+
+  <div class="table-shell">
+    <table mat-table [dataSource]="data.results" class="results-table">
+      <ng-container matColumnDef="originUrl">
+        <th mat-header-cell *matHeaderCellDef>Origin URL</th>
+        <td mat-cell *matCellDef="let item"><span class="link-text">{{ item.originUrl }}</span></td>
+      </ng-container>
+
+      <ng-container matColumnDef="shortLink">
+        <th mat-header-cell *matHeaderCellDef>ShortLink</th>
+        <td mat-cell *matCellDef="let item">
+          <a *ngIf="item.shortLink" [href]="item.shortLink" target="_blank" rel="noreferrer" class="link-text">{{ item.shortLink }}</a>
+          <span *ngIf="!item.shortLink" class="error-text">{{ item.message }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Acoes</th>
+        <td mat-cell *matCellDef="let item" class="actions-cell">
+          <button
+            mat-icon-button
+            type="button"
+            [disabled]="!item.shortLink"
+            (click)="item.shortLink && copyOne(item.shortLink)"
+            matTooltip="Copiar link"
+          >
+            <mat-icon>content_copy</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            *ngIf="item.shortLink"
+            type="button"
+            (click)="openLink(item.shortLink)"
+            matTooltip="Abrir link"
+          >
+            <mat-icon>open_in_new</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    </table>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Fechar</button>
+</mat-dialog-actions>

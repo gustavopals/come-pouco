@@ -1,0 +1,2 @@
+ALTER TABLE "affiliate_links"
+ADD COLUMN IF NOT EXISTS "sub_id_1" VARCHAR(50);

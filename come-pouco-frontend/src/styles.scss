@@ -145,3 +145,19 @@ body {
     border-radius: 14px;
   }
 }
+
+@media (max-width: 768px) {
+  .page-shell {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .page-main,
+  .app-toolbar {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+}

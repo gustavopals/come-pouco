@@ -5,7 +5,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   CreatePurchasePlatformPayload,
+  PlatformCompanyLink,
   PurchasePlatform,
+  UpdatePlatformCompaniesPayload,
   UpdatePurchasePlatformPayload
 } from '../models/purchase-platform.model';
 
@@ -23,6 +25,14 @@ export class PurchasePlatformService {
 
   update(id: number, payload: UpdatePurchasePlatformPayload): Observable<{ platform: PurchasePlatform }> {
     return this.http.put<{ platform: PurchasePlatform }>(`${environment.apiUrl}/purchase-platforms/${id}`, payload);
+  }
+
+  listCompanies(id: number): Observable<{ companies: PlatformCompanyLink[] }> {
+    return this.http.get<{ companies: PlatformCompanyLink[] }>(`${environment.apiUrl}/purchase-platforms/${id}/companies`);
+  }
+
+  updateCompanies(id: number, payload: UpdatePlatformCompaniesPayload): Observable<{ companies: PlatformCompanyLink[] }> {
+    return this.http.put<{ companies: PlatformCompanyLink[] }>(`${environment.apiUrl}/purchase-platforms/${id}/companies`, payload);
   }
 
   delete(id: number): Observable<void> {

@@ -1,0 +1,1 @@
+Falha ao iniciar servidor: Auth schema desatualizado. Colunas ausentes em users: username, two_factor_enabled, two_factor_secret, two_factor_secret_pending, two_factor_pending_created_at, two_factor_confirmed_at. Execute as migracoes/baseline.

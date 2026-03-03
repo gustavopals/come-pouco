@@ -1,0 +1,44 @@
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.active-link {
+  border-bottom: 3px solid #1976d2;
+  font-weight: 600;
+}
+
+.app-toolbar {
+  min-height: 64px;
+}
+
+.app-toolbar .mat-mdc-button-base {
+  min-height: 46px;
+  padding-inline: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  .app-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    height: auto;
+    padding: 0.45rem;
+  }
+
+  .toolbar-spacer {
+    display: none;
+  }
+
+  .app-toolbar a[mat-button],
+  .app-toolbar button[mat-flat-button] {
+    flex: 1 1 48%;
+    justify-content: center;
+  }
+
+  .app-toolbar .mat-mdc-button-base {
+    min-height: 48px;
+    margin: 0;
+    padding-inline: 0.55rem;
+  }
+}

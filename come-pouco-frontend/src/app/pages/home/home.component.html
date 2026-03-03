@@ -1,43 +1,44 @@
 <section class="page-shell">
-  <mat-toolbar color="primary" class="app-toolbar">
-    <strong>Come Pouco</strong>
-    <span class="toolbar-spacer"></span>
-    <a mat-button routerLink="/home" routerLinkActive="nav-link-active">Home</a>
-    <a mat-button routerLink="/users" routerLinkActive="nav-link-active" *ngIf="authService.isAdmin()">Usuários</a>
-    <a mat-button routerLink="/purchase-platforms" routerLinkActive="nav-link-active" *ngIf="authService.isAdmin()">
-      Plataforma de Compras
-    </a>
-    <a mat-button routerLink="/affiliate-links" routerLinkActive="nav-link-active">Links Afiliados</a>
-    <button mat-flat-button color="warn" type="button" (click)="logout()">Sair</button>
-  </mat-toolbar>
-
   <main class="page-main">
     <mat-card class="welcome-card" appearance="outlined">
       <mat-card-header>
         <mat-card-title>Painel Inicial</mat-card-title>
-        <mat-card-subtitle>Visão geral da operação Come Pouco</mat-card-subtitle>
+        <mat-card-subtitle *ngIf="(companyName$ | async) as companyName; else defaultOverview">
+          Visao geral da operacao {{ companyName }}
+        </mat-card-subtitle>
+        <ng-template #defaultOverview>
+          <mat-card-subtitle>{{ authService.isAdmin() ? 'Visao geral da operacao (Admin)' : 'Visao geral da operacao' }}</mat-card-subtitle>
+        </ng-template>
       </mat-card-header>
 
       <mat-card-content>
-        <p *ngIf="!errorMessage">
+        <p *ngIf="!(errorMessage$ | async)">
           Bem-vindo,
-          <strong>{{ authService.currentUser()?.fullName || 'Usuário' }}</strong>
-          ({{ authService.currentUser()?.email }}) -
-          perfil <strong>{{ authService.currentUser()?.role === 'ADMIN' ? 'Administrador' : 'Usuário padrão' }}</strong>.
+          <strong>{{ authService.currentUser()?.fullName || 'Usuario' }}</strong>
+          ({{ authService.currentUser()?.username || authService.currentUser()?.email || 'sem identificador' }}) -
+          perfil <strong>{{ authService.currentUser()?.role === 'ADMIN' ? 'Administrador' : 'Usuario padrao' }}</strong>.
         </p>
 
-        <p class="status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+        <p class="status-error" *ngIf="(errorMessage$ | async) as errorMessage">{{ errorMessage }}</p>
+        <p class="status-error" *ngIf="!authService.currentUser()?.twoFactorEnabled && !(errorMessage$ | async)">
+          Sua conta ainda nao possui 2FA ativo. Configure em Seguranca para proteger o acesso.
+        </p>
 
         <mat-chip-set>
-          <mat-chip routerLink="/users" *ngIf="authService.isAdmin()">Gestão de usuários</mat-chip>
+          <mat-chip routerLink="/users" *ngIf="authService.isAdmin()">Gestao de usuarios</mat-chip>
           <mat-chip routerLink="/purchase-platforms" *ngIf="authService.isAdmin()">Plataformas de compras</mat-chip>
-          <mat-chip routerLink="/affiliate-links">Gestão de afiliados</mat-chip>
+          <mat-chip routerLink="/companies" *ngIf="authService.isAdmin()">Empresas</mat-chip>
+          <mat-chip routerLink="/my-company" *ngIf="authService.isOwner()">Minha empresa</mat-chip>
+          <mat-chip routerLink="/affiliate-links">Gestao de afiliados</mat-chip>
         </mat-chip-set>
       </mat-card-content>
 
       <mat-card-actions>
-        <a mat-stroked-button routerLink="/users" *ngIf="authService.isAdmin()">Ir para usuários</a>
+        <a mat-stroked-button routerLink="/users" *ngIf="authService.isAdmin()">Ir para usuarios</a>
         <a mat-stroked-button routerLink="/purchase-platforms" *ngIf="authService.isAdmin()">Ir para plataformas</a>
+        <a mat-stroked-button routerLink="/companies" *ngIf="authService.isAdmin()">Ir para empresas</a>
+        <a mat-stroked-button routerLink="/my-company" *ngIf="authService.isOwner()">Ir para minha empresa</a>
+        <a mat-stroked-button routerLink="/security" *ngIf="!authService.currentUser()?.twoFactorEnabled">Configurar 2FA</a>
         <a mat-flat-button color="primary" routerLink="/affiliate-links">Ir para afiliados</a>
       </mat-card-actions>
     </mat-card>

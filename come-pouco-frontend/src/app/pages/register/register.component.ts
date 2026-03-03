@@ -34,7 +34,8 @@ export class RegisterComponent {
 
   protected readonly registerForm = this.formBuilder.group({
     fullName: ['', [Validators.required, Validators.minLength(3)]],
-    email: ['', [Validators.required, Validators.email]],
+    username: ['', [Validators.required, Validators.pattern(/^[a-zA-Z0-9_-]+$/)]],
+    email: ['', [Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
     confirmPassword: ['', [Validators.required]]
   });
@@ -45,10 +46,10 @@ export class RegisterComponent {
       return;
     }
 
-    const { fullName, email, password, confirmPassword } = this.registerForm.getRawValue();
+    const { fullName, username, email, password, confirmPassword } = this.registerForm.getRawValue();
 
     if (password !== confirmPassword) {
-      this.errorMessage = 'As senhas não conferem.';
+      this.errorMessage = 'As senhas nao conferem.';
       return;
     }
 
@@ -56,7 +57,7 @@ export class RegisterComponent {
     this.errorMessage = '';
 
     this.authService
-      .register({ fullName: fullName!, email: email!, password: password! })
+      .register({ fullName: fullName!, username: username!, email: email || undefined, password: password! })
       .subscribe({
         next: () => {
           this.isSubmitting = false;
@@ -64,7 +65,7 @@ export class RegisterComponent {
         },
         error: (error) => {
           this.isSubmitting = false;
-          this.errorMessage = error?.error?.message || 'Não foi possível criar a conta.';
+          this.errorMessage = error?.error?.message || 'Nao foi possivel criar a conta.';
         }
       });
   }
