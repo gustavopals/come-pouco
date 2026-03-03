@@ -30,11 +30,58 @@ mat-card-header {
   gap: 0.75rem;
 }
 
+.toggle-row {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mode-help {
+  margin: 0;
+  color: #475569;
+}
+
+.selected-companies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.default-company-block {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.default-company-block .status-block {
+  margin: 0;
+  color: #334155;
+}
+
+.default-company-item {
+  border: 1px solid rgba(20, 83, 116, 0.14);
+  border-radius: 10px;
+  padding: 0.35rem 0.55rem;
+  background: #f8fbff;
+}
+
 .entity-actions {
   display: flex;
   gap: 0.6rem;
   flex-wrap: wrap;
   padding-top: 0.35rem;
+}
+
+.entity-actions .mat-mdc-button-base {
+  min-height: 44px;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
 }
 
 .table-shell {
@@ -47,7 +94,7 @@ mat-card-header {
 
 .data-table {
   width: 100%;
-  min-width: 760px;
+  min-width: 860px;
 }
 
 .data-table .mat-mdc-header-row {
@@ -78,6 +125,16 @@ mat-card-header {
   color: #123f61;
 }
 
+.api-link {
+  color: #0b5f91;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.api-link:hover {
+  text-decoration: underline;
+}
+
 .status-active {
   color: #166534;
   font-weight: 700;
@@ -88,10 +145,24 @@ mat-card-header {
   font-weight: 700;
 }
 
+.secret-ready {
+  color: #166534;
+  font-weight: 700;
+}
+
+.secret-missing {
+  color: #b45309;
+  font-weight: 700;
+}
+
 .row-actions {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.mobile-platform-list {
+  display: none;
 }
 
 .empty-state {
@@ -103,5 +174,93 @@ mat-card-header {
 @media (max-width: 1200px) {
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .table-header {
+    flex-wrap: wrap;
+  }
+
+  .table-header > :first-child {
+    width: 100%;
+  }
+
+  .toolbar-spacer {
+    display: none;
+  }
+
+  .table-header .mat-mdc-button-base {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .entity-actions {
+    width: 100%;
+  }
+
+  .entity-actions .mat-mdc-button-base {
+    width: 100%;
+  }
+
+  .table-shell {
+    display: none;
+  }
+
+  .mobile-platform-list {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 0.9rem;
+  }
+
+  .platform-card {
+    border: 1px solid rgba(20, 83, 116, 0.18);
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.8rem;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .platform-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+
+  .platform-date {
+    font-size: 0.82rem;
+    color: #4b5563;
+    text-align: right;
+  }
+
+  .platform-name {
+    margin: 0;
+    font-weight: 700;
+    color: #123f61;
+  }
+
+  .platform-meta-grid {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .platform-meta-grid p {
+    margin: 0;
+    color: #334155;
+  }
+
+  .mobile-api-link {
+    width: fit-content;
+  }
+
+  .mobile-actions {
+    margin-top: 0.2rem;
+  }
+
+  .mobile-actions .mat-mdc-button-base {
+    width: 100%;
+    min-height: 44px;
   }
 }

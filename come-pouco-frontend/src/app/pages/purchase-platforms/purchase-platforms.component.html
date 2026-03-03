@@ -50,9 +50,11 @@
             </mat-error>
           </mat-form-field>
 
-          <mat-slide-toggle formControlName="isActive">Ativo?</mat-slide-toggle>
-          <mat-slide-toggle formControlName="mockMode">Modo Sandbox (Mock)</mat-slide-toggle>
-          <p class="status-block">
+          <div class="toggle-row">
+            <mat-slide-toggle formControlName="isActive">Ativo?</mat-slide-toggle>
+            <mat-slide-toggle formControlName="mockMode">Modo Sandbox (Mock)</mat-slide-toggle>
+          </div>
+          <p class="status-block mode-help">
             Quando ligado, nao chama a Shopee e gera links simulados (apenas para testes).
           </p>
 
@@ -81,16 +83,17 @@
             <mat-hint>Selecione uma ou mais empresas para usar esta plataforma.</mat-hint>
           </mat-form-field>
 
-          <mat-chip-set *ngIf="selectedCompanyIds.length">
+          <mat-chip-set class="selected-companies" *ngIf="selectedCompanyIds.length">
             <mat-chip *ngFor="let companyId of selectedCompanyIds" [removable]="true" (removed)="removeCompany(companyId)">
               {{ selectedCompanyLabel(companyId) }}
               <button matChipRemove type="button">x</button>
             </mat-chip>
           </mat-chip-set>
 
-          <div *ngIf="selectedCompanyIds.length">
-            <p class="status-block">Padrão (default) para esta empresa:</p>
+          <div class="default-company-block" *ngIf="selectedCompanyIds.length">
+            <p class="status-block">Padrao (default) para esta empresa:</p>
             <mat-checkbox
+              class="default-company-item"
               *ngFor="let companyId of selectedCompanyIds"
               [checked]="isDefaultCompany(companyId)"
               (change)="toggleDefaultCompany(companyId, $event.checked)"
@@ -167,13 +170,17 @@
             <ng-container matColumnDef="apiLink">
               <th mat-header-cell *matHeaderCellDef>Link da API</th>
               <td mat-cell *matCellDef="let platform">
-                <a [href]="platform.apiUrl || platform.apiLink" target="_blank" rel="noreferrer">Abrir</a>
+                <a class="api-link" [href]="platform.apiUrl || platform.apiLink" target="_blank" rel="noreferrer">Abrir</a>
               </td>
             </ng-container>
 
             <ng-container matColumnDef="secret">
               <th mat-header-cell *matHeaderCellDef>Secret</th>
-              <td mat-cell *matCellDef="let platform">{{ secretStatus(platform) }}</td>
+              <td mat-cell *matCellDef="let platform">
+                <span [class.secret-ready]="platform.secretConfigured" [class.secret-missing]="!platform.secretConfigured">
+                  {{ secretStatus(platform) }}
+                </span>
+              </td>
             </ng-container>
 
             <ng-container matColumnDef="updatedAt">
@@ -192,6 +199,46 @@
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
           </table>
+        </div>
+
+        <div class="mobile-platform-list" *ngIf="!(isLoading$ | async) && platforms.length">
+          <article class="platform-card" *ngFor="let platform of platforms">
+            <header class="platform-card-header">
+              <span class="id-pill">#{{ platform.id }}</span>
+              <span class="platform-date">{{ platform.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+            </header>
+
+            <p class="platform-name">{{ platform.name }}</p>
+
+            <div class="platform-meta-grid">
+              <p>Tipo: <strong>{{ platform.type }}</strong></p>
+              <p>
+                Status:
+                <strong [class.status-active]="platform.isActive" [class.status-inactive]="!platform.isActive">
+                  {{ platform.isActive ? 'Ativo' : 'Inativo' }}
+                </strong>
+              </p>
+              <p>
+                Ambiente:
+                <strong [class.status-active]="platform.mockMode" [class.status-inactive]="!platform.mockMode">
+                  {{ modeStatus(platform) }}
+                </strong>
+              </p>
+              <p>
+                Secret:
+                <strong [class.secret-ready]="platform.secretConfigured" [class.secret-missing]="!platform.secretConfigured">
+                  {{ secretStatus(platform) }}
+                </strong>
+              </p>
+            </div>
+
+            <a class="api-link mobile-api-link" [href]="platform.apiUrl || platform.apiLink" target="_blank" rel="noreferrer">Abrir link da API</a>
+
+            <div class="row-actions mobile-actions">
+              <button mat-stroked-button type="button" (click)="startEdit(platform)">Editar</button>
+              <button mat-flat-button color="warn" type="button" (click)="remove(platform)">Excluir</button>
+            </div>
+          </article>
         </div>
 
         <p class="empty-state" *ngIf="!(isLoading$ | async) && !platforms.length">Nenhuma plataforma cadastrada.</p>

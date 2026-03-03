@@ -1,35 +1,39 @@
 <section class="page-shell">
   <main class="page-main security-grid">
-    <mat-card appearance="outlined">
+    <mat-card appearance="outlined" class="twofa-card">
       <mat-card-header>
         <mat-card-title>Autenticacao em duas etapas (2FA)</mat-card-title>
         <mat-card-subtitle>Proteja sua conta com app autenticador e codigos de backup.</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
-        <button
-          mat-flat-button
-          color="primary"
-          type="button"
-          (click)="startSetup()"
-          [disabled]="isLoading || (setupLoading$ | async) || !!(setup2fa$ | async)"
-        >
-          Iniciar setup 2FA
-        </button>
+        <div class="section-actions">
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            (click)="startSetup()"
+            [disabled]="isLoading || (setupLoading$ | async) || !!(setup2fa$ | async)"
+          >
+            Iniciar setup 2FA
+          </button>
+        </div>
 
-        <p class="status-block" *ngIf="(setupLoading$ | async)">Gerando dados de setup...</p>
+        <p class="status-block setup-loading" *ngIf="(setupLoading$ | async)">Gerando dados de setup...</p>
         <p class="status-block status-error" *ngIf="(setupError$ | async) as setupError">{{ setupError }}</p>
 
         <section class="setup-block" *ngIf="(setup2fa$ | async) as otpauthUrl">
           <ng-container *ngIf="parseManualSetup(otpauthUrl) as setup; else invalidSetupPayload">
-            <p>Para maior seguranca, o setup e exibido localmente sem envio para servicos externos de QR code.</p>
-            <p><strong>Aplicativo:</strong> {{ setup.issuer }}</p>
-            <p><strong>Conta:</strong> {{ setup.account }}</p>
-            <p><strong>Chave secreta:</strong></p>
+            <p class="setup-notice">Setup local: sem envio de chave para servicos externos de QR code.</p>
+            <div class="setup-meta">
+              <p><strong>Aplicativo:</strong> {{ setup.issuer }}</p>
+              <p><strong>Conta:</strong> {{ setup.account }}</p>
+            </div>
+            <p class="setup-secret-label"><strong>Chave secreta:</strong></p>
             <div class="codes-grid">
               <code>{{ setup.secret }}</code>
             </div>
-            <div class="devices-toolbar">
+            <div class="section-actions">
               <button mat-stroked-button type="button" (click)="copyManualValue(setup.secret, 'Chave secreta copiada.')">
                 Copiar chave
               </button>
@@ -53,7 +57,7 @@
         </section>
 
         <section class="backup-block" *ngIf="backupCodes.length">
-          <p><strong>Mostrado apenas uma vez:</strong> salve estes codigos de backup em local seguro.</p>
+          <p class="backup-notice"><strong>Mostrado apenas uma vez:</strong> salve estes codigos de backup em local seguro.</p>
           <div class="codes-grid">
             <code *ngFor="let backupCode of backupCodes">{{ backupCode }}</code>
           </div>
@@ -61,7 +65,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card appearance="outlined">
+    <mat-card appearance="outlined" class="disable-card">
       <mat-card-header>
         <mat-card-title>Desativar 2FA</mat-card-title>
         <mat-card-subtitle>Informe senha e codigo TOTP ou backup para desativar.</mat-card-subtitle>
@@ -84,14 +88,14 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card appearance="outlined">
+    <mat-card appearance="outlined" class="devices-card">
       <mat-card-header>
         <mat-card-title>Dispositivos confiaveis</mat-card-title>
         <mat-card-subtitle>Dispositivos confiaveis: {{ devicesCount$ | async }}</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
-        <div class="devices-toolbar">
+        <div class="section-actions">
           <button mat-stroked-button type="button" (click)="refreshDevices()">Atualizar</button>
         </div>
 
@@ -102,12 +106,14 @@
           <p *ngIf="!(isLoading$ | async) && !trustedDevices.length">Nenhum dispositivo confiavel ativo.</p>
 
           <div class="device-item" *ngFor="let device of trustedDevices">
-            <div>
-              <strong>{{ device.userAgent || 'Navegador sem identificacao' }}</strong>
-              <p>Expira: {{ device.expiresAt | date: 'dd/MM/yyyy HH:mm' }}</p>
-              <p>Ultimo uso: {{ (device.lastUsedAt || device.createdAt) | date: 'dd/MM/yyyy HH:mm' }}</p>
+            <div class="device-details">
+              <strong class="device-title">{{ device.userAgent || 'Navegador sem identificacao' }}</strong>
+              <p class="device-line">Expira: {{ device.expiresAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+              <p class="device-line">Ultimo uso: {{ (device.lastUsedAt || device.createdAt) | date: 'dd/MM/yyyy HH:mm' }}</p>
             </div>
-            <button mat-stroked-button color="warn" type="button" (click)="revokeDevice(device.id)">Revogar</button>
+            <button mat-stroked-button color="warn" type="button" class="device-revoke-btn" (click)="revokeDevice(device.id)">
+              Revogar
+            </button>
           </div>
         </ng-container>
       </mat-card-content>

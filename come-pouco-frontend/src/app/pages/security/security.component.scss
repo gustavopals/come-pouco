@@ -1,55 +1,168 @@
+:host {
+  display: block;
+}
+
 .security-grid {
   display: grid;
-  gap: 16px;
+  gap: 1.1rem;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+  align-items: start;
+}
+
+.twofa-card,
+.disable-card,
+.devices-card {
+  border-radius: 18px;
+}
+
+.twofa-card {
+  background: linear-gradient(165deg, #f3fcff 0%, #ffffff 35%);
+}
+
+.disable-card {
+  background: linear-gradient(165deg, #fff7f2 0%, #ffffff 35%);
+}
+
+.devices-card {
+  background: linear-gradient(165deg, #f6fffb 0%, #ffffff 35%);
+  grid-column: 1 / -1;
+}
+
+mat-card-header {
+  padding-bottom: 0.6rem;
+}
+
+.section-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.7rem;
+}
+
+.setup-loading {
+  color: #1d4ed8;
+  font-weight: 600;
 }
 
 .setup-block,
 .backup-block {
-  margin-top: 16px;
+  margin-top: 1rem;
+  border: 1px solid rgba(20, 83, 116, 0.14);
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: #fff;
 }
 
-.qr-preview {
-  width: 220px;
-  height: 220px;
-  border-radius: 8px;
-  display: block;
-  margin: 8px 0 12px;
+.setup-notice,
+.backup-notice {
+  margin: 0 0 0.65rem;
+  color: #334155;
+}
+
+.setup-meta {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.setup-meta p {
+  margin: 0;
+}
+
+.setup-secret-label {
+  margin: 0 0 0.45rem;
 }
 
 .stack-form {
   display: grid;
-  gap: 10px;
+  gap: 0.6rem;
   max-width: 360px;
+}
+
+.stack-form .mat-mdc-button-base {
+  min-height: 44px;
 }
 
 .codes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.5rem;
 }
 
 .codes-grid code {
   display: block;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 6px;
-}
-
-.devices-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 10px;
+  padding: 0.55rem 0.6rem;
+  background: #f1f8ff;
+  border-radius: 8px;
+  border: 1px dashed rgba(20, 83, 116, 0.28);
+  color: #0f2942;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
 }
 
 .device-item {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 0.9rem;
   align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(20, 83, 116, 0.12);
 }
 
-.device-item p {
-  margin: 2px 0;
+.device-item:last-child {
+  border-bottom: none;
+}
+
+.device-details {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.device-title {
+  color: #123f61;
+}
+
+.device-line {
+  margin: 0;
+  color: #475569;
+}
+
+.device-revoke-btn {
+  min-height: 42px;
+}
+
+@media (max-width: 1100px) {
+  .security-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .devices-card {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .section-actions {
+    justify-content: stretch;
+  }
+
+  .section-actions .mat-mdc-button-base {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .stack-form {
+    max-width: 100%;
+  }
+
+  .device-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .device-revoke-btn {
+    width: 100%;
+  }
 }

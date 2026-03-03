@@ -66,6 +66,11 @@ App em `http://localhost:4200`.
 - `APP_ENV=development|production`
 - `TRUSTED_DEVICE_DAYS=30`
 - `TWOFA_ENCRYPTION_KEY=<chave forte>`
+- `CORS_ORIGINS=<origens separadas por virgula>`
+
+Exemplo para deploy:
+
+`CORS_ORIGINS=http://comepouco.palsincomehub.com,https://comepouco.palsincomehub.com`
 
 ## Hardening de Auth (producao)
 
