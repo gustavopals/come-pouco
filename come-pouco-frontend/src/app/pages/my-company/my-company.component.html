@@ -1,0 +1,42 @@
+<section class="page-shell">
+  <main class="page-main admin-grid">
+    <mat-card appearance="outlined">
+      <mat-card-header class="table-header">
+        <mat-card-title>Usuarios da empresa</mat-card-title>
+        <div class="toolbar-spacer"></div>
+        <button mat-stroked-button type="button" (click)="loadEmployees()">Atualizar</button>
+      </mat-card-header>
+      <mat-card-content>
+        <p class="status-block status-error" *ngIf="(errorMessage$ | async) as errorMessage">{{ errorMessage }}</p>
+        <mat-progress-bar mode="indeterminate" *ngIf="(isLoading$ | async)"></mat-progress-bar>
+        <ng-container *ngIf="(employees$ | async) as employees">
+        <table mat-table [dataSource]="employees" *ngIf="!(isLoading$ | async) && employees.length">
+          <ng-container matColumnDef="id">
+            <th mat-header-cell *matHeaderCellDef>ID</th>
+            <td mat-cell *matCellDef="let user">#{{ user.id }}</td>
+          </ng-container>
+          <ng-container matColumnDef="fullName">
+            <th mat-header-cell *matHeaderCellDef>Nome</th>
+            <td mat-cell *matCellDef="let user">{{ user.fullName }}</td>
+          </ng-container>
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>E-mail</th>
+            <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+          </ng-container>
+          <ng-container matColumnDef="companyRole">
+            <th mat-header-cell *matHeaderCellDef>Papel na empresa</th>
+            <td mat-cell *matCellDef="let user">{{ companyRoleLabel(user) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="createdAt">
+            <th mat-header-cell *matHeaderCellDef>Criado em</th>
+            <td mat-cell *matCellDef="let user">{{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+        <p *ngIf="!(isLoading$ | async) && !employees.length">Nenhum usuario encontrado.</p>
+        </ng-container>
+      </mat-card-content>
+    </mat-card>
+  </main>
+</section>

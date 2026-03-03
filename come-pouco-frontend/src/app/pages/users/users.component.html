@@ -1,19 +1,9 @@
 <section class="page-shell">
-  <mat-toolbar color="primary" class="app-toolbar">
-    <strong>Come Pouco</strong>
-    <span class="toolbar-spacer"></span>
-    <a mat-button routerLink="/home" routerLinkActive="nav-link-active">Home</a>
-    <a mat-button routerLink="/users" routerLinkActive="nav-link-active">Usuários</a>
-    <a mat-button routerLink="/purchase-platforms" routerLinkActive="nav-link-active">Plataforma de Compras</a>
-    <a mat-button routerLink="/affiliate-links" routerLinkActive="nav-link-active">Links Afiliados</a>
-    <button mat-flat-button color="warn" type="button" (click)="logout()">Sair</button>
-  </mat-toolbar>
-
   <main class="page-main admin-grid">
     <mat-card appearance="outlined" class="form-card">
       <mat-card-header>
-        <mat-card-title>{{ isCreateMode() ? 'Cadastrar usuário' : 'Editar usuário' }}</mat-card-title>
-        <mat-card-subtitle>Gerencie credenciais e dados de acesso da equipe.</mat-card-subtitle>
+        <mat-card-title>{{ isCreateMode() ? 'Cadastrar usuario' : 'Editar usuario' }}</mat-card-title>
+        <mat-card-subtitle>Gerencie credenciais e vinculo de empresa da equipe.</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
@@ -21,67 +11,88 @@
           <mat-form-field appearance="outline">
             <mat-label>Nome completo</mat-label>
             <input matInput type="text" formControlName="fullName" placeholder="Nome" />
-            <mat-error *ngIf="form.controls.fullName.touched && form.controls.fullName.invalid">
-              Informe ao menos 3 caracteres.
-            </mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>E-mail</mat-label>
-            <input matInput type="email" formControlName="email" placeholder="email@dominio.com" />
-            <mat-error *ngIf="form.controls.email.touched && form.controls.email.invalid">
-              Informe um e-mail válido.
-            </mat-error>
+            <mat-label>Username</mat-label>
+            <input matInput type="text" formControlName="username" placeholder="usuario_sem_espacos" />
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Senha {{ isCreateMode() ? '(obrigatória)' : '(opcional para alterar)' }}</mat-label>
-            <input matInput type="password" formControlName="password" placeholder="Mínimo 6 caracteres" />
-            <mat-hint *ngIf="!isCreateMode()">Preencha apenas se quiser trocar a senha.</mat-hint>
-            <mat-error *ngIf="form.controls.password.touched && form.controls.password.invalid">
-              A senha precisa ter no mínimo 6 caracteres.
-            </mat-error>
+            <mat-label>E-mail (opcional)</mat-label>
+            <input matInput type="text" formControlName="email" placeholder="email@dominio.com" />
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Perfil</mat-label>
+            <mat-label>Senha {{ isCreateMode() ? '(obrigatoria)' : '(opcional para alterar)' }}</mat-label>
+            <input matInput type="password" formControlName="password" placeholder="Minimo 6 caracteres" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Perfil global</mat-label>
             <mat-select formControlName="role">
               <mat-option *ngFor="let role of roleOptions" [value]="role">{{ roleLabel(role) }}</mat-option>
             </mat-select>
-            <mat-error *ngIf="form.controls.role.touched && form.controls.role.invalid">
-              Selecione um perfil.
-            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="form.controls.role.value === 'USER'">
+            <mat-label>Empresa</mat-label>
+            <input
+              matInput
+              type="text"
+              formControlName="companySearch"
+              placeholder="Pesquisar empresa..."
+              [matAutocomplete]="companyAuto"
+            />
+            <mat-autocomplete #companyAuto="matAutocomplete" (optionSelected)="onCompanySelected($event.option.value)">
+              <mat-option *ngFor="let company of filteredCompanies" [value]="company.id">{{ company.name }}</mat-option>
+            </mat-autocomplete>
+            <mat-hint>Digite para pesquisar empresas.</mat-hint>
+          </mat-form-field>
+
+          <button mat-stroked-button type="button" *ngIf="form.controls.role.value === 'USER'" (click)="clearSelectedCompany()">
+            Limpar empresa selecionada
+          </button>
+
+          <mat-form-field appearance="outline" *ngIf="form.controls.role.value === 'USER'">
+            <mat-label>Papel interno</mat-label>
+            <mat-select formControlName="companyRole">
+              <mat-option *ngFor="let companyRole of companyRoleOptions" [value]="companyRole">
+                {{ companyRoleLabel(companyRole) }}
+              </mat-option>
+            </mat-select>
           </mat-form-field>
 
           <div class="entity-actions">
             <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
-              {{ isSaving ? 'Salvando...' : (isCreateMode() ? 'Cadastrar' : 'Salvar alterações') }}
+              {{ isSaving ? 'Salvando...' : (isCreateMode() ? 'Cadastrar' : 'Salvar alteracoes') }}
             </button>
             <button mat-stroked-button type="button" *ngIf="!isCreateMode()" (click)="cancelEdit()">
-              Cancelar edição
+              Cancelar edicao
             </button>
           </div>
         </form>
 
-        <p class="status-block status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
-        <p class="status-block status-success" *ngIf="successMessage">{{ successMessage }}</p>
+        <p class="status-block status-error" *ngIf="(errorMessage$ | async) as errorMessage">{{ errorMessage }}</p>
+        <p class="status-block status-success" *ngIf="(successMessage$ | async) as successMessage">{{ successMessage }}</p>
       </mat-card-content>
     </mat-card>
 
     <mat-card appearance="outlined" class="table-card">
       <mat-card-header class="table-header">
         <div>
-          <mat-card-title>Usuários cadastrados</mat-card-title>
-          <mat-card-subtitle>{{ totalUsers }} registro(s)</mat-card-subtitle>
+          <mat-card-title>Usuarios cadastrados</mat-card-title>
+          <mat-card-subtitle>{{ (totalUsers$ | async) || 0 }} registro(s)</mat-card-subtitle>
         </div>
         <div class="toolbar-spacer"></div>
         <button mat-stroked-button type="button" (click)="loadUsers()">Atualizar</button>
       </mat-card-header>
 
       <mat-card-content>
-        <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+        <mat-progress-bar mode="indeterminate" *ngIf="(isLoading$ | async)"></mat-progress-bar>
 
-        <div class="table-shell" *ngIf="!isLoading && users.length">
+        <ng-container *ngIf="(users$ | async) as users">
+        <div class="table-shell" *ngIf="!(isLoading$ | async) && users.length">
           <table mat-table [dataSource]="users" class="data-table">
             <ng-container matColumnDef="id">
               <th mat-header-cell *matHeaderCellDef>ID</th>
@@ -95,12 +106,22 @@
 
             <ng-container matColumnDef="email">
               <th mat-header-cell *matHeaderCellDef>E-mail</th>
-              <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+              <td mat-cell *matCellDef="let user">{{ user.email || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="username">
+              <th mat-header-cell *matHeaderCellDef>Username</th>
+              <td mat-cell *matCellDef="let user">{{ user.username }}</td>
             </ng-container>
 
             <ng-container matColumnDef="role">
               <th mat-header-cell *matHeaderCellDef>Perfil</th>
-              <td mat-cell *matCellDef="let user">{{ roleLabel(user.role) }}</td>
+              <td mat-cell *matCellDef="let user">{{ roleLabel(user.role) }} / {{ companyRoleLabel(user.companyRole) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="company">
+              <th mat-header-cell *matHeaderCellDef>Empresa</th>
+              <td mat-cell *matCellDef="let user">{{ companyLabel(user.companyId) }}</td>
             </ng-container>
 
             <ng-container matColumnDef="createdAt">
@@ -109,8 +130,18 @@
             </ng-container>
 
             <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>Ações</th>
+              <th mat-header-cell *matHeaderCellDef>Acoes</th>
               <td mat-cell *matCellDef="let user" class="row-actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  color="primary"
+                  matTooltip="Resetar 2FA"
+                  (click)="resetTwoFactor(user)"
+                  aria-label="Resetar 2FA"
+                >
+                  <mat-icon>restart_alt</mat-icon>
+                </button>
                 <button mat-stroked-button type="button" (click)="startEdit(user)">Editar</button>
                 <button mat-flat-button color="warn" type="button" (click)="removeUser(user)">Excluir</button>
               </td>
@@ -121,7 +152,8 @@
           </table>
         </div>
 
-        <p class="empty-state" *ngIf="!isLoading && !users.length">Nenhum usuário cadastrado.</p>
+        <p class="empty-state" *ngIf="!(isLoading$ | async) && !users.length">Nenhum usuario cadastrado.</p>
+        </ng-container>
       </mat-card-content>
     </mat-card>
   </main>

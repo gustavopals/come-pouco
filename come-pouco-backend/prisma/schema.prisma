@@ -11,38 +11,139 @@ enum UserRole {
   USER
 }
 
+enum CompanyRole {
+  OWNER
+  EMPLOYEE
+}
+
+enum ShopeeMode {
+  TEST
+  PROD
+}
+
+enum PurchasePlatformType {
+  SHOPEE
+}
+
+model Company {
+  id                   Int               @id @default(autoincrement())
+  name                 String            @unique @db.VarChar(160)
+  shopeePlatformId     Int?              @map("shopee_platform_id")
+  shopeePlatformTestId Int?              @map("shopee_platform_test_id")
+  shopeePlatformProdId Int?              @map("shopee_platform_prod_id")
+  shopeeMode           ShopeeMode        @default(TEST) @map("shopee_mode")
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  users                User[]
+  links                AffiliateLink[]
+  companyPlatforms     CompanyPlatform[]
+  shopeePlatform       PurchasePlatform? @relation("company_shopee_platform_legacy", fields: [shopeePlatformId], references: [id], onDelete: SetNull)
+  shopeePlatformTest   PurchasePlatform? @relation("company_shopee_platform_test", fields: [shopeePlatformTestId], references: [id], onDelete: SetNull)
+  shopeePlatformProd   PurchasePlatform? @relation("company_shopee_platform_prod", fields: [shopeePlatformProdId], references: [id], onDelete: SetNull)
+
+  @@map("companies")
+}
+
 model User {
-  id           Int      @id @default(autoincrement())
-  fullName     String   @map("full_name") @db.VarChar(120)
-  email        String   @unique @db.VarChar(255)
-  passwordHash String   @map("password_hash") @db.VarChar(255)
-  role         UserRole @default(USER)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  id                     Int                    @id @default(autoincrement())
+  fullName               String                 @map("full_name") @db.VarChar(120)
+  username               String                 @unique @db.VarChar(120)
+  email                  String?                @unique @db.VarChar(255)
+  emailVerifiedAt        DateTime?              @map("email_verified_at") @db.Timestamp(6)
+  passwordHash           String                 @map("password_hash") @db.VarChar(255)
+  role                   UserRole               @default(USER)
+  companyId              Int?                   @map("company_id")
+  companyRole            CompanyRole?           @map("company_role")
+  twoFactorEnabled       Boolean                @default(false) @map("two_factor_enabled")
+  twoFactorSecret        String?                @map("two_factor_secret")
+  twoFactorSecretPending String?                @map("two_factor_secret_pending")
+  twoFactorPendingCreatedAt DateTime?           @map("two_factor_pending_created_at") @db.Timestamp(6)
+  twoFactorConfirmedAt   DateTime?              @map("two_factor_confirmed_at") @db.Timestamp(6)
+  createdAt              DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
+  company                Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdAffiliateLinks  AffiliateLink[]        @relation("affiliate_links_created_by")
+  twoFactorBackupCodes   TwoFactorBackupCode[]
+  trustedDevices         TrustedDevice[]
 
   @@map("users")
 }
 
+model TwoFactorBackupCode {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  codeHash  String   @map("code_hash") @db.VarChar(128)
+  usedAt    DateTime? @map("used_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, codeHash])
+  @@index([userId])
+  @@map("two_factor_backup_codes")
+}
+
+model TrustedDevice {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  tokenHash String   @map("token_hash") @db.VarChar(128)
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamp(6)
+  userAgent String?  @map("user_agent") @db.VarChar(255)
+  ip        String?  @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("trusted_devices")
+}
+
 model AffiliateLink {
-  id            Int      @id @default(autoincrement())
-  originalLink  String   @map("original_link")
-  productImage  String   @map("product_image")
-  catchyPhrase  String   @map("catchy_phrase") @db.VarChar(255)
-  affiliateLink String   @map("affiliate_link")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  id              Int       @id @default(autoincrement())
+  originalLink    String    @map("original_link")
+  subId1          String?   @map("sub_id_1") @db.VarChar(50)
+  productImage    String    @map("product_image")
+  catchyPhrase    String    @map("catchy_phrase") @db.VarChar(255)
+  affiliateLink   String    @map("affiliate_link")
+  companyId       Int?      @map("company_id")
+  createdByUserId Int?      @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  company         Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdByUser   User?     @relation("affiliate_links_created_by", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@map("affiliate_links")
 }
 
 model PurchasePlatform {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(120)
-  description String
-  isActive    Boolean  @default(true) @map("is_active")
-  apiLink     String   @map("api_link")
-  accessKey   String   @map("access_key")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                  Int      @id @default(autoincrement())
+  name                String   @db.VarChar(120)
+  description         String
+  type                PurchasePlatformType @default(SHOPEE)
+  appId               String   @default("") @map("app_id") @db.VarChar(120)
+  secret              String   @default("") @map("secret")
+  apiUrl              String   @default("https://open-api.affiliate.shopee.com.br/graphql") @map("api_url")
+  isActive            Boolean  @default(true) @map("is_active")
+  mockMode            Boolean  @default(false) @map("mock_mode")
+  apiLink             String   @map("api_link")
+  accessKey           String   @map("access_key")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  companyPlatforms    CompanyPlatform[]
+  companiesLegacy     Company[] @relation("company_shopee_platform_legacy")
+  companiesTest       Company[] @relation("company_shopee_platform_test")
+  companiesProduction Company[] @relation("company_shopee_platform_prod")
 
   @@map("purchase_platforms")
+}
+
+model CompanyPlatform {
+  companyId           Int      @map("company_id")
+  platformId          Int      @map("platform_id")
+  isDefaultForCompany Boolean  @default(false) @map("is_default_for_company")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  company             Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  platform            PurchasePlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, platformId])
+  @@map("company_platforms")
 }

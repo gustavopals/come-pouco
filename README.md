@@ -172,5 +172,3 @@ Observacao: `platformId` continua opcional para ADMIN (override manual). Para OW
    - com credenciais reais validas, o fluxo passa a usar chamada real da Shopee.
 11. Faca login como ADMIN:
    - verifique que enxerga todos os links.
-
-   ## Teste

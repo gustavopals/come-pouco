@@ -1,0 +1,78 @@
+<section class="page-shell">
+  <main class="page-main admin-grid">
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>{{ editingCompanyId === null ? 'Cadastrar empresa' : 'Editar empresa' }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="form" (ngSubmit)="submit()" class="entity-form">
+          <mat-form-field appearance="outline">
+            <mat-label>Nome da empresa</mat-label>
+            <input matInput formControlName="name" placeholder="Empresa A" />
+            <mat-error *ngIf="form.controls.name.touched && form.controls.name.invalid">Nome invalido.</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Plataforma Shopee</mat-label>
+            <mat-select formControlName="shopeePlatformId" [disabled]="isLoadingPlatforms">
+              <mat-option [value]="null">Nao vincular</mat-option>
+              <mat-option *ngFor="let platform of shopeePlatforms" [value]="platform.id">
+                #{{ platform.id }} - {{ platform.name }}
+              </mat-option>
+            </mat-select>
+            <mat-hint>Apenas plataformas SHOPEE ativas aparecem aqui.</mat-hint>
+          </mat-form-field>
+
+          <div class="entity-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
+              {{ isSaving ? 'Salvando...' : (editingCompanyId === null ? 'Criar empresa' : 'Salvar alteracoes') }}
+            </button>
+            <button mat-stroked-button type="button" *ngIf="editingCompanyId !== null" (click)="startCreate()">
+              Cancelar edicao
+            </button>
+          </div>
+        </form>
+        <p class="status-block status-error" *ngIf="(errorMessage$ | async) as errorMessage">{{ errorMessage }}</p>
+        <p class="status-block status-success" *ngIf="successMessage">{{ successMessage }}</p>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Empresas</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-progress-bar mode="indeterminate" *ngIf="(isLoading$ | async)"></mat-progress-bar>
+        <ng-container *ngIf="(companies$ | async) as companies">
+          <table mat-table [dataSource]="companies" *ngIf="!(isLoading$ | async) && companies.length">
+            <ng-container matColumnDef="id">
+              <th mat-header-cell *matHeaderCellDef>ID</th>
+              <td mat-cell *matCellDef="let company">#{{ company.id }}</td>
+            </ng-container>
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Nome</th>
+              <td mat-cell *matCellDef="let company">{{ company.name }}</td>
+            </ng-container>
+            <ng-container matColumnDef="platform">
+              <th mat-header-cell *matHeaderCellDef>Plataforma Shopee</th>
+              <td mat-cell *matCellDef="let company">{{ platformLabel(company.shopeePlatform) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="createdAt">
+              <th mat-header-cell *matHeaderCellDef>Criada em</th>
+              <td mat-cell *matCellDef="let company">{{ company.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Acoes</th>
+              <td mat-cell *matCellDef="let company">
+                <button mat-stroked-button type="button" (click)="startEdit(company)">Editar</button>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
+          <p *ngIf="!(isLoading$ | async) && !companies.length">Nenhuma empresa cadastrada.</p>
+        </ng-container>
+      </mat-card-content>
+    </mat-card>
+  </main>
+</section>

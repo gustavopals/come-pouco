@@ -20,6 +20,6 @@ INSERT INTO "users" ("full_name", "email", "password_hash")
 VALUES (
   'Usuário Teste',
   'admin@comepouco.local',
-  '$2b$10$b7zfCxpmDzvUCvOPfNCod.najENVoynOPI6uxTkhv6rGUu3S7ao8m'
+  '$2b$10$6nEanPlogCDOrOTx9qaKv.TvBpecFEoNLFfHw7B7n/jbWLnyuw61y'
 )
 ON CONFLICT ("email") DO NOTHING;

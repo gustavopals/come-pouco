@@ -1,17 +1,18 @@
 <section class="page-shell auth-shell">
-  <mat-card class="auth-card" appearance="raised">
+  <mat-card class="auth-card" appearance="raised" *ngIf="vm$ | async as vm">
     <mat-card-header>
-      <mat-card-title>Come Pouco</mat-card-title>
-      <mat-card-subtitle>Acesse com seu usuário para entrar na área administrativa.</mat-card-subtitle>
+      <mat-card-title>Painel</mat-card-title>
+      <mat-card-subtitle *ngIf="!vm.tempToken">Acesse com seu usuario para entrar na area administrativa.</mat-card-subtitle>
+      <mat-card-subtitle *ngIf="vm.tempToken">Verificacao em duas etapas</mat-card-subtitle>
     </mat-card-header>
 
     <mat-card-content>
-      <form [formGroup]="loginForm" (ngSubmit)="submit()" class="auth-form">
+      <form *ngIf="!vm.tempToken" [formGroup]="loginForm" (ngSubmit)="submit(vm)" class="auth-form">
         <mat-form-field appearance="outline">
-          <mat-label>E-mail</mat-label>
-          <input matInput type="email" formControlName="email" placeholder="admin@comepouco.local" />
-          <mat-error *ngIf="loginForm.controls.email.touched && loginForm.controls.email.invalid">
-            Informe um e-mail válido.
+          <mat-label>Usuario ou e-mail</mat-label>
+          <input matInput type="text" formControlName="identifier" />
+          <mat-error *ngIf="loginForm.controls.identifier.touched && loginForm.controls.identifier.invalid">
+            Informe o usuario ou e-mail.
           </mat-error>
         </mat-form-field>
 
@@ -19,27 +20,40 @@
           <mat-label>Senha</mat-label>
           <input matInput type="password" formControlName="password" placeholder="******" />
           <mat-error *ngIf="loginForm.controls.password.touched && loginForm.controls.password.invalid">
-            A senha é obrigatória.
+            A senha e obrigatoria.
           </mat-error>
         </mat-form-field>
 
-        <button mat-flat-button color="primary" type="submit" [disabled]="isSubmitting">
-          {{ isSubmitting ? 'Entrando...' : 'Entrar' }}
+        <button mat-flat-button color="primary" type="submit" [disabled]="vm.isSubmitting">
+          {{ vm.isSubmitting ? 'Entrando...' : 'Entrar' }}
         </button>
       </form>
 
-      <p class="status-block status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+      <form *ngIf="vm.tempToken" [formGroup]="twoFactorForm" (ngSubmit)="submit(vm)" class="auth-form">
+        <mat-form-field appearance="outline">
+          <mat-label>Codigo TOTP ou backup</mat-label>
+          <input matInput type="text" formControlName="code" placeholder="000000 ou 1234-5678" />
+          <mat-error *ngIf="twoFactorForm.controls.code.touched && twoFactorForm.controls.code.invalid">
+            Informe o codigo de verificacao.
+          </mat-error>
+        </mat-form-field>
 
-      <mat-divider></mat-divider>
+        <mat-checkbox formControlName="trustDevice">Confiar neste navegador (30 dias)</mat-checkbox>
 
-      <div class="credentials-hint">
-        Usuário: <strong>admin@comepouco.local</strong><br />
-        Senha: <strong>123456</strong>
-      </div>
+        <button mat-flat-button color="primary" type="submit" [disabled]="vm.isSubmitting">
+          {{ vm.isSubmitting ? 'Verificando...' : 'Confirmar' }}
+        </button>
+
+        <button mat-stroked-button type="button" (click)="backToLogin()" [disabled]="vm.isSubmitting">
+          Voltar
+        </button>
+      </form>
+
+      <p class="status-block status-error" *ngIf="vm.errorMessage">{{ vm.errorMessage }}</p>
     </mat-card-content>
 
-    <mat-card-actions align="end">
-      <span>Ainda não tem conta?</span>
+    <mat-card-actions align="end" *ngIf="!vm.tempToken">
+      <span>Ainda nao tem conta?</span>
       <a mat-button color="primary" routerLink="/register">Cadastre-se</a>
     </mat-card-actions>
   </mat-card>

@@ -10,6 +10,7 @@ const rawCorsOrigins =
 
 interface EnvConfig {
   port: number;
+  appEnv: 'development' | 'production';
   db: {
     host: string;
     port: number;
@@ -22,7 +23,10 @@ interface EnvConfig {
     secret: string;
     expiresIn: SignOptions['expiresIn'];
   };
+  trustedDeviceDays: number;
+  twoFaEncryptionKey: string;
   corsOrigins: string[];
+  shopeeMock: boolean;
 }
 
 const buildDatabaseUrl = (): string => {
@@ -48,6 +52,7 @@ process.env.DATABASE_URL = databaseUrl;
 
 const env: EnvConfig = {
   port: Number(process.env.PORT) || 3000,
+  appEnv: (process.env.APP_ENV || 'development') === 'production' ? 'production' : 'development',
   db: {
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT) || 5432,
@@ -60,10 +65,16 @@ const env: EnvConfig = {
     secret: process.env.JWT_SECRET || 'dev-secret-change-me',
     expiresIn: (process.env.JWT_EXPIRES_IN || '8h') as SignOptions['expiresIn']
   },
+  trustedDeviceDays: Math.max(1, Number(process.env.TRUSTED_DEVICE_DAYS || 30) || 30),
+  twoFaEncryptionKey:
+    process.env.TWOFA_ENCRYPTION_KEY && process.env.TWOFA_ENCRYPTION_KEY.trim().length > 0
+      ? process.env.TWOFA_ENCRYPTION_KEY
+      : 'dev-twofa-encryption-key-change-me',
   corsOrigins: rawCorsOrigins
     .split(',')
     .map((origin) => origin.trim())
-    .filter(Boolean)
+    .filter(Boolean),
+  shopeeMock: String(process.env.SHOPEE_MOCK || 'false').toLowerCase() === 'true'
 };
 
 export default env;

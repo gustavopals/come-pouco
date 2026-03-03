@@ -1,0 +1,101 @@
+<section class="page-shell">
+  <main class="page-main security-grid">
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Autenticacao em duas etapas (2FA)</mat-card-title>
+        <mat-card-subtitle>Proteja sua conta com app autenticador e codigos de backup.</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="startSetup()"
+          [disabled]="isLoading || (setupLoading$ | async) || !!(setup2fa$ | async)"
+        >
+          Iniciar setup 2FA
+        </button>
+
+        <p class="status-block" *ngIf="(setupLoading$ | async)">Gerando QR code...</p>
+        <p class="status-block status-error" *ngIf="(setupError$ | async) as setupError">{{ setupError }}</p>
+
+        <section class="setup-block" *ngIf="(setup2fa$ | async) as otpauthUrl">
+          <p>Escaneie o QR code no app autenticador e confirme com um codigo de 6 digitos.</p>
+          <img [src]="qrCodeImageUrl(otpauthUrl)" alt="QR code 2FA" class="qr-preview" />
+
+          <form [formGroup]="confirmForm" (ngSubmit)="confirmSetup()" class="stack-form">
+            <mat-form-field appearance="outline">
+              <mat-label>Codigo do autenticador</mat-label>
+              <input matInput type="text" formControlName="code" placeholder="000000" />
+            </mat-form-field>
+
+            <button mat-flat-button color="primary" type="submit" [disabled]="isLoading">Confirmar e ativar</button>
+          </form>
+        </section>
+
+        <section class="backup-block" *ngIf="backupCodes.length">
+          <p><strong>Mostrado apenas uma vez:</strong> salve estes codigos de backup em local seguro.</p>
+          <div class="codes-grid">
+            <code *ngFor="let backupCode of backupCodes">{{ backupCode }}</code>
+          </div>
+        </section>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Desativar 2FA</mat-card-title>
+        <mat-card-subtitle>Informe senha e codigo TOTP ou backup para desativar.</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <form [formGroup]="disableForm" (ngSubmit)="disableTwoFactor()" class="stack-form">
+          <mat-form-field appearance="outline">
+            <mat-label>Senha</mat-label>
+            <input matInput type="password" formControlName="password" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Codigo TOTP ou backup</mat-label>
+            <input matInput type="text" formControlName="code" />
+          </mat-form-field>
+
+          <button mat-flat-button color="warn" type="submit" [disabled]="isLoading">Desativar 2FA</button>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Dispositivos confiaveis</mat-card-title>
+        <mat-card-subtitle>Dispositivos confiaveis: {{ devicesCount$ | async }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="devices-toolbar">
+          <button mat-stroked-button type="button" (click)="refreshDevices()">Atualizar</button>
+        </div>
+
+        <p *ngIf="(isLoading$ | async)">Carregando dispositivos...</p>
+        <p class="status-block status-error" *ngIf="(error$ | async) as devicesError">{{ devicesError }}</p>
+
+        <ng-container *ngIf="(devices$ | async) as trustedDevices">
+          <p *ngIf="!(isLoading$ | async) && !trustedDevices.length">Nenhum dispositivo confiavel ativo.</p>
+
+          <div class="device-item" *ngFor="let device of trustedDevices">
+            <div>
+              <strong>{{ device.userAgent || 'Navegador sem identificacao' }}</strong>
+              <p>Expira: {{ device.expiresAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+              <p>Ultimo uso: {{ (device.lastUsedAt || device.createdAt) | date: 'dd/MM/yyyy HH:mm' }}</p>
+            </div>
+            <button mat-stroked-button color="warn" type="button" (click)="revokeDevice(device.id)">Revogar</button>
+          </div>
+        </ng-container>
+      </mat-card-content>
+    </mat-card>
+
+    <p class="status-block status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+    <p class="status-block status-success" *ngIf="successMessage">{{ successMessage }}</p>
+  </main>
+</section>
