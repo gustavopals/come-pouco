@@ -1,4 +1,0 @@
-[dotenv@17.3.1] injecting env (10) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
-Backend rodando em http://localhost:3011
-[auth/login] user=2 twoFactorEnabled=false
-[auth/login] user=2 twoFactorEnabled=true

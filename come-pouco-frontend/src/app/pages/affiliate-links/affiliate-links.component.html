@@ -50,6 +50,22 @@
             </mat-error>
           </mat-form-field>
 
+          <mat-form-field appearance="outline" *ngIf="authService.isAdmin()">
+            <mat-label>Plataforma Shopee (ADMIN)</mat-label>
+            <mat-select formControlName="platformId">
+              <mat-option [value]="null" *ngIf="adminShopeePlatforms.length !== 1">Selecione...</mat-option>
+              <mat-option *ngFor="let platform of adminShopeePlatforms" [value]="platform.id">
+                #{{ platform.id }} - {{ platform.name }}
+              </mat-option>
+            </mat-select>
+            <mat-hint *ngIf="adminShopeePlatforms.length === 1">
+              Plataforma ativa selecionada automaticamente.
+            </mat-hint>
+            <mat-hint *ngIf="adminShopeePlatforms.length !== 1">
+              Com mais de uma plataforma ativa, selecione manualmente.
+            </mat-hint>
+          </mat-form-field>
+
           <div class="entity-actions">
             <button
               mat-flat-button

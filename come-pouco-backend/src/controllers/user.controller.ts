@@ -129,15 +129,35 @@ const createEmployee = async (
   try {
     ensureAuthContext(req);
 
-    if (req.companyRole === 'OWNER') {
-      throw new HttpError(403, 'OWNER nao pode criar funcionarios. Apenas ADMIN pode criar usuarios.');
-    }
-
     if (req.userRole === 'ADMIN') {
       throw new HttpError(400, 'Use /users para criar funcionario como ADMIN informando a empresa.');
     }
 
-    throw new HttpError(403, 'Acesso negado para criar funcionario.');
+    if (req.userRole !== 'USER' || req.companyRole !== 'OWNER' || !req.companyId) {
+      throw new HttpError(403, 'Acesso negado para criar funcionario.');
+    }
+
+    const { fullName, username, email, password } = req.body;
+
+    if (!fullName || !username || !password) {
+      throw new HttpError(400, 'Nome, username e senha sao obrigatorios.');
+    }
+
+    if (String(password).length < 6) {
+      throw new HttpError(400, 'A senha deve ter no minimo 6 caracteres.');
+    }
+
+    const user = await userService.createUser({
+      fullName,
+      username,
+      email,
+      password,
+      role: 'USER',
+      companyId: req.companyId,
+      companyRole: 'EMPLOYEE'
+    });
+
+    res.status(201).json({ user });
   } catch (error) {
     next(error);
   }

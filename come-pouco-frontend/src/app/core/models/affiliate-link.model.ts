@@ -31,6 +31,7 @@ export interface CreateAffiliateLinksFromGeneratedPayload {
 }
 
 export interface GenerateShopeeShortLinksPayload {
+  platformId?: number;
   originUrls: string[];
   subId1?: string;
 }

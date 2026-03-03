@@ -84,14 +84,29 @@ const generateShopeeShortLinksController = async (
 
     let effectivePlatformId: number | null = null;
 
-    if (req.userRole === 'ADMIN' && requestedPlatformId !== undefined) {
-      if (!Number.isInteger(requestedPlatformId) || requestedPlatformId <= 0) {
-        throw new HttpError(400, 'platformId invalido.');
-      }
+    if (req.userRole === 'ADMIN') {
+      if (requestedPlatformId !== undefined) {
+        if (!Number.isInteger(requestedPlatformId) || requestedPlatformId <= 0) {
+          throw new HttpError(400, 'platformId invalido.');
+        }
 
-      effectivePlatformId = requestedPlatformId;
+        effectivePlatformId = requestedPlatformId;
+      } else {
+        const platforms = await purchasePlatformService.listPurchasePlatforms();
+        const activeShopeePlatforms = platforms.filter((platform) => platform.type === 'SHOPEE' && platform.isActive);
+
+        if (!activeShopeePlatforms.length) {
+          throw new HttpError(400, 'Nenhuma plataforma SHOPEE ativa encontrada. Cadastre ou ative uma plataforma.');
+        }
+
+        if (activeShopeePlatforms.length > 1) {
+          throw new HttpError(400, 'Mais de uma plataforma SHOPEE ativa encontrada. Informe platformId.');
+        }
+
+        effectivePlatformId = activeShopeePlatforms[0].id;
+      }
     } else {
-      if (requestedPlatformId !== undefined && req.userRole !== 'ADMIN') {
+      if (requestedPlatformId !== undefined) {
         throw new HttpError(403, 'Apenas ADMIN pode escolher plataforma manualmente.');
       }
 

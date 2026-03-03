@@ -50,9 +50,27 @@ const buildDatabaseUrl = (): string => {
 const databaseUrl = buildDatabaseUrl();
 process.env.DATABASE_URL = databaseUrl;
 
+const appEnv: 'development' | 'production' = (process.env.APP_ENV || 'development') === 'production' ? 'production' : 'development';
+
+const jwtSecret = process.env.JWT_SECRET && process.env.JWT_SECRET.trim().length > 0 ? process.env.JWT_SECRET : 'dev-secret-change-me';
+const twoFaEncryptionKey =
+  process.env.TWOFA_ENCRYPTION_KEY && process.env.TWOFA_ENCRYPTION_KEY.trim().length > 0
+    ? process.env.TWOFA_ENCRYPTION_KEY
+    : 'dev-twofa-encryption-key-change-me';
+
+if (appEnv === 'production') {
+  if (jwtSecret === 'dev-secret-change-me') {
+    throw new Error('JWT_SECRET ausente em producao.');
+  }
+
+  if (twoFaEncryptionKey === 'dev-twofa-encryption-key-change-me') {
+    throw new Error('TWOFA_ENCRYPTION_KEY ausente em producao.');
+  }
+}
+
 const env: EnvConfig = {
   port: Number(process.env.PORT) || 3000,
-  appEnv: (process.env.APP_ENV || 'development') === 'production' ? 'production' : 'development',
+  appEnv,
   db: {
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT) || 5432,
@@ -62,14 +80,11 @@ const env: EnvConfig = {
   },
   databaseUrl,
   jwt: {
-    secret: process.env.JWT_SECRET || 'dev-secret-change-me',
+    secret: jwtSecret,
     expiresIn: (process.env.JWT_EXPIRES_IN || '8h') as SignOptions['expiresIn']
   },
   trustedDeviceDays: Math.max(1, Number(process.env.TRUSTED_DEVICE_DAYS || 30) || 30),
-  twoFaEncryptionKey:
-    process.env.TWOFA_ENCRYPTION_KEY && process.env.TWOFA_ENCRYPTION_KEY.trim().length > 0
-      ? process.env.TWOFA_ENCRYPTION_KEY
-      : 'dev-twofa-encryption-key-change-me',
+  twoFaEncryptionKey,
   corsOrigins: rawCorsOrigins
     .split(',')
     .map((origin) => origin.trim())

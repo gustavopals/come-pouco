@@ -22,9 +22,11 @@ import {
   AffiliateLink,
   ShopeeShortLinkResult
 } from '../../core/models/affiliate-link.model';
+import { PurchasePlatform } from '../../core/models/purchase-platform.model';
 import { User } from '../../core/models/user.model';
 import { AffiliateLinkService } from '../../core/services/affiliate-link.service';
 import { AuthService } from '../../core/services/auth.service';
+import { PurchasePlatformService } from '../../core/services/purchase-platform.service';
 import { UserService } from '../../core/services/user.service';
 
 export type LinkProcessResult = {
@@ -69,6 +71,7 @@ type EmployeeOption = {
 export class AffiliateLinksComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly affiliateLinkService = inject(AffiliateLinkService);
+  private readonly purchasePlatformService = inject(PurchasePlatformService);
   private readonly userService = inject(UserService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
@@ -97,6 +100,7 @@ export class AffiliateLinksComponent implements OnInit {
   protected readonly isSaving$ = new BehaviorSubject<boolean>(false);
   protected readonly errorMessage$ = new BehaviorSubject<string | null>(null);
   protected readonly successMessage$ = new BehaviorSubject<string | null>(null);
+  protected adminShopeePlatforms: PurchasePlatform[] = [];
 
   protected readonly links$ = this.refresh$.pipe(
     startWith(void 0),
@@ -147,6 +151,7 @@ export class AffiliateLinksComponent implements OnInit {
   protected readonly form = this.formBuilder.group({
     originalLinksText: ['', [Validators.required, this.originalLinksValidator.bind(this)]],
     subId1: ['', [Validators.maxLength(50), Validators.pattern(/^[A-Za-z0-9_-]+$/)]],
+    platformId: [null as number | null],
     useAutoSubId1: [false]
   });
   protected readonly linksCount$ = this.form.controls.originalLinksText.valueChanges.pipe(
@@ -160,9 +165,11 @@ export class AffiliateLinksComponent implements OnInit {
     this.authService.me().subscribe({
       next: () => {
         this.syncAutoSubId1WithCurrentUser();
+        this.loadAdminPlatforms();
       },
       error: () => {
         this.errorMessage$.next('Nao foi possivel atualizar o contexto da empresa.');
+        this.loadAdminPlatforms();
       }
     });
 
@@ -178,6 +185,7 @@ export class AffiliateLinksComponent implements OnInit {
     });
 
     this.syncAutoSubId1WithCurrentUser();
+    this.loadAdminPlatforms();
     this.startCreate();
   }
 
@@ -216,6 +224,7 @@ export class AffiliateLinksComponent implements OnInit {
     this.form.reset({
       originalLinksText: '',
       subId1: '',
+      platformId: this.getDefaultAdminPlatformId(),
       useAutoSubId1: false
     });
     this.form.controls.subId1.enable();
@@ -232,6 +241,13 @@ export class AffiliateLinksComponent implements OnInit {
     const subIdValue = useAutoSubId1
       ? this.getUsernameFromEmail(this.authService.currentUser()?.username || this.authService.currentUser()?.email || '')
       : this.normalizeSubId1(this.form.controls.subId1.value);
+    const selectedPlatformId = Number(this.form.controls.platformId.value || 0);
+    const effectivePlatformId = Number.isInteger(selectedPlatformId) && selectedPlatformId > 0 ? selectedPlatformId : null;
+
+    if (this.authService.isAdmin() && !effectivePlatformId) {
+      this.errorMessage$.next('Selecione uma plataforma SHOPEE para gerar links.');
+      return;
+    }
 
     this.isSaving$.next(true);
     this.errorMessage$.next(null);
@@ -240,7 +256,8 @@ export class AffiliateLinksComponent implements OnInit {
 
     this.submitShopeeCreate({
       originalLinks,
-      subId1: subIdValue
+      subId1: subIdValue,
+      platformId: effectivePlatformId
     });
   }
 
@@ -325,12 +342,23 @@ export class AffiliateLinksComponent implements OnInit {
   private submitShopeeCreate(input: {
     originalLinks: string[];
     subId1: string | null;
+    platformId: number | null;
   }): void {
+    const payload: {
+      platformId?: number;
+      originUrls: string[];
+      subId1?: string;
+    } = {
+      originUrls: input.originalLinks,
+      subId1: input.subId1 || undefined
+    };
+
+    if (this.authService.isAdmin() && input.platformId) {
+      payload.platformId = input.platformId;
+    }
+
     this.affiliateLinkService
-      .generateShopeeShortLinks({
-        originUrls: input.originalLinks,
-        subId1: input.subId1 || undefined
-      })
+      .generateShopeeShortLinks(payload)
       .subscribe({
         next: ({ results }) => {
           const generated = Array.isArray(results) ? results : [];
@@ -452,6 +480,41 @@ export class AffiliateLinksComponent implements OnInit {
   private normalizeSubId1(value: string | null | undefined): string | null {
     const normalized = (value ?? '').trim();
     return normalized.length ? normalized : null;
+  }
+
+  private loadAdminPlatforms(): void {
+    if (!this.authService.isAdmin()) {
+      this.adminShopeePlatforms = [];
+      this.form.controls.platformId.setValue(null, { emitEvent: false });
+      return;
+    }
+
+    this.purchasePlatformService.list().subscribe({
+      next: ({ platforms }) => {
+        this.adminShopeePlatforms = (Array.isArray(platforms) ? platforms : []).filter(
+          (platform) => platform.type === 'SHOPEE' && platform.isActive
+        );
+
+        const selectedPlatformId = Number(this.form.controls.platformId.value || 0);
+        const selectedExists = this.adminShopeePlatforms.some((platform) => platform.id === selectedPlatformId);
+
+        if (!selectedExists) {
+          this.form.controls.platformId.setValue(this.getDefaultAdminPlatformId(), { emitEvent: false });
+        }
+      },
+      error: () => {
+        this.adminShopeePlatforms = [];
+        this.form.controls.platformId.setValue(null, { emitEvent: false });
+      }
+    });
+  }
+
+  private getDefaultAdminPlatformId(): number | null {
+    if (!this.authService.isAdmin()) {
+      return null;
+    }
+
+    return this.adminShopeePlatforms.length === 1 ? this.adminShopeePlatforms[0].id : null;
   }
 
   private getUsernameFromEmail(email: string): string {

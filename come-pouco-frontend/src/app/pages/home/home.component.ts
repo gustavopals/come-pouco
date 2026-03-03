@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -16,7 +16,6 @@ import { CompanyService } from '../../core/services/company.service';
   imports: [
     CommonModule,
     RouterLink,
-    RouterLinkActive,
     MatButtonModule,
     MatCardModule,
     MatChipsModule

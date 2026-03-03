@@ -17,12 +17,30 @@
           Iniciar setup 2FA
         </button>
 
-        <p class="status-block" *ngIf="(setupLoading$ | async)">Gerando QR code...</p>
+        <p class="status-block" *ngIf="(setupLoading$ | async)">Gerando dados de setup...</p>
         <p class="status-block status-error" *ngIf="(setupError$ | async) as setupError">{{ setupError }}</p>
 
         <section class="setup-block" *ngIf="(setup2fa$ | async) as otpauthUrl">
-          <p>Escaneie o QR code no app autenticador e confirme com um codigo de 6 digitos.</p>
-          <img [src]="qrCodeImageUrl(otpauthUrl)" alt="QR code 2FA" class="qr-preview" />
+          <ng-container *ngIf="parseManualSetup(otpauthUrl) as setup; else invalidSetupPayload">
+            <p>Para maior seguranca, o setup e exibido localmente sem envio para servicos externos de QR code.</p>
+            <p><strong>Aplicativo:</strong> {{ setup.issuer }}</p>
+            <p><strong>Conta:</strong> {{ setup.account }}</p>
+            <p><strong>Chave secreta:</strong></p>
+            <div class="codes-grid">
+              <code>{{ setup.secret }}</code>
+            </div>
+            <div class="devices-toolbar">
+              <button mat-stroked-button type="button" (click)="copyManualValue(setup.secret, 'Chave secreta copiada.')">
+                Copiar chave
+              </button>
+              <button mat-stroked-button type="button" (click)="copyManualValue(setup.otpauthUrl, 'Link otpauth copiado.')">
+                Copiar link otpauth
+              </button>
+            </div>
+          </ng-container>
+          <ng-template #invalidSetupPayload>
+            <p class="status-block status-error">Nao foi possivel montar os dados do setup 2FA.</p>
+          </ng-template>
 
           <form [formGroup]="confirmForm" (ngSubmit)="confirmSetup()" class="stack-form">
             <mat-form-field appearance="outline">

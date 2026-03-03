@@ -13,7 +13,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { RouterLink, RouterLinkActive } from '@angular/router';
 import { BehaviorSubject, Subject, catchError, finalize, map, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
 
 import { Company } from '../../core/models/company.model';
@@ -35,8 +34,6 @@ const SHOPEE_API_URL = 'https://open-api.affiliate.shopee.com.br/graphql';
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    RouterLink,
-    RouterLinkActive,
     DatePipe,
     MatAutocompleteModule,
     MatButtonModule,

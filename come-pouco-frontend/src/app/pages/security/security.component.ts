@@ -10,6 +10,13 @@ import { BehaviorSubject, Subject, catchError, finalize, map, merge, of, shareRe
 import type { ApiErrorResponse, TrustedDevice } from '../../core/models/auth.model';
 import { AuthService } from '../../core/services/auth.service';
 
+interface ManualTwoFactorSetup {
+  issuer: string;
+  account: string;
+  secret: string;
+  otpauthUrl: string;
+}
+
 @Component({
   selector: 'app-security',
   standalone: true,
@@ -164,8 +171,57 @@ export class SecurityComponent implements OnInit {
     });
   }
 
-  protected qrCodeImageUrl(otpauthUrl: string): string {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(otpauthUrl)}`;
+  protected parseManualSetup(otpauthUrl: string): ManualTwoFactorSetup | null {
+    if (!otpauthUrl || !otpauthUrl.trim().length) {
+      return null;
+    }
+
+    try {
+      const parsed = new URL(otpauthUrl);
+
+      if (parsed.protocol !== 'otpauth:') {
+        return null;
+      }
+
+      const rawLabel = decodeURIComponent(parsed.pathname.replace(/^\//, ''));
+      const labelParts = rawLabel.split(':');
+      const secret = parsed.searchParams.get('secret')?.trim() || '';
+
+      if (!secret.length) {
+        return null;
+      }
+
+      const issuer = (parsed.searchParams.get('issuer') || labelParts[0] || 'Come Pouco').trim();
+      const account = (labelParts.slice(1).join(':') || rawLabel).trim();
+
+      return {
+        issuer,
+        account,
+        secret,
+        otpauthUrl
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  protected copyManualValue(value: string, successMessage: string): void {
+    if (!value.trim().length) {
+      return;
+    }
+
+    this.copyTextToClipboard(value)
+      .then((copied) => {
+        if (!copied) {
+          this.errorMessage = 'Nao foi possivel copiar.';
+          return;
+        }
+
+        this.successMessage = successMessage;
+      })
+      .catch(() => {
+        this.errorMessage = 'Nao foi possivel copiar.';
+      });
   }
 
   protected refreshDevices(): void {
@@ -182,6 +238,39 @@ export class SecurityComponent implements OnInit {
   private resetMessages(): void {
     this.errorMessage = '';
     this.successMessage = '';
+  }
+
+  private copyTextToClipboard(value: string): Promise<boolean> {
+    if (navigator.clipboard?.writeText) {
+      return navigator.clipboard
+        .writeText(value)
+        .then(() => true)
+        .catch(() => this.copyTextWithFallback(value));
+    }
+
+    return Promise.resolve(this.copyTextWithFallback(value));
+  }
+
+  private copyTextWithFallback(value: string): boolean {
+    const textArea = document.createElement('textarea');
+    textArea.value = value;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    textArea.style.pointerEvents = 'none';
+    document.body.appendChild(textArea);
+    textArea.select();
+
+    let copied = false;
+
+    try {
+      copied = document.execCommand('copy');
+    } catch {
+      copied = false;
+    }
+
+    document.body.removeChild(textArea);
+    return copied;
   }
 
   private resolveErrorMessage(errorPayload: ApiErrorResponse | undefined, fallback: string): string {
