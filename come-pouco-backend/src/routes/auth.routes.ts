@@ -8,7 +8,7 @@ const authRouter = Router();
 authRouter.post('/login', authController.login);
 authRouter.post('/login/2fa', authController.loginTwoFactor);
 authRouter.post('/2fa/verify', authController.loginTwoFactor);
-authRouter.post('/register', authController.register);
+authRouter.post('/register', authMiddleware, authController.register);
 authRouter.get('/me', authMiddleware, authController.me);
 authRouter.post('/2fa/setup', authMiddleware, authController.setupTwoFactor);
 authRouter.post('/2fa/confirm', authMiddleware, authController.confirmTwoFactor);
