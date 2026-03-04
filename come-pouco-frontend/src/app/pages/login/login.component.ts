@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -20,7 +20,6 @@ import { AuthService } from '../../core/services/auth.service';
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    RouterLink,
     MatButtonModule,
     MatCardModule,
     MatCheckboxModule,

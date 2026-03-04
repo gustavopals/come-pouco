@@ -52,9 +52,5 @@
       <p class="status-block status-error" *ngIf="vm.errorMessage">{{ vm.errorMessage }}</p>
     </mat-card-content>
 
-    <mat-card-actions align="end" *ngIf="!vm.tempToken">
-      <span>Ainda nao tem conta?</span>
-      <a mat-button color="primary" routerLink="/register">Cadastre-se</a>
-    </mat-card-actions>
   </mat-card>
 </section>

@@ -4,7 +4,7 @@
 
 .security-grid {
   display: grid;
-  gap: 1.1rem;
+  gap: var(--panel-grid-gap);
   grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
   align-items: start;
 }
@@ -12,7 +12,7 @@
 .twofa-card,
 .disable-card,
 .devices-card {
-  border-radius: 18px;
+  border-radius: var(--panel-card-radius);
 }
 
 .twofa-card {

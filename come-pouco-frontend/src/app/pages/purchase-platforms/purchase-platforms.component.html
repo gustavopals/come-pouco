@@ -1,6 +1,6 @@
 <section class="page-shell">
-  <main class="page-main admin-grid">
-    <mat-card appearance="outlined" class="form-card">
+  <main class="page-main admin-grid purchase-platforms-layout">
+    <mat-card appearance="outlined" class="form-card purchase-form-card">
       <mat-card-header>
         <mat-card-title>
           {{ isCreateMode() ? 'Cadastrar Plataforma de Compras' : 'Editar Plataforma de Compras' }}
@@ -117,7 +117,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card appearance="outlined" class="usage-card" *ngIf="authService.isAdmin()">
+    <mat-card appearance="outlined" class="table-card usage-card" *ngIf="authService.isAdmin()">
       <mat-card-header>
         <mat-card-title>Monitoramento API</mat-card-title>
         <mat-card-subtitle>Resumo de uso das requisicoes de integracao Shopee.</mat-card-subtitle>
@@ -188,7 +188,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card appearance="outlined" class="table-card">
+    <mat-card appearance="outlined" class="table-card platforms-table-card">
       <mat-card-header class="table-header">
         <div>
           <mat-card-title>Plataformas cadastradas</mat-card-title>

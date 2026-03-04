@@ -2,15 +2,15 @@
   display: block;
 }
 
-.admin-grid {
+.my-company-layout {
   display: grid;
-  gap: 1.15rem;
-  grid-template-columns: minmax(320px, 460px) 1fr;
+  gap: var(--panel-grid-gap);
+  grid-template-columns: 1fr;
 }
 
 .form-card,
 .table-card {
-  border-radius: 18px;
+  border-radius: var(--panel-card-radius);
 }
 
 .form-card {
@@ -19,6 +19,9 @@
 
 .table-card {
   background: linear-gradient(165deg, #f8faff 0%, #ffffff 32%);
+  width: 100%;
+  min-width: 0;
+  grid-column: 1 / -1;
 }
 
 mat-card-header {
@@ -27,12 +30,12 @@ mat-card-header {
 
 .entity-form {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--panel-form-gap);
 }
 
 .entity-actions {
   display: flex;
-  gap: 0.6rem;
+  gap: var(--panel-actions-gap);
   flex-wrap: wrap;
   padding-top: 0.35rem;
 }
@@ -52,16 +55,19 @@ mat-card-header {
 }
 
 .table-shell {
-  margin-top: 0.9rem;
+  margin-top: var(--panel-table-gap);
   border: 1px solid rgba(21, 66, 102, 0.14);
   border-radius: 14px;
-  overflow: auto;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: #fff;
 }
 
 .data-table {
   width: 100%;
-  min-width: 680px;
+  min-width: 860px;
+  table-layout: auto;
 }
 
 .data-table .mat-mdc-header-row {
@@ -71,6 +77,9 @@ mat-card-header {
 .data-table .mat-mdc-header-cell {
   color: #154266;
   font-weight: 700;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .data-table .mat-mdc-row:hover {
@@ -92,13 +101,69 @@ mat-card-header {
   color: #123f61;
 }
 
+.data-table .mat-mdc-header-cell.mat-column-id,
+.data-table .mat-mdc-cell.mat-column-id {
+  width: 92px;
+  max-width: 92px;
+}
+
+.data-table .mat-mdc-header-cell.mat-column-fullName,
+.data-table .mat-mdc-cell.mat-column-fullName {
+  min-width: 180px;
+}
+
+.data-table .mat-mdc-header-cell.mat-column-email,
+.data-table .mat-mdc-cell.mat-column-email {
+  min-width: 220px;
+}
+
+.data-table .mat-mdc-header-cell.mat-column-companyRole,
+.data-table .mat-mdc-cell.mat-column-companyRole {
+  min-width: 190px;
+}
+
+.data-table .mat-mdc-header-cell.mat-column-createdAt,
+.data-table .mat-mdc-cell.mat-column-createdAt {
+  min-width: 170px;
+  white-space: nowrap;
+}
+
+.data-table .mat-mdc-cell.mat-column-fullName,
+.data-table .mat-mdc-cell.mat-column-email {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .mobile-employee-list {
   display: none;
 }
 
-@media (max-width: 1200px) {
-  .admin-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 1024px) {
+  .data-table {
+    min-width: 760px;
+  }
+
+  .data-table .mat-mdc-cell,
+  .data-table .mat-mdc-header-cell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .data-table .mat-mdc-header-cell.mat-column-id,
+  .data-table .mat-mdc-cell.mat-column-id {
+    width: 84px;
+    max-width: 84px;
+  }
+
+  .data-table .mat-mdc-header-cell.mat-column-email,
+  .data-table .mat-mdc-cell.mat-column-email {
+    min-width: 190px;
+  }
+
+  .data-table .mat-mdc-header-cell.mat-column-companyRole,
+  .data-table .mat-mdc-cell.mat-column-companyRole {
+    min-width: 170px;
   }
 }
 

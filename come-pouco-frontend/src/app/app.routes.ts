@@ -3,7 +3,9 @@ import { Routes } from '@angular/router';
 import { adminGuard } from './core/guards/admin.guard';
 import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
+import { noPublicRegisterGuard } from './core/guards/no-public-register.guard';
 import { ownerGuard } from './core/guards/owner.guard';
+import { usersCreateGuard } from './core/guards/users-create.guard';
 import { AppLayoutComponent } from './pages/app-layout/app-layout.component';
 import { HomeComponent } from './pages/home/home.component';
 import { LoginComponent } from './pages/login/login.component';
@@ -17,7 +19,7 @@ import { UsersComponent } from './pages/users/users.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent, canActivate: [guestGuard] },
-  { path: 'register', component: RegisterComponent, canActivate: [guestGuard] },
+  { path: 'register', component: RegisterComponent, canActivate: [noPublicRegisterGuard] },
   {
     path: '',
     component: AppLayoutComponent,
@@ -25,6 +27,7 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'home' },
       { path: 'home', component: HomeComponent },
+      { path: 'users/new', component: UsersComponent, canActivate: [usersCreateGuard] },
       { path: 'users', component: UsersComponent, canActivate: [adminGuard] },
       { path: 'companies', component: CompaniesComponent, canActivate: [adminGuard] },
       { path: 'my-company', component: MyCompanyComponent, canActivate: [ownerGuard] },

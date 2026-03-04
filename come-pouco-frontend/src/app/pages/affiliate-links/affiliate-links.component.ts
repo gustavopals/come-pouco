@@ -42,6 +42,8 @@ type EmployeeOption = {
   email: string | null;
 };
 
+const MAX_LINKS_PER_BATCH = 5;
+
 @Component({
   selector: 'app-affiliate-links',
   standalone: true,
@@ -100,6 +102,7 @@ export class AffiliateLinksComponent implements OnInit {
   protected readonly isSaving$ = new BehaviorSubject<boolean>(false);
   protected readonly errorMessage$ = new BehaviorSubject<string | null>(null);
   protected readonly successMessage$ = new BehaviorSubject<string | null>(null);
+  protected readonly normalizedLinks$ = new BehaviorSubject<string[]>([]);
   protected adminShopeePlatforms: PurchasePlatform[] = [];
 
   protected readonly links$ = this.refresh$.pipe(
@@ -124,8 +127,8 @@ export class AffiliateLinksComponent implements OnInit {
   protected readonly totalLinks$ = this.links$.pipe(map((links) => links.length));
   protected readonly filtersForm = this.formBuilder.group({
     dateRange: this.formBuilder.group({
-      start: [null as Date | null],
-      end: [null as Date | null]
+      start: [this.getTodayStart()],
+      end: [this.getTodayEnd()]
     }),
     employeeId: [null as number | null]
   });
@@ -147,6 +150,7 @@ export class AffiliateLinksComponent implements OnInit {
   protected readonly hasGeneratedShortLinks$ = this.processingResults$.pipe(
     map((results) => results.some((item) => typeof item.shortLink === 'string' && item.shortLink.trim().length > 0))
   );
+  protected readonly maxLinksPerBatch = MAX_LINKS_PER_BATCH;
 
   protected readonly form = this.formBuilder.group({
     originalLinksText: ['', [Validators.required, this.originalLinksValidator.bind(this)]],
@@ -154,12 +158,11 @@ export class AffiliateLinksComponent implements OnInit {
     platformId: [null as number | null],
     useAutoSubId1: [false]
   });
-  protected readonly linksCount$ = this.form.controls.originalLinksText.valueChanges.pipe(
-    startWith(this.form.controls.originalLinksText.value || ''),
-    map((value) => this.parseOriginalLinks(value || '').length),
+  protected readonly linksCount$ = this.normalizedLinks$.pipe(
+    map((links) => links.length),
     shareReplay({ bufferSize: 1, refCount: true })
   );
-  protected readonly isLinksOverLimit$ = this.linksCount$.pipe(map((count) => count > 10));
+  protected readonly isLinksOverLimit$ = this.linksCount$.pipe(map(() => false));
 
   ngOnInit(): void {
     this.authService.me().subscribe({
@@ -184,9 +187,12 @@ export class AffiliateLinksComponent implements OnInit {
       this.form.controls.subId1.setValue('');
     });
 
+    this.form.controls.originalLinksText.valueChanges.subscribe((value) => this.applyOriginalLinksInput(value || ''));
+
     this.syncAutoSubId1WithCurrentUser();
     this.loadAdminPlatforms();
     this.startCreate();
+    this.applyOriginalLinksInput(this.form.controls.originalLinksText.value || '');
   }
 
   protected get displayedColumns(): string[] {
@@ -208,13 +214,21 @@ export class AffiliateLinksComponent implements OnInit {
   }
 
   protected setTodayDateRange(): void {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
+    this.filtersForm.controls.dateRange.patchValue({
+      start: this.getTodayStart(),
+      end: this.getTodayEnd()
+    });
+  }
 
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
+  protected isTodayDateRangeSelected(): boolean {
+    const start = this.filtersForm.controls.dateRange.controls.start.value;
+    const end = this.filtersForm.controls.dateRange.controls.end.value;
 
-    this.filtersForm.controls.dateRange.patchValue({ start, end });
+    if (!start || !end) {
+      return false;
+    }
+
+    return this.startOfDay(start)?.getTime() === this.getTodayStart().getTime() && this.endOfDay(end)?.getTime() === this.getTodayEnd().getTime();
   }
 
   protected startCreate(): void {
@@ -228,6 +242,7 @@ export class AffiliateLinksComponent implements OnInit {
       useAutoSubId1: false
     });
     this.form.controls.subId1.enable();
+    this.normalizedLinks$.next([]);
   }
 
   protected submit(): void {
@@ -237,7 +252,14 @@ export class AffiliateLinksComponent implements OnInit {
     }
 
     const { originalLinksText, useAutoSubId1 } = this.form.getRawValue();
-    const originalLinks = this.parseOriginalLinks(originalLinksText ?? '');
+    this.applyOriginalLinksInput(originalLinksText ?? '');
+    const originalLinks = this.normalizedLinks$.getValue();
+
+    if (!originalLinks.length || originalLinks.length > MAX_LINKS_PER_BATCH) {
+      this.form.controls.originalLinksText.markAsTouched();
+      return;
+    }
+
     const subIdValue = useAutoSubId1
       ? this.getUsernameFromEmail(this.authService.currentUser()?.username || this.authService.currentUser()?.email || '')
       : this.normalizeSubId1(this.form.controls.subId1.value);
@@ -532,21 +554,40 @@ export class AffiliateLinksComponent implements OnInit {
     this.form.controls.subId1.disable();
   }
 
-  private parseOriginalLinks(value: string): string[] {
-    return value
+  private normalizeLinksInput(value: string): { links: string[]; wasTruncated: boolean } {
+    const parsed = value
       .split(/\r?\n/)
       .map((item) => item.trim())
       .filter((item) => item.length > 0);
+
+    return {
+      links: parsed.slice(0, MAX_LINKS_PER_BATCH),
+      wasTruncated: parsed.length > MAX_LINKS_PER_BATCH
+    };
+  }
+
+  private applyOriginalLinksInput(value: string): void {
+    const { links, wasTruncated } = this.normalizeLinksInput(value);
+    this.normalizedLinks$.next(links);
+
+    if (wasTruncated) {
+      this.form.controls.originalLinksText.setValue(links.join('\n'), { emitEvent: false });
+      this.snackBar.open(`Voce pode enviar no maximo ${MAX_LINKS_PER_BATCH} links por vez. Mantivemos os primeiros ${MAX_LINKS_PER_BATCH}.`, 'Fechar', {
+        duration: 3500
+      });
+    }
+
+    this.form.controls.originalLinksText.updateValueAndValidity({ emitEvent: false });
   }
 
   private originalLinksValidator(control: AbstractControl): ValidationErrors | null {
-    const links = this.parseOriginalLinks((control.value as string) ?? '');
+    const { links } = this.normalizeLinksInput((control.value as string) ?? '');
 
     if (!links.length) {
       return { required: true };
     }
 
-    if (links.length > 10) {
+    if (links.length > MAX_LINKS_PER_BATCH) {
       return { maxLinks: true };
     }
 
@@ -638,6 +679,18 @@ export class AffiliateLinksComponent implements OnInit {
     const normalized = new Date(date);
     normalized.setHours(23, 59, 59, 999);
     return normalized;
+  }
+
+  private getTodayStart(): Date {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+
+  private getTodayEnd(): Date {
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return end;
   }
 
   private toEmployeeOptions(users: User[] | null | undefined): EmployeeOption[] {

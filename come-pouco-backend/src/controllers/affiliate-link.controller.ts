@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 
+import { MAX_BATCH_LINKS } from '../constants/affiliate-links.constants';
 import * as affiliateLinkService from '../services/affiliate-link.service';
 import HttpError from '../utils/httpError';
 
@@ -84,8 +85,8 @@ const validateCreateOriginalLinks = (links: string[]): void => {
     throw new HttpError(400, 'Informe ao menos 1 link original.');
   }
 
-  if (links.length > 10) {
-    throw new HttpError(400, 'No maximo 10 links originais por cadastro.');
+  if (links.length > MAX_BATCH_LINKS) {
+    throw new HttpError(400, `No maximo ${MAX_BATCH_LINKS} links originais por cadastro.`);
   }
 
   const invalidLink = links.find((link) => !isValidUrl(link));
@@ -99,8 +100,8 @@ const validateGeneratedLinks = (generatedLinks: Array<{ originUrl: string; short
     throw new HttpError(400, 'Informe ao menos 1 resultado de shortlink para salvar.');
   }
 
-  if (generatedLinks.length > 10) {
-    throw new HttpError(400, 'No maximo 10 links por cadastro.');
+  if (generatedLinks.length > MAX_BATCH_LINKS) {
+    throw new HttpError(400, `No maximo ${MAX_BATCH_LINKS} links por cadastro.`);
   }
 
   if (generatedLinks.some((item) => !isValidUrl(item.originUrl) || !isValidUrl(item.shortLink))) {

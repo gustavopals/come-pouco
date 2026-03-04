@@ -1,16 +1,26 @@
 :host {
   display: block;
+  --links-grid-gap: clamp(0.9rem, 1.2vw, 1.35rem);
+  --links-form-column: clamp(360px, 28vw, 420px);
+  --links-card-radius: 18px;
+  --links-card-padding: clamp(0.9rem, 0.9vw, 1.2rem);
 }
 
 .admin-grid {
   display: grid;
-  gap: 1.15rem;
-  grid-template-columns: minmax(330px, 480px) 1fr;
+  gap: var(--links-grid-gap);
+  grid-template-columns: minmax(0, var(--links-form-column)) minmax(0, 1fr);
+  align-items: start;
 }
 
 .form-card,
 .table-card {
-  border-radius: 18px;
+  border-radius: var(--links-card-radius);
+}
+
+.form-card mat-card-content,
+.table-card mat-card-content {
+  padding: var(--links-card-padding);
 }
 
 .form-card {
@@ -95,6 +105,16 @@ mat-form-field.auto-subid1-active {
   padding-top: 0.35rem;
 }
 
+.today-filter-btn {
+  min-height: 44px;
+}
+
+.today-filter-btn.today-filter-btn-active {
+  border-color: rgba(20, 83, 116, 0.42);
+  background: rgba(20, 83, 116, 0.1);
+  font-weight: 700;
+}
+
 .results-shell {
   margin-top: 1rem;
   border: 1px solid rgba(123, 58, 13, 0.2);
@@ -152,7 +172,7 @@ mat-form-field.auto-subid1-active {
 }
 
 .table-shell {
-  margin-top: 0.9rem;
+  margin-top: 0.7rem;
   border: 1px solid rgba(123, 58, 13, 0.15);
   border-radius: 14px;
   overflow: auto;
@@ -207,8 +227,13 @@ mat-form-field.auto-subid1-active {
 
 .row-actions {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.row-actions .mat-mdc-icon-button {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 .affiliate-link-cell {
@@ -232,8 +257,18 @@ mat-form-field.auto-subid1-active {
 }
 
 @media (max-width: 1200px) {
+  :host {
+    --links-form-column: clamp(330px, 34vw, 390px);
+  }
+}
+
+@media (max-width: 1024px) {
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .table-card {
+    min-width: 0;
   }
 }
 
@@ -388,8 +423,4 @@ mat-form-field.auto-subid1-active {
     min-width: 44px;
   }
 
-  .history-delete-btn {
-    width: 100%;
-    min-height: 46px;
-  }
 }

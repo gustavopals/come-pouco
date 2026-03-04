@@ -2,15 +2,24 @@
   display: block;
 }
 
-.admin-grid {
+.purchase-platforms-layout {
   display: grid;
-  gap: 1.15rem;
-  grid-template-columns: minmax(330px, 480px) 1fr;
+  gap: var(--panel-grid-gap);
+  grid-template-columns: minmax(var(--panel-form-col-min), var(--panel-form-col-max)) 1fr;
+  grid-template-areas:
+    'form monitor'
+    'form table';
+  align-items: start;
 }
 
 .form-card,
 .table-card {
-  border-radius: 18px;
+  border-radius: var(--panel-card-radius);
+}
+
+.purchase-form-card {
+  grid-area: form;
+  align-self: start;
 }
 
 .form-card {
@@ -22,8 +31,19 @@
 }
 
 .usage-card {
-  grid-column: 1 / -1;
+  grid-area: monitor;
   background: linear-gradient(165deg, #f4fbf7 0%, #ffffff 35%);
+}
+
+.platforms-table-card {
+  grid-area: table;
+}
+
+@media (min-width: 1024px) {
+  .purchase-form-card {
+    position: sticky;
+    top: calc(var(--header-min-height) + 1.25rem);
+  }
 }
 
 mat-card-header {
@@ -32,7 +52,7 @@ mat-card-header {
 
 .entity-form {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--panel-form-gap);
 }
 
 .toggle-row {
@@ -70,7 +90,7 @@ mat-card-header {
 
 .entity-actions {
   display: flex;
-  gap: 0.6rem;
+  gap: var(--panel-actions-gap);
   flex-wrap: wrap;
   padding-top: 0.35rem;
 }
@@ -90,7 +110,7 @@ mat-card-header {
 }
 
 .table-shell {
-  margin-top: 0.9rem;
+  margin-top: var(--panel-table-gap);
   border: 1px solid rgba(20, 83, 116, 0.15);
   border-radius: 14px;
   overflow: auto;
@@ -222,8 +242,22 @@ mat-card-header {
 }
 
 @media (max-width: 1200px) {
-  .admin-grid {
+  .purchase-form-card {
+    position: static;
+  }
+}
+
+@media (max-width: 1024px) {
+  .purchase-platforms-layout {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      'monitor'
+      'table'
+      'form';
+  }
+
+  .usage-filter-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
   }
 }
 
@@ -238,6 +272,10 @@ mat-card-header {
 
   .usage-cards-grid {
     grid-template-columns: 1fr;
+  }
+
+  .purchase-platforms-layout {
+    gap: 0.9rem;
   }
 
   .table-header {

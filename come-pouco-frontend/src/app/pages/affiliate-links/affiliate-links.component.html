@@ -17,16 +17,16 @@
               rows="9"
               class="links-textarea"
               formControlName="originalLinksText"
-              placeholder="https://site1.com/produto&#10;https://site2.com/produto"
+              placeholder="https://site1.com/produto&#10;https://site2.com/produto&#10;Maximo 5 links por envio"
             ></textarea>
             <mat-hint>
-              Um link por linha. Minimo 1 e maximo 10. ({{ (linksCount$ | async) || 0 }}/10)
+              Um link por linha. Minimo 1 e maximo {{ maxLinksPerBatch }} por envio. ({{ (linksCount$ | async) || 0 }}/{{ maxLinksPerBatch }})
             </mat-hint>
             <mat-error *ngIf="form.controls.originalLinksText.touched && form.controls.originalLinksText.hasError('required')">
               Informe ao menos 1 link original.
             </mat-error>
             <mat-error *ngIf="form.controls.originalLinksText.touched && form.controls.originalLinksText.hasError('maxLinks')">
-              Maximo 10 links.
+              Maximo {{ maxLinksPerBatch }} links por envio.
             </mat-error>
             <mat-error *ngIf="form.controls.originalLinksText.touched && form.controls.originalLinksText.hasError('invalidLink')">
               Cada link precisa ser uma URL valida.
@@ -71,7 +71,7 @@
               mat-flat-button
               color="primary"
               type="submit"
-              [disabled]="(isSaving$ | async) === true || (isLinksOverLimit$ | async) === true"
+              [disabled]="form.invalid || ((linksCount$ | async) || 0) === 0 || (isSaving$ | async) === true"
             >
               {{ submitButtonLabel(isSaving$ | async) }}
             </button>
@@ -147,7 +147,16 @@
           </mat-form-field>
         </form>
         <div class="entity-actions">
-          <button mat-stroked-button type="button" (click)="setTodayDateRange()">Hoje</button>
+          <button
+            mat-stroked-button
+            type="button"
+            class="today-filter-btn"
+            [class.today-filter-btn-active]="isTodayDateRangeSelected()"
+            [attr.aria-pressed]="isTodayDateRangeSelected()"
+            (click)="setTodayDateRange()"
+          >
+            Hoje
+          </button>
           <button mat-stroked-button type="button" (click)="clearFilters()">Limpar filtros</button>
         </div>
 
@@ -177,12 +186,6 @@
                 <th mat-header-cell *matHeaderCellDef>Link afiliado</th>
                 <td mat-cell *matCellDef="let link" class="affiliate-link-cell">
                   <span class="affiliate-link-text" [matTooltip]="link.affiliateLink">{{ link.affiliateLink }}</span>
-                  <button mat-icon-button type="button" (click)="copyToClipboard(link.affiliateLink)" matTooltip="Copiar link">
-                    <mat-icon>content_copy</mat-icon>
-                  </button>
-                  <a mat-icon-button [href]="link.affiliateLink" target="_blank" rel="noreferrer" matTooltip="Abrir link">
-                    <mat-icon>open_in_new</mat-icon>
-                  </a>
                 </td>
               </ng-container>
 
@@ -194,7 +197,15 @@
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef>Acoes</th>
                 <td mat-cell *matCellDef="let link" class="row-actions">
-                  <button mat-flat-button color="warn" type="button" (click)="remove(link)">Excluir</button>
+                  <button mat-icon-button type="button" (click)="copyToClipboard(link.affiliateLink)" matTooltip="Copiar link">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                  <a mat-icon-button [href]="link.affiliateLink" target="_blank" rel="noreferrer" matTooltip="Abrir link">
+                    <mat-icon>open_in_new</mat-icon>
+                  </a>
+                  <button mat-icon-button color="warn" type="button" (click)="remove(link)" matTooltip="Excluir link">
+                    <mat-icon>delete</mat-icon>
+                  </button>
                 </td>
               </ng-container>
 
@@ -230,11 +241,12 @@
                     <a mat-icon-button [href]="link.affiliateLink" target="_blank" rel="noreferrer" matTooltip="Abrir link">
                       <mat-icon>open_in_new</mat-icon>
                     </a>
+                    <button mat-icon-button color="warn" type="button" (click)="remove(link)" matTooltip="Excluir link">
+                      <mat-icon>delete</mat-icon>
+                    </button>
                   </div>
                 </div>
               </div>
-
-              <button mat-flat-button color="warn" type="button" class="history-delete-btn" (click)="remove(link)">Excluir</button>
             </article>
           </div>
 

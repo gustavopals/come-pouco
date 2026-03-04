@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 
 import env from '../config/env';
+import { MAX_BATCH_LINKS } from '../constants/affiliate-links.constants';
 import * as companyService from '../services/company.service';
 import * as companyPlatformService from '../services/company-platform.service';
 import * as purchasePlatformService from '../services/purchase-platform.service';
@@ -9,7 +10,7 @@ import HttpError from '../utils/httpError';
 
 interface GenerateShopeeShortLinksBody {
   platformId?: number;
-  originUrls?: string[];
+  originUrls?: unknown;
   subId1?: string;
 }
 
@@ -32,6 +33,12 @@ const normalizeOriginUrls = (originUrls: unknown): string[] => {
   return originUrls
     .map((url) => (typeof url === 'string' ? url.trim() : ''))
     .filter((url) => url.length > 0);
+};
+
+const maxLinksExceededPayload = {
+  error: 'MAX_LINKS_EXCEEDED',
+  message: `Envie no máximo ${MAX_BATCH_LINKS} links por vez.`,
+  max: MAX_BATCH_LINKS
 };
 
 const validateSubId1 = (subId1: string | undefined): string | undefined => {
@@ -67,15 +74,28 @@ const generateShopeeShortLinksController = async (
     }
 
     const requestedPlatformId = req.body.platformId !== undefined ? Number(req.body.platformId) : undefined;
+    if (!Array.isArray(req.body.originUrls)) {
+      res.status(400).json({
+        error: 'INVALID_LINKS_PAYLOAD',
+        message: 'O campo originUrls deve ser um array de links.'
+      });
+      return;
+    }
+
     const originUrls = normalizeOriginUrls(req.body.originUrls);
     const subId1 = validateSubId1(req.body.subId1);
 
     if (!originUrls.length) {
-      throw new HttpError(400, 'Informe ao menos 1 originUrl.');
+      res.status(400).json({
+        error: 'EMPTY_LINKS_BATCH',
+        message: 'Envie ao menos 1 link por vez.'
+      });
+      return;
     }
 
-    if (originUrls.length > 10) {
-      throw new HttpError(400, 'No maximo 10 URLs por requisicao.');
+    if (originUrls.length > MAX_BATCH_LINKS) {
+      res.status(400).json(maxLinksExceededPayload);
+      return;
     }
 
     if (originUrls.some((originUrl) => !isValidUrl(originUrl))) {
