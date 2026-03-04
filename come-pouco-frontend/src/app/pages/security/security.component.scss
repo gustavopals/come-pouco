@@ -70,6 +70,20 @@ mat-card-header {
   margin: 0;
 }
 
+.setup-qr-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0.5rem 0 0.8rem;
+}
+
+.setup-qr-image {
+  width: 100%;
+  max-width: 220px;
+  border-radius: 8px;
+  border: 1px solid rgba(20, 83, 116, 0.2);
+  background: #fff;
+}
+
 .setup-secret-label {
   margin: 0 0 0.45rem;
 }

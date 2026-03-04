@@ -22,22 +22,25 @@
         <p class="status-block setup-loading" *ngIf="(setupLoading$ | async)">Gerando dados de setup...</p>
         <p class="status-block status-error" *ngIf="(setupError$ | async) as setupError">{{ setupError }}</p>
 
-        <section class="setup-block" *ngIf="(setup2fa$ | async) as otpauthUrl">
-          <ng-container *ngIf="parseManualSetup(otpauthUrl) as setup; else invalidSetupPayload">
+        <section class="setup-block" *ngIf="(setup2fa$ | async) as setupData">
+          <ng-container *ngIf="parseOtpAuthMetadata(setupData.otpauthUrl) as setup; else invalidSetupPayload">
             <p class="setup-notice">Setup local: sem envio de chave para servicos externos de QR code.</p>
             <div class="setup-meta">
               <p><strong>Aplicativo:</strong> {{ setup.issuer }}</p>
               <p><strong>Conta:</strong> {{ setup.account }}</p>
             </div>
-            <p class="setup-secret-label"><strong>Chave secreta:</strong></p>
+            <div class="setup-qr-wrap">
+              <img class="setup-qr-image" [src]="setupData.qrCodeDataUrl" alt="QR Code 2FA" />
+            </div>
+            <p class="setup-secret-label"><strong>Ou digite a chave manualmente:</strong></p>
             <div class="codes-grid">
-              <code>{{ setup.secret }}</code>
+              <code>{{ setupData.secretMasked }}</code>
             </div>
             <div class="section-actions">
-              <button mat-stroked-button type="button" (click)="copyManualValue(setup.secret, 'Chave secreta copiada.')">
+              <button mat-stroked-button type="button" (click)="copyManualValue(getSecretForCopy(setupData), 'Chave secreta copiada.')">
                 Copiar chave
               </button>
-              <button mat-stroked-button type="button" (click)="copyManualValue(setup.otpauthUrl, 'Link otpauth copiado.')">
+              <button mat-stroked-button type="button" (click)="copyManualValue(setupData.otpauthUrl, 'Link otpauth copiado.')">
                 Copiar link otpauth
               </button>
             </div>

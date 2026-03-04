@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 
 import env from '../config/env';
+import prisma from '../config/prisma';
 import HttpError from '../utils/httpError';
 import { postGraphql } from './shopee-affiliate-client.service';
 
@@ -9,6 +10,9 @@ interface ShopeeGenerateShortLinksInput {
   secret: string;
   apiUrl: string;
   originUrls: string[];
+  companyId: number;
+  userId: number;
+  platformId: number;
   subId1?: string;
   forceMock?: boolean;
 }
@@ -62,17 +66,51 @@ const normalizeErrorMessage = (error: unknown): string => {
   return 'Falha ao gerar shortlink.';
 };
 
+const registerApiRequestLogs = async ({
+  companyId,
+  userId,
+  platformId,
+  mode,
+  endpoint,
+  results
+}: {
+  companyId: number;
+  userId: number;
+  platformId: number;
+  mode: 'MOCK' | 'REAL';
+  endpoint: string;
+  results: ShopeeShortLinkResult[];
+}): Promise<void> => {
+  if (!results.length) {
+    return;
+  }
+
+  await prisma.apiRequestLog.createMany({
+    data: results.map((result) => ({
+      companyId,
+      userId,
+      platformId,
+      mode,
+      endpoint,
+      success: result.success
+    }))
+  });
+};
+
 const generateShopeeShortLinks = async ({
   appId,
   secret,
   apiUrl,
   originUrls,
+  companyId,
+  userId,
+  platformId,
   subId1,
   forceMock
 }: ShopeeGenerateShortLinksInput): Promise<ShopeeShortLinkResult[]> => {
   if (forceMock || env.shopeeMock) {
     const now = Date.now().toString();
-    return originUrls.map((originUrl) => {
+    const results = originUrls.map((originUrl) => {
       const hash = crypto
         .createHash('sha256')
         .update(`${originUrl}|${subId1 || ''}|${now}`)
@@ -85,6 +123,17 @@ const generateShopeeShortLinks = async ({
         shortLink: `https://shopee.mock/s/${hash}`
       };
     });
+
+    await registerApiRequestLogs({
+      companyId,
+      userId,
+      platformId,
+      mode: 'MOCK',
+      endpoint: apiUrl,
+      results
+    });
+
+    return results;
   }
 
   const normalizedSubIds = subId1?.trim() ? [subId1.trim()] : undefined;
@@ -121,6 +170,15 @@ const generateShopeeShortLinks = async ({
       }
     })
   );
+
+  await registerApiRequestLogs({
+    companyId,
+    userId,
+    platformId,
+    mode: 'REAL',
+    endpoint: apiUrl,
+    results
+  });
 
   return results;
 };

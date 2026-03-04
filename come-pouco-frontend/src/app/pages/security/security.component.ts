@@ -7,14 +7,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { BehaviorSubject, Subject, catchError, finalize, map, merge, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
 
-import type { ApiErrorResponse, TrustedDevice } from '../../core/models/auth.model';
+import type { ApiErrorResponse, TrustedDevice, TwoFactorSetupResponse } from '../../core/models/auth.model';
 import { AuthService } from '../../core/services/auth.service';
 
-interface ManualTwoFactorSetup {
+interface ParsedOtpAuthMetadata {
   issuer: string;
   account: string;
-  secret: string;
-  otpauthUrl: string;
 }
 
 @Component({
@@ -51,7 +49,6 @@ export class SecurityComponent implements OnInit {
       }),
       switchMap(() =>
         this.authService.setupTwoFactor().pipe(
-          map(({ otpauthUrl }) => otpauthUrl),
           catchError((error) => {
             this.setupError$.next(this.resolveErrorMessage(error?.error, 'Nao foi possivel iniciar o setup do 2FA.'));
             return of(null);
@@ -171,7 +168,7 @@ export class SecurityComponent implements OnInit {
     });
   }
 
-  protected parseManualSetup(otpauthUrl: string): ManualTwoFactorSetup | null {
+  protected parseOtpAuthMetadata(otpauthUrl: string): ParsedOtpAuthMetadata | null {
     if (!otpauthUrl || !otpauthUrl.trim().length) {
       return null;
     }
@@ -185,24 +182,20 @@ export class SecurityComponent implements OnInit {
 
       const rawLabel = decodeURIComponent(parsed.pathname.replace(/^\//, ''));
       const labelParts = rawLabel.split(':');
-      const secret = parsed.searchParams.get('secret')?.trim() || '';
-
-      if (!secret.length) {
-        return null;
-      }
-
       const issuer = (parsed.searchParams.get('issuer') || labelParts[0] || 'Come Pouco').trim();
       const account = (labelParts.slice(1).join(':') || rawLabel).trim();
 
       return {
         issuer,
-        account,
-        secret,
-        otpauthUrl
+        account
       };
     } catch {
       return null;
     }
+  }
+
+  protected getSecretForCopy(setup: TwoFactorSetupResponse): string {
+    return setup.secretMasked.replace(/\s+/g, '');
   }
 
   protected copyManualValue(value: string, successMessage: string): void {

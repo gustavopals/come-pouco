@@ -49,6 +49,12 @@ export interface TrustedDevice {
   ip: string | null;
 }
 
+export interface TwoFactorSetupResponse {
+  otpauthUrl: string;
+  qrCodeDataUrl: string;
+  secretMasked: string;
+}
+
 export interface ApiErrorResponse {
   message?: string;
   errorCode?: string;

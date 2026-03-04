@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt, { JwtPayload } from 'jsonwebtoken';
+import QRCode from 'qrcode';
 
 import env from '../config/env';
 import prisma from '../config/prisma';
@@ -78,6 +79,8 @@ interface TwoFactorLoginResponse extends AuthResponse {
 
 interface TwoFactorSetupResponse {
   otpauthUrl: string;
+  qrCodeDataUrl: string;
+  secretMasked: string;
 }
 
 interface TwoFactorConfirmResponse {
@@ -239,6 +242,14 @@ const createTempTwoFactorToken = (userId: number): string => {
     env.jwt.secret,
     { expiresIn: TEMP_TOKEN_TTL }
   );
+};
+
+const maskTwoFactorSecret = (secret: string): string => {
+  return secret
+    .replace(/\s+/g, '')
+    .toUpperCase()
+    .match(/.{1,4}/g)
+    ?.join(' ') ?? '';
 };
 
 const parseTempToken = (tempToken: string): number => {
@@ -651,6 +662,19 @@ const setupTwoFactor = async (userId: number): Promise<TwoFactorSetupResponse> =
     label: user.username,
     secret
   });
+  const secretMasked = maskTwoFactorSecret(secret);
+  let qrCodeDataUrl = '';
+
+  try {
+    qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      scale: 6
+    });
+  } catch (error) {
+    console.error(error instanceof Error ? error.stack : error);
+    throw new HttpError(500, 'Falha ao gerar QR Code local');
+  }
 
   await prisma.user.update({
     where: { id: userId },
@@ -660,7 +684,7 @@ const setupTwoFactor = async (userId: number): Promise<TwoFactorSetupResponse> =
     }
   });
 
-  return { otpauthUrl };
+  return { otpauthUrl, qrCodeDataUrl, secretMasked };
 };
 
 const confirmTwoFactor = async (userId: number, code: string): Promise<TwoFactorConfirmResponse> => {

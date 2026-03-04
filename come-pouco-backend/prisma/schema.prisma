@@ -21,6 +21,11 @@ enum ShopeeMode {
   PROD
 }
 
+enum ApiRequestMode {
+  MOCK
+  REAL
+}
+
 enum PurchasePlatformType {
   SHOPEE
 }
@@ -36,6 +41,7 @@ model Company {
   updatedAt            DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   users                User[]
   links                AffiliateLink[]
+  apiRequestLogs       ApiRequestLog[]
   companyPlatforms     CompanyPlatform[]
   shopeePlatform       PurchasePlatform? @relation("company_shopee_platform_legacy", fields: [shopeePlatformId], references: [id], onDelete: SetNull)
   shopeePlatformTest   PurchasePlatform? @relation("company_shopee_platform_test", fields: [shopeePlatformTestId], references: [id], onDelete: SetNull)
@@ -62,6 +68,7 @@ model User {
   createdAt              DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
   company                Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
   createdAffiliateLinks  AffiliateLink[]        @relation("affiliate_links_created_by")
+  apiRequestLogs         ApiRequestLog[]
   twoFactorBackupCodes   TwoFactorBackupCode[]
   trustedDevices         TrustedDevice[]
 
@@ -129,6 +136,7 @@ model PurchasePlatform {
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   companyPlatforms    CompanyPlatform[]
+  apiRequestLogs      ApiRequestLog[]
   companiesLegacy     Company[] @relation("company_shopee_platform_legacy")
   companiesTest       Company[] @relation("company_shopee_platform_test")
   companiesProduction Company[] @relation("company_shopee_platform_prod")
@@ -146,4 +154,26 @@ model CompanyPlatform {
 
   @@id([companyId, platformId])
   @@map("company_platforms")
+}
+
+model ApiRequestLog {
+  id         String   @id @default(uuid())
+  companyId  Int      @map("company_id")
+  userId     Int      @map("user_id")
+  platformId Int      @map("platform_id")
+  mode       ApiRequestMode
+  endpoint   String?
+  success    Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  company  Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform PurchasePlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([platformId])
+  @@index([mode])
+  @@index([createdAt])
+  @@map("api_request_logs")
 }

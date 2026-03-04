@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { AuthResponse, AuthUser, LoginResponse, RegisterPayload, TrustedDevice } from '../models/auth.model';
+import { AuthResponse, AuthUser, LoginResponse, RegisterPayload, TrustedDevice, TwoFactorSetupResponse } from '../models/auth.model';
 import type { CompanyRole } from '../models/company-role.model';
 import type { UserRole } from '../models/user-role.model';
 
@@ -53,8 +53,8 @@ export class AuthService {
     );
   }
 
-  setupTwoFactor(): Observable<{ otpauthUrl: string }> {
-    return this.http.post<{ otpauthUrl: string }>(`${environment.apiUrl}/auth/2fa/setup`, {});
+  setupTwoFactor(): Observable<TwoFactorSetupResponse> {
+    return this.http.post<TwoFactorSetupResponse>(`${environment.apiUrl}/auth/2fa/setup`, {});
   }
 
   confirmTwoFactor(code: string): Observable<{ backupCodes: string[] }> {

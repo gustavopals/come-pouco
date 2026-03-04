@@ -21,6 +21,11 @@
   background: linear-gradient(165deg, #f7faff 0%, #ffffff 32%);
 }
 
+.usage-card {
+  grid-column: 1 / -1;
+  background: linear-gradient(165deg, #f4fbf7 0%, #ffffff 35%);
+}
+
 mat-card-header {
   padding-bottom: 0.65rem;
 }
@@ -161,6 +166,51 @@ mat-card-header {
   flex-wrap: wrap;
 }
 
+.usage-filter-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+}
+
+.usage-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.25rem 0 0.85rem;
+}
+
+.usage-actions .mat-mdc-button-base {
+  min-height: 42px;
+}
+
+.usage-cards-grid {
+  margin-top: 0.7rem;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+}
+
+.usage-summary-card {
+  border: 1px solid rgba(22, 101, 52, 0.18);
+  border-radius: 12px;
+  padding: 0.85rem;
+  background: #ffffff;
+}
+
+.usage-summary-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.usage-summary-value {
+  margin: 0.3rem 0 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #14532d;
+}
+
 .mobile-platform-list {
   display: none;
 }
@@ -178,6 +228,18 @@ mat-card-header {
 }
 
 @media (max-width: 768px) {
+  .usage-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .usage-actions .mat-mdc-button-base {
+    width: 100%;
+  }
+
+  .usage-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
   .table-header {
     flex-wrap: wrap;
   }

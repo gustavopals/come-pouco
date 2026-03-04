@@ -117,6 +117,77 @@
       </mat-card-content>
     </mat-card>
 
+    <mat-card appearance="outlined" class="usage-card" *ngIf="authService.isAdmin()">
+      <mat-card-header>
+        <mat-card-title>Monitoramento API</mat-card-title>
+        <mat-card-subtitle>Resumo de uso das requisicoes de integracao Shopee.</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <form [formGroup]="usageForm" class="usage-filter-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Empresa</mat-label>
+            <mat-select formControlName="companyId">
+              <mat-option [value]="null">Todas</mat-option>
+              <mat-option *ngFor="let company of (companies$ | async)" [value]="company.id">{{ company.name }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Funcionario</mat-label>
+            <mat-select formControlName="userId" [disabled]="!usageForm.controls.companyId.value">
+              <mat-option [value]="null">Todos</mat-option>
+              <mat-option *ngFor="let employee of (filteredEmployees$ | async)" [value]="employee.id">
+                {{ employee.fullName }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Periodo</mat-label>
+            <mat-date-range-input [rangePicker]="rangePicker">
+              <input matStartDate formControlName="startDate" placeholder="Data inicial" />
+              <input matEndDate formControlName="endDate" placeholder="Data final" />
+            </mat-date-range-input>
+            <mat-datepicker-toggle matIconSuffix [for]="rangePicker"></mat-datepicker-toggle>
+            <mat-date-range-picker #rangePicker></mat-date-range-picker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Modo</mat-label>
+            <mat-select formControlName="mode">
+              <mat-option *ngFor="let option of usageModeOptions" [value]="option.value">
+                {{ option.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </form>
+
+        <div class="usage-actions">
+          <button mat-stroked-button type="button" (click)="resetUsageFilters()">Limpar filtros</button>
+          <button mat-flat-button color="warn" type="button" (click)="resetMockUsage()">Zerar contador Mock</button>
+        </div>
+
+        <mat-progress-bar mode="indeterminate" *ngIf="(usageLoadingState$ | async)"></mat-progress-bar>
+        <p class="status-block status-error" *ngIf="(usageErrorState$ | async) as usageError">{{ usageError }}</p>
+
+        <div class="usage-cards-grid" *ngIf="(usage$ | async) as usage">
+          <article class="usage-summary-card">
+            <p class="usage-summary-label">Total Mock</p>
+            <p class="usage-summary-value">{{ usage.totalMock }}</p>
+          </article>
+          <article class="usage-summary-card">
+            <p class="usage-summary-label">Total Real</p>
+            <p class="usage-summary-value">{{ usage.totalReal }}</p>
+          </article>
+          <article class="usage-summary-card">
+            <p class="usage-summary-label">Total Geral</p>
+            <p class="usage-summary-value">{{ usage.totalGeral }}</p>
+          </article>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
     <mat-card appearance="outlined" class="table-card">
       <mat-card-header class="table-header">
         <div>

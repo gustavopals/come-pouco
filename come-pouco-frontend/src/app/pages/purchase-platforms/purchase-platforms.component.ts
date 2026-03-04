@@ -6,24 +6,33 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { BehaviorSubject, Subject, catchError, finalize, map, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, Subject, catchError, combineLatest, finalize, map, merge, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
 
 import { Company } from '../../core/models/company.model';
 import {
+  ApiUsageMode,
+  ApiUsageSummary,
   CreatePurchasePlatformPayload,
   PurchasePlatform,
   UpdatePurchasePlatformPayload
 } from '../../core/models/purchase-platform.model';
+import { User } from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CompanyService } from '../../core/services/company.service';
 import { PurchasePlatformService } from '../../core/services/purchase-platform.service';
+import { UserService } from '../../core/services/user.service';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 
 const SHOPEE_API_URL = 'https://open-api.affiliate.shopee.com.br/graphql';
 
@@ -40,11 +49,15 @@ const SHOPEE_API_URL = 'https://open-api.affiliate.shopee.com.br/graphql';
     MatCardModule,
     MatCheckboxModule,
     MatChipsModule,
+    MatDatepickerModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatNativeDateModule,
     MatProgressBarModule,
     MatSelectModule,
     MatSlideToggleModule,
+    MatSnackBarModule,
     MatTableModule,
     MatToolbarModule
   ],
@@ -55,13 +68,30 @@ export class PurchasePlatformsComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly purchasePlatformService = inject(PurchasePlatformService);
   private readonly companyService = inject(CompanyService);
+  private readonly userService = inject(UserService);
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
   protected readonly authService = inject(AuthService);
   private readonly refresh$ = new Subject<void>();
+  private readonly usageLoading$ = new BehaviorSubject<boolean>(false);
+  private readonly usageError$ = new BehaviorSubject<string | null>(null);
 
   protected readonly platformTypes: Array<'SHOPEE'> = ['SHOPEE'];
+  protected readonly usageModeOptions: Array<{ label: string; value: 'ALL' | ApiUsageMode }> = [
+    { label: 'Todos', value: 'ALL' },
+    { label: 'Mock', value: 'MOCK' },
+    { label: 'Real', value: 'REAL' }
+  ];
   protected readonly displayedColumns: string[] = ['id', 'name', 'type', 'status', 'mode', 'apiLink', 'secret', 'updatedAt', 'actions'];
   protected readonly isLoading$ = new BehaviorSubject<boolean>(false);
   protected readonly error$ = new BehaviorSubject<string | null>(null);
+  protected readonly usageForm = this.formBuilder.group({
+    companyId: [null as number | null],
+    userId: [null as number | null],
+    mode: ['ALL' as 'ALL' | ApiUsageMode],
+    startDate: [null as Date | null],
+    endDate: [null as Date | null]
+  });
   protected readonly platforms$ = this.refresh$.pipe(
     startWith(void 0),
     tap(() => {
@@ -81,6 +111,48 @@ export class PurchasePlatformsComponent implements OnInit {
     shareReplay({ bufferSize: 1, refCount: true })
   );
   protected readonly totalPlatforms$ = this.platforms$.pipe(map((platforms) => platforms.length));
+  protected readonly companies$ = this.companyService.list().pipe(
+    map(({ companies }) => (Array.isArray(companies) ? companies : [])),
+    catchError(() => of([] as Company[])),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+  protected readonly users$ = this.userService.listUsers().pipe(
+    map(({ users }) => (Array.isArray(users) ? users : [])),
+    catchError(() => of([] as User[])),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+  protected readonly filteredEmployees$ = combineLatest([
+    this.users$,
+    this.usageForm.controls.companyId.valueChanges.pipe(startWith(this.usageForm.controls.companyId.value))
+  ]).pipe(
+    map(([users, companyId]) => {
+      if (!companyId) {
+        return [] as User[];
+      }
+
+      return users.filter((user) => user.role === 'USER' && user.companyId === companyId);
+    }),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+  protected readonly usage$ = merge(this.refresh$, this.usageForm.valueChanges).pipe(
+    startWith(void 0),
+    tap(() => {
+      this.usageLoading$.next(true);
+      this.usageError$.next(null);
+    }),
+    switchMap(() =>
+      this.purchasePlatformService.getApiUsage(this.buildUsageFilters()).pipe(
+        catchError((error) => {
+          this.usageError$.next(error?.error?.message || 'Nao foi possivel carregar o monitoramento de API.');
+          return of({ totalMock: 0, totalReal: 0, totalGeral: 0 } satisfies ApiUsageSummary);
+        }),
+        finalize(() => this.usageLoading$.next(false))
+      )
+    ),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+  protected readonly usageLoadingState$ = this.usageLoading$.asObservable();
+  protected readonly usageErrorState$ = this.usageError$.asObservable();
   protected companies: Company[] = [];
   protected filteredCompanies: Company[] = [];
   protected selectedCompanyIds: number[] = [];
@@ -116,10 +188,28 @@ export class PurchasePlatformsComponent implements OnInit {
       this.applyCompanyFilter(value || '');
     });
 
+    this.usageForm.controls.companyId.valueChanges.subscribe((companyId) => {
+      const selectedUserId = this.usageForm.controls.userId.value;
+      if (!companyId && selectedUserId !== null) {
+        this.usageForm.controls.userId.setValue(null);
+      }
+    });
+
     this.applyTypeValidators();
   }
 
   protected loadPlatforms(): void {
+    this.refresh$.next();
+  }
+
+  protected resetUsageFilters(): void {
+    this.usageForm.reset({
+      companyId: null,
+      userId: null,
+      mode: 'ALL',
+      startDate: null,
+      endDate: null
+    });
     this.refresh$.next();
   }
 
@@ -349,6 +439,40 @@ export class PurchasePlatformsComponent implements OnInit {
     this.authService.logout();
   }
 
+  protected resetMockUsage(): void {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '430px',
+      data: {
+        title: 'Zerar contador Mock',
+        message: 'Deseja remover os registros MOCK com os filtros atuais?',
+        confirmText: 'Zerar Mock'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      const filters = this.buildUsageFilters();
+      this.purchasePlatformService
+        .deleteMockApiUsage({
+          companyId: filters.companyId,
+          startDate: filters.startDate,
+          endDate: filters.endDate
+        })
+        .subscribe({
+          next: ({ deletedCount }) => {
+            this.snackBar.open(`${deletedCount} registro(s) MOCK removido(s).`, 'Fechar', { duration: 3000 });
+            this.refresh$.next();
+          },
+          error: (error) => {
+            this.snackBar.open(error?.error?.message || 'Falha ao zerar contador MOCK.', 'Fechar', { duration: 3500 });
+          }
+        });
+    });
+  }
+
   protected isCreateMode(): boolean {
     return this.editingPlatformId === null;
   }
@@ -411,5 +535,51 @@ export class PurchasePlatformsComponent implements OnInit {
     } catch {
       return false;
     }
+  }
+
+  private buildUsageFilters(): {
+    companyId?: number;
+    userId?: number;
+    startDate?: string;
+    endDate?: string;
+    mode?: ApiUsageMode;
+  } {
+    const { companyId, userId, startDate, endDate, mode } = this.usageForm.getRawValue();
+    const filters: {
+      companyId?: number;
+      userId?: number;
+      startDate?: string;
+      endDate?: string;
+      mode?: ApiUsageMode;
+    } = {};
+
+    if (companyId) {
+      filters.companyId = companyId;
+    }
+
+    if (userId) {
+      filters.userId = userId;
+    }
+
+    if (startDate) {
+      filters.startDate = this.toDateOnly(startDate);
+    }
+
+    if (endDate) {
+      filters.endDate = this.toDateOnly(endDate);
+    }
+
+    if (mode && mode !== 'ALL') {
+      filters.mode = mode;
+    }
+
+    return filters;
+  }
+
+  private toDateOnly(date: Date): string {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

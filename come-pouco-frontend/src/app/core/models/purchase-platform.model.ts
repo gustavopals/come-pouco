@@ -51,3 +51,11 @@ export interface UpdatePlatformCompaniesPayload {
   companyIds: number[];
   defaultCompanyIds: number[];
 }
+
+export type ApiUsageMode = 'MOCK' | 'REAL';
+
+export interface ApiUsageSummary {
+  totalMock: number;
+  totalReal: number;
+  totalGeral: number;
+}
