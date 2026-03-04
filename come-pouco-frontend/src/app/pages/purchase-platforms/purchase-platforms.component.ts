@@ -188,9 +188,9 @@ export class PurchasePlatformsComponent implements OnInit {
       this.applyCompanyFilter(value || '');
     });
 
-    this.usageForm.controls.companyId.valueChanges.subscribe((companyId) => {
+    this.usageForm.controls.companyId.valueChanges.subscribe(() => {
       const selectedUserId = this.usageForm.controls.userId.value;
-      if (!companyId && selectedUserId !== null) {
+      if (selectedUserId !== null) {
         this.usageForm.controls.userId.setValue(null);
       }
     });
