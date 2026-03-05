@@ -10,7 +10,7 @@ interface ShopeeGenerateShortLinksInput {
   secret: string;
   apiUrl: string;
   originUrls: string[];
-  companyId: number;
+  companyId?: number;
   userId: number;
   platformId: number;
   subId1?: string;
@@ -74,14 +74,14 @@ const registerApiRequestLogs = async ({
   endpoint,
   results
 }: {
-  companyId: number;
+  companyId?: number;
   userId: number;
   platformId: number;
   mode: 'MOCK' | 'REAL';
   endpoint: string;
   results: ShopeeShortLinkResult[];
 }): Promise<void> => {
-  if (!results.length) {
+  if (!companyId || !results.length) {
     return;
   }
 

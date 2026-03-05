@@ -73,10 +73,6 @@ const generateShopeeShortLinksController = async (
       throw new HttpError(401, 'Token invalido ou expirado.');
     }
 
-    if (!req.companyId) {
-      throw new HttpError(400, 'Contexto de empresa nao encontrado para registrar uso da API.');
-    }
-
     const requestedPlatformId = req.body.platformId !== undefined ? Number(req.body.platformId) : undefined;
     if (!Array.isArray(req.body.originUrls)) {
       res.status(400).json({
@@ -191,7 +187,7 @@ const generateShopeeShortLinksController = async (
       secret: platform.secret,
       apiUrl: platform.apiUrl,
       originUrls,
-      companyId: req.companyId,
+      companyId: req.companyId ?? undefined,
       userId: req.userId,
       platformId: platform.id,
       subId1,
