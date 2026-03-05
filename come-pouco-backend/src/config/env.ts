@@ -25,6 +25,7 @@ interface EnvConfig {
   };
   trustedDeviceDays: number;
   twoFaEncryptionKey: string;
+  publicAppUrl: string;
   corsOrigins: string[];
   shopeeMock: boolean;
 }
@@ -57,6 +58,7 @@ const twoFaEncryptionKey =
   process.env.TWOFA_ENCRYPTION_KEY && process.env.TWOFA_ENCRYPTION_KEY.trim().length > 0
     ? process.env.TWOFA_ENCRYPTION_KEY
     : 'dev-twofa-encryption-key-change-me';
+const publicAppUrl = process.env.PUBLIC_APP_URL?.trim() || 'http://localhost:4200';
 
 if (appEnv === 'production') {
   if (jwtSecret === 'dev-secret-change-me') {
@@ -85,6 +87,7 @@ const env: EnvConfig = {
   },
   trustedDeviceDays: Math.max(1, Number(process.env.TRUSTED_DEVICE_DAYS || 30) || 30),
   twoFaEncryptionKey,
+  publicAppUrl,
   corsOrigins: rawCorsOrigins
     .split(',')
     .map((origin) => origin.trim())

@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 
 import prisma from '../config/prisma';
 import * as purchasePlatformService from './purchase-platform.service';
+import { ALLOWED_HISTORY_RETENTION_DAYS } from '../constants/company.constants';
 import HttpError from '../utils/httpError';
 
 type ShopeeMode = 'TEST' | 'PROD';
@@ -16,6 +17,7 @@ type PlatformSummary = {
 interface CompanyRecord {
   id: number;
   name: string;
+  historyRetentionDays: number;
   shopeeMode: ShopeeMode;
   shopeePlatform: PlatformSummary | null;
   shopeePlatformTest: PlatformSummary | null;
@@ -27,6 +29,7 @@ interface CompanyRecord {
 interface CompanyOutput {
   id: number;
   name: string;
+  historyRetentionDays: number;
   shopeeMode: ShopeeMode;
   shopeePlatformId: number | null;
   shopeePlatformTestId: number | null;
@@ -43,6 +46,7 @@ interface CompanyOutput {
 
 type CompanyCreateInput = {
   name: string;
+  historyRetentionDays?: number;
   shopeePlatformId?: number | null;
   shopeePlatformTestId?: number | null;
   shopeePlatformProdId?: number | null;
@@ -51,6 +55,7 @@ type CompanyCreateInput = {
 
 type CompanyUpdateInput = {
   name?: string;
+  historyRetentionDays?: number;
   shopeePlatformId?: number | null;
   shopeePlatformTestId?: number | null;
   shopeePlatformProdId?: number | null;
@@ -91,6 +96,7 @@ const toCompanyOutput = (company: CompanyRecord): CompanyOutput => {
   return {
     id: company.id,
     name: company.name,
+    historyRetentionDays: company.historyRetentionDays,
     shopeeMode: company.shopeeMode,
     shopeePlatformId: company.shopeePlatform?.id ?? null,
     shopeePlatformTestId: company.shopeePlatformTest?.id ?? null,
@@ -109,6 +115,7 @@ const toCompanyOutput = (company: CompanyRecord): CompanyOutput => {
 const companySelect = {
   id: true,
   name: true,
+  historyRetentionDays: true,
   shopeeMode: true,
   shopeePlatform: {
     select: {
@@ -137,6 +144,22 @@ const companySelect = {
   createdAt: true,
   updatedAt: true
 } satisfies Prisma.CompanySelect;
+
+const parseHistoryRetentionDays = (value: number | null | undefined): number | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new HttpError(400, 'historyRetentionDays invalido.');
+  }
+
+  if (!ALLOWED_HISTORY_RETENTION_DAYS.includes(value)) {
+    throw new HttpError(400, `historyRetentionDays invalido. Valores permitidos: ${ALLOWED_HISTORY_RETENTION_DAYS.join(', ')}.`);
+  }
+
+  return value;
+};
 
 const validateShopeePlatform = async (platformId: number | null | undefined): Promise<number | null | undefined> => {
   if (platformId === undefined) {
@@ -211,11 +234,13 @@ const getCompanyById = async (id: number): Promise<CompanyRecord | null> => {
 
 const createCompany = async ({
   name,
+  historyRetentionDays,
   shopeePlatformId,
   shopeePlatformTestId,
   shopeePlatformProdId,
   shopeeMode
 }: CompanyCreateInput): Promise<CompanyOutput> => {
+  const validatedHistoryRetentionDays = parseHistoryRetentionDays(historyRetentionDays);
   const validatedLegacyId = await validateShopeePlatform(shopeePlatformId);
   const validatedTestId = await validateShopeePlatform(shopeePlatformTestId);
   const validatedProdId = await validateShopeePlatform(shopeePlatformProdId);
@@ -225,6 +250,7 @@ const createCompany = async ({
     const company = await prisma.company.create({
       data: {
         name: name.trim(),
+        historyRetentionDays: validatedHistoryRetentionDays,
         shopeeMode: validatedMode,
         shopeePlatform: connectOrDisconnectPlatform(validatedLegacyId),
         shopeePlatformTest: connectOrDisconnectPlatform(validatedTestId),
@@ -252,6 +278,10 @@ const updateCompany = async (id: number, payload: CompanyUpdateInput): Promise<C
 
   if (payload.shopeeMode !== undefined) {
     updateData.shopeeMode = parseShopeeMode(payload.shopeeMode)!;
+  }
+
+  if (payload.historyRetentionDays !== undefined) {
+    updateData.historyRetentionDays = parseHistoryRetentionDays(payload.historyRetentionDays);
   }
 
   if (payload.shopeePlatformId !== undefined) {

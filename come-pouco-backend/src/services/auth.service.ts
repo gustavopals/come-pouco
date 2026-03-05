@@ -1,10 +1,13 @@
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import QRCode from 'qrcode';
 
 import env from '../config/env';
 import prisma from '../config/prisma';
+import { sendEmail } from './email/email.service';
+import { buildPasswordResetTemplate } from './email/password-reset.template';
 import * as companyService from './company.service';
 import type { CompanyRole } from '../types/company-role';
 import type { UserRole } from '../types/user-role';
@@ -17,6 +20,8 @@ const TEMP_TOKEN_PURPOSE = '2fa_pending';
 const TEMP_TOKEN_TTL = '5m';
 const TRUSTED_DEVICE_COOKIE_NAME = 'cp_td';
 const TRUSTED_DEVICE_COOKIE_VERSION = 'v1';
+const PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = 15;
+const PASSWORD_RESET_COOLDOWN_MS = 60 * 1000;
 
 interface UserRecord {
   id: number;
@@ -59,6 +64,16 @@ interface RegisterInput {
   username: string;
   email?: string;
   password: string;
+}
+
+interface ForgotPasswordInput {
+  email: string;
+  requesterIp?: string;
+}
+
+interface ResetPasswordInput {
+  token: string;
+  newPassword: string;
 }
 
 interface AuthResponse {
@@ -587,6 +602,127 @@ const normalizeUsername = (username: string): string => {
   return normalized;
 };
 
+const buildResetLink = (token: string): string => {
+  const baseUrl = env.publicAppUrl.replace(/\/+$/g, '');
+  return `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+};
+
+const forgotPassword = async ({ email, requesterIp }: ForgotPasswordInput): Promise<void> => {
+  const safeEmail = normalizeEmail(email);
+  console.info(`[auth/forgot-password] requisicao ip=${requesterIp || '-'} email=${safeEmail || '-'}`);
+
+  if (!safeEmail) {
+    return;
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      email: {
+        equals: safeEmail,
+        mode: 'insensitive'
+      }
+    },
+    select: {
+      id: true,
+      email: true
+    }
+  });
+
+  if (!user?.email) {
+    return;
+  }
+
+  const now = new Date();
+  const latestToken = await prisma.passwordResetToken.findFirst({
+    where: { userId: user.id },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true }
+  });
+
+  if (latestToken && now.getTime() - latestToken.createdAt.getTime() < PASSWORD_RESET_COOLDOWN_MS) {
+    console.info(`[auth/forgot-password] cooldown ativo user=${user.id}`);
+    return;
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = hashValue(token);
+  const expiresAt = new Date(now.getTime() + PASSWORD_RESET_TOKEN_EXPIRY_MINUTES * 60 * 1000);
+
+  await prisma.$transaction([
+    prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: now }
+    }),
+    prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt
+      }
+    })
+  ]);
+
+  try {
+    const template = buildPasswordResetTemplate(buildResetLink(token));
+    await sendEmail({
+      to: user.email,
+      subject: template.subject,
+      html: template.html,
+      text: template.text
+    });
+
+    console.info(`[auth/forgot-password] email enviado user=${user.id}`);
+  } catch (error) {
+    console.error(
+      `[auth/forgot-password] falha ao enviar email user=${user.id}:`,
+      error instanceof Error ? error.message : 'erro desconhecido'
+    );
+  }
+};
+
+const resetPassword = async ({ token, newPassword }: ResetPasswordInput): Promise<void> => {
+  if (!newPassword || newPassword.length < 8) {
+    throw new HttpError(400, 'A nova senha deve ter no minimo 8 caracteres.', 'AUTH_INVALID_PASSWORD');
+  }
+
+  if (!token || token.trim().length < 20) {
+    throw new HttpError(400, 'Token invalido ou expirado.', 'AUTH_RESET_TOKEN_INVALID');
+  }
+
+  const tokenHash = hashValue(token.trim());
+  const now = new Date();
+  const resetToken = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash },
+    select: { id: true, userId: true, usedAt: true, expiresAt: true }
+  });
+
+  if (!resetToken || resetToken.usedAt || resetToken.expiresAt <= now) {
+    throw new HttpError(400, 'Token invalido ou expirado.', 'AUTH_RESET_TOKEN_INVALID');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+
+  await prisma.$transaction(async (tx) => {
+    const useToken = await tx.passwordResetToken.updateMany({
+      where: { id: resetToken.id, usedAt: null, expiresAt: { gt: now } },
+      data: { usedAt: now }
+    });
+
+    if (useToken.count !== 1) {
+      throw new HttpError(400, 'Token invalido ou expirado.', 'AUTH_RESET_TOKEN_INVALID');
+    }
+
+    await tx.user.update({
+      where: { id: resetToken.userId },
+      data: { passwordHash }
+    });
+
+    await tx.trustedDevice.deleteMany({ where: { userId: resetToken.userId } });
+  });
+
+  console.info(`[auth/reset-password] senha redefinida user=${resetToken.userId}`);
+};
+
 const register = async ({ fullName, username, email, password }: RegisterInput): Promise<AuthResponse> => {
   const safeFullName = fullName.trim();
   const safeUsername = normalizeUsername(username);
@@ -895,10 +1031,12 @@ export {
   adminResetTwoFactor,
   confirmTwoFactor,
   disableTwoFactor,
+  forgotPassword,
   getUserById,
   listTrustedDevices,
   login,
   loginWithTwoFactor,
+  resetPassword,
   register,
   revokeTrustedDevice,
   setupTwoFactor

@@ -2,11 +2,13 @@ import app from './app';
 import env from './config/env';
 import { checkDatabaseConnection, ensureDatabaseSchema } from './config/db';
 import prisma from './config/prisma';
+import { startHistoryCleanupJob } from './jobs/history-cleanup.job';
 
 const startServer = async (): Promise<void> => {
   try {
     await checkDatabaseConnection();
     await ensureDatabaseSchema();
+    startHistoryCleanupJob();
 
     app.listen(env.port, () => {
       console.log(`Backend rodando em http://localhost:${env.port}`);

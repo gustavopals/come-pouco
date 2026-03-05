@@ -27,6 +27,8 @@
         <button mat-flat-button color="primary" type="submit" [disabled]="vm.isSubmitting">
           {{ vm.isSubmitting ? 'Entrando...' : 'Entrar' }}
         </button>
+
+        <a mat-stroked-button routerLink="/forgot-password">Esqueci minha senha</a>
       </form>
 
       <div class="login-help" *ngIf="!vm.tempToken">
