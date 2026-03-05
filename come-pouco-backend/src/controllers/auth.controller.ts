@@ -153,6 +153,12 @@ const register = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    ensureAuthenticatedUserId(req);
+
+    if (req.userRole !== 'ADMIN') {
+      throw new HttpError(403, 'Somente ADMIN pode registrar usuarios por este endpoint.', 'AUTH_FORBIDDEN');
+    }
+
     const { fullName, username, email, password } = req.body;
 
     if (!fullName || !username || !password) {

@@ -5,7 +5,7 @@
 .my-company-layout {
   display: grid;
   gap: var(--panel-grid-gap);
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(var(--panel-form-col-min), var(--panel-form-col-max)) 1fr;
 }
 
 .form-card,
@@ -19,9 +19,7 @@
 
 .table-card {
   background: linear-gradient(165deg, #f8faff 0%, #ffffff 32%);
-  width: 100%;
   min-width: 0;
-  grid-column: 1 / -1;
 }
 
 mat-card-header {
@@ -137,6 +135,12 @@ mat-card-header {
 
 .mobile-employee-list {
   display: none;
+}
+
+@media (max-width: 1200px) {
+  .my-company-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 1024px) {

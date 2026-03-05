@@ -11,6 +11,7 @@ authRouter.post('/2fa/verify', authController.loginTwoFactor);
 authRouter.post('/register', authController.register);
 authRouter.post('/forgot-password', authController.forgotPassword);
 authRouter.post('/reset-password', authController.resetPassword);
+authRouter.post('/register', authMiddleware, authController.register);
 authRouter.get('/me', authMiddleware, authController.me);
 authRouter.post('/2fa/setup', authMiddleware, authController.setupTwoFactor);
 authRouter.post('/2fa/confirm', authMiddleware, authController.confirmTwoFactor);
