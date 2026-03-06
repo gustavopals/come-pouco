@@ -24,6 +24,9 @@
       <a mat-button routerLink="/purchase-platforms" routerLinkActive="active-link" *ngIf="authService.isAdmin()">
         Plataforma de Compras
       </a>
+      <a mat-button routerLink="/admin/email-settings" routerLinkActive="active-link" *ngIf="authService.isAdmin()">
+        Email
+      </a>
     </nav>
 
     <button mat-flat-button color="warn" type="button" class="desktop-logout-btn" (click)="logout()">Sair</button>
@@ -87,6 +90,16 @@
       (click)="closeMobileMenu()"
     >
       Plataforma de Compras
+    </a>
+    <a
+      mat-button
+      class="mobile-nav-link"
+      routerLink="/admin/email-settings"
+      routerLinkActive="active-link"
+      *ngIf="authService.isAdmin()"
+      (click)="closeMobileMenu()"
+    >
+      Email
     </a>
     <button mat-flat-button color="warn" type="button" class="mobile-logout-btn" (click)="logout()">Sair</button>
   </nav>

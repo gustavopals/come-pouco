@@ -1,0 +1,106 @@
+<section class="page-shell">
+  <main class="page-main">
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Configuracao de e-mail do sistema</mat-card-title>
+        <mat-card-subtitle>Defina o provedor para envio de e-mails transacionais.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-progress-bar mode="indeterminate" *ngIf="isLoading$ | async"></mat-progress-bar>
+
+        <form [formGroup]="form" (ngSubmit)="save()" class="email-form">
+          <mat-form-field appearance="outline">
+            <mat-label>Provider</mat-label>
+            <mat-select formControlName="provider">
+              <mat-option *ngFor="let provider of providers" [value]="provider.value">{{ provider.label }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-slide-toggle formControlName="enabled">Servico habilitado</mat-slide-toggle>
+
+          <mat-form-field appearance="outline">
+            <mat-label>From Email</mat-label>
+            <input matInput type="email" formControlName="fromEmail" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>From Name</mat-label>
+            <input matInput type="text" formControlName="fromName" />
+          </mat-form-field>
+
+          <ng-container *ngIf="selectedProvider === 'smtp'">
+            <mat-form-field appearance="outline">
+              <mat-label>SMTP Host</mat-label>
+              <input matInput type="text" formControlName="smtpHost" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>SMTP Port</mat-label>
+              <input matInput type="number" formControlName="smtpPort" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>SMTP User</mat-label>
+              <input matInput type="text" formControlName="smtpUser" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>SMTP Password</mat-label>
+              <input matInput type="password" formControlName="smtpPassword" />
+            </mat-form-field>
+            <mat-slide-toggle formControlName="smtpSecure">SMTP Secure</mat-slide-toggle>
+          </ng-container>
+
+          <ng-container *ngIf="selectedProvider === 'resend'">
+            <mat-form-field appearance="outline">
+              <mat-label>Resend API Key</mat-label>
+              <input matInput type="password" formControlName="resendApiKey" />
+            </mat-form-field>
+          </ng-container>
+
+          <ng-container *ngIf="selectedProvider === 'sendgrid'">
+            <mat-form-field appearance="outline">
+              <mat-label>SendGrid API Key</mat-label>
+              <input matInput type="password" formControlName="sendgridApiKey" />
+            </mat-form-field>
+          </ng-container>
+
+          <ng-container *ngIf="selectedProvider === 'ses'">
+            <mat-form-field appearance="outline">
+              <mat-label>SES Access Key</mat-label>
+              <input matInput type="password" formControlName="sesAccessKey" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>SES Secret Key</mat-label>
+              <input matInput type="password" formControlName="sesSecretKey" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>SES Region</mat-label>
+              <input matInput type="text" formControlName="sesRegion" />
+            </mat-form-field>
+          </ng-container>
+
+          <ng-container *ngIf="selectedProvider === 'mailgun'">
+            <mat-form-field appearance="outline">
+              <mat-label>Mailgun API Key</mat-label>
+              <input matInput type="password" formControlName="mailgunApiKey" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Mailgun Domain</mat-label>
+              <input matInput type="text" formControlName="mailgunDomain" />
+            </mat-form-field>
+          </ng-container>
+
+          <div class="email-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="isSaving$ | async">
+              {{ (isSaving$ | async) ? 'Salvando...' : 'Salvar' }}
+            </button>
+            <button mat-stroked-button type="button" (click)="testSend()" [disabled]="isTesting$ | async">
+              {{ (isTesting$ | async) ? 'Testando...' : 'Testar envio' }}
+            </button>
+          </div>
+        </form>
+
+        <p class="status-block status-success" *ngIf="message$ | async as message">{{ message }}</p>
+        <p class="status-block status-error" *ngIf="error$ | async as error">{{ error }}</p>
+      </mat-card-content>
+    </mat-card>
+  </main>
+</section>

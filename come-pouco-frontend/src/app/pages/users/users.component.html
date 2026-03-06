@@ -85,53 +85,90 @@
           <mat-card-subtitle>{{ (totalUsers$ | async) || 0 }} registro(s)</mat-card-subtitle>
         </div>
         <div class="toolbar-spacer"></div>
-        <button mat-stroked-button type="button" (click)="loadUsers()">Atualizar</button>
+        <button mat-stroked-button type="button" class="header-refresh-btn" (click)="loadUsers()">Atualizar</button>
       </mat-card-header>
 
       <mat-card-content>
         <mat-progress-bar mode="indeterminate" *ngIf="(isLoading$ | async)"></mat-progress-bar>
 
         <ng-container *ngIf="(users$ | async) as users">
-        <div class="table-shell" *ngIf="!(isLoading$ | async) && users.length">
-          <table mat-table [dataSource]="users" class="data-table">
-            <ng-container matColumnDef="id">
-              <th mat-header-cell *matHeaderCellDef>ID</th>
-              <td mat-cell *matCellDef="let user"><span class="id-pill">#{{ user.id }}</span></td>
-            </ng-container>
+          <div class="table-shell" *ngIf="!(isLoading$ | async) && users.length">
+            <table mat-table [dataSource]="users" class="data-table">
+              <ng-container matColumnDef="id">
+                <th mat-header-cell *matHeaderCellDef>ID</th>
+                <td mat-cell *matCellDef="let user"><span class="id-pill">#{{ user.id }}</span></td>
+              </ng-container>
 
-            <ng-container matColumnDef="fullName">
-              <th mat-header-cell *matHeaderCellDef>Nome</th>
-              <td mat-cell *matCellDef="let user" class="strong-cell">{{ user.fullName }}</td>
-            </ng-container>
+              <ng-container matColumnDef="fullName">
+                <th mat-header-cell *matHeaderCellDef>Nome</th>
+                <td mat-cell *matCellDef="let user" class="strong-cell">{{ user.fullName }}</td>
+              </ng-container>
 
-            <ng-container matColumnDef="email">
-              <th mat-header-cell *matHeaderCellDef>E-mail</th>
-              <td mat-cell *matCellDef="let user">{{ user.email || '-' }}</td>
-            </ng-container>
+              <ng-container matColumnDef="email">
+                <th mat-header-cell *matHeaderCellDef>E-mail</th>
+                <td mat-cell *matCellDef="let user">{{ user.email || '-' }}</td>
+              </ng-container>
 
-            <ng-container matColumnDef="username">
-              <th mat-header-cell *matHeaderCellDef>Username</th>
-              <td mat-cell *matCellDef="let user">{{ user.username }}</td>
-            </ng-container>
+              <ng-container matColumnDef="username">
+                <th mat-header-cell *matHeaderCellDef>Username</th>
+                <td mat-cell *matCellDef="let user">{{ user.username }}</td>
+              </ng-container>
 
-            <ng-container matColumnDef="role">
-              <th mat-header-cell *matHeaderCellDef>Perfil</th>
-              <td mat-cell *matCellDef="let user">{{ roleLabel(user.role) }} / {{ companyRoleLabel(user.companyRole) }}</td>
-            </ng-container>
+              <ng-container matColumnDef="role">
+                <th mat-header-cell *matHeaderCellDef>Perfil</th>
+                <td mat-cell *matCellDef="let user">{{ roleLabel(user.role) }} / {{ companyRoleLabel(user.companyRole) }}</td>
+              </ng-container>
 
-            <ng-container matColumnDef="company">
-              <th mat-header-cell *matHeaderCellDef>Empresa</th>
-              <td mat-cell *matCellDef="let user">{{ companyLabel(user.companyId) }}</td>
-            </ng-container>
+              <ng-container matColumnDef="company">
+                <th mat-header-cell *matHeaderCellDef>Empresa</th>
+                <td mat-cell *matCellDef="let user">{{ companyLabel(user.companyId) }}</td>
+              </ng-container>
 
-            <ng-container matColumnDef="createdAt">
-              <th mat-header-cell *matHeaderCellDef>Criado em</th>
-              <td mat-cell *matCellDef="let user">{{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
-            </ng-container>
+              <ng-container matColumnDef="createdAt">
+                <th mat-header-cell *matHeaderCellDef>Criado em</th>
+                <td mat-cell *matCellDef="let user">{{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+              </ng-container>
 
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>Acoes</th>
-              <td mat-cell *matCellDef="let user" class="row-actions">
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Acoes</th>
+                <td mat-cell *matCellDef="let user" class="row-actions">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    color="primary"
+                    matTooltip="Resetar 2FA"
+                    (click)="resetTwoFactor(user)"
+                    aria-label="Resetar 2FA"
+                  >
+                    <mat-icon>restart_alt</mat-icon>
+                  </button>
+                  <button mat-stroked-button type="button" (click)="startEdit(user)">Editar</button>
+                  <button mat-flat-button color="warn" type="button" (click)="removeUser(user)">Excluir</button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+            </table>
+          </div>
+
+          <div class="mobile-users-list" *ngIf="!(isLoading$ | async) && users.length">
+            <article class="user-card" *ngFor="let user of users">
+              <header class="user-card-header">
+                <span class="id-pill">#{{ user.id }}</span>
+                <span class="user-created-at">{{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+              </header>
+
+              <p class="user-name">{{ user.fullName }}</p>
+
+              <div class="user-meta-grid">
+                <p><strong>Username:</strong> {{ user.username }}</p>
+                <p><strong>E-mail:</strong> {{ user.email || '-' }}</p>
+                <p><strong>Perfil:</strong> {{ roleLabel(user.role) }} / {{ companyRoleLabel(user.companyRole) }}</p>
+                <p><strong>Empresa:</strong> {{ companyLabel(user.companyId) }}</p>
+              </div>
+
+              <div class="mobile-row-actions">
                 <button
                   mat-icon-button
                   type="button"
@@ -142,17 +179,17 @@
                 >
                   <mat-icon>restart_alt</mat-icon>
                 </button>
-                <button mat-stroked-button type="button" (click)="startEdit(user)">Editar</button>
-                <button mat-flat-button color="warn" type="button" (click)="removeUser(user)">Excluir</button>
-              </td>
-            </ng-container>
+                <button mat-icon-button type="button" color="primary" matTooltip="Editar usuario" (click)="startEdit(user)" aria-label="Editar usuario">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button type="button" color="warn" matTooltip="Excluir usuario" (click)="removeUser(user)" aria-label="Excluir usuario">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </article>
+          </div>
 
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-          </table>
-        </div>
-
-        <p class="empty-state" *ngIf="!(isLoading$ | async) && !users.length">Nenhum usuario cadastrado.</p>
+          <p class="empty-state" *ngIf="!(isLoading$ | async) && !users.length">Nenhum usuario cadastrado.</p>
         </ng-container>
       </mat-card-content>
     </mat-card>

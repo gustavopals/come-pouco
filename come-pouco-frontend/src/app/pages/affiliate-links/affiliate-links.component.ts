@@ -1,4 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
+import { SelectionModel } from '@angular/cdk/collections';
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,7 +16,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { BehaviorSubject, Subject, catchError, combineLatest, finalize, map, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, Subject, catchError, combineLatest, finalize, firstValueFrom, map, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
 
 import { AffiliateLinksResultsDialogComponent } from './affiliate-links-results-dialog.component';
 import {
@@ -82,7 +83,7 @@ export class AffiliateLinksComponent implements OnInit {
   private readonly refresh$ = new Subject<void>();
 
   protected readonly displayedColumnsWithCreator: string[] = [
-    'id',
+    'select',
     'createdBy',
     'originalLink',
     'affiliateLink',
@@ -90,12 +91,14 @@ export class AffiliateLinksComponent implements OnInit {
     'actions'
   ];
   protected readonly displayedColumnsDefault: string[] = [
-    'id',
+    'select',
     'originalLink',
     'affiliateLink',
     'updatedAt',
     'actions'
   ];
+  protected readonly selection = new SelectionModel<number>(true, []);
+  protected visibleFilteredLinks: AffiliateLink[] = [];
 
   protected readonly processingResults$ = new BehaviorSubject<LinkProcessResult[]>([]);
   protected readonly isLoading$ = new BehaviorSubject<boolean>(false);
@@ -144,7 +147,14 @@ export class AffiliateLinksComponent implements OnInit {
     this.filtersForm.valueChanges.pipe(startWith(this.filtersForm.getRawValue())),
     this.employees$
   ]).pipe(
-    map(([links, filters, employees]) => this.applyHistoryFilters(links, filters, employees))
+    map(([links, filters, employees]) => this.applyHistoryFilters(links, filters, employees)),
+    tap((links) => {
+      this.visibleFilteredLinks = links;
+      const visibleIds = new Set(links.map((item) => item.id));
+      this.selection.selected
+        .filter((selectedId) => !visibleIds.has(selectedId))
+        .forEach((selectedId) => this.selection.deselect(selectedId));
+    })
   );
   protected readonly filteredTotalLinks$ = this.filteredLinks$.pipe(map((links) => links.length));
   protected readonly hasGeneratedShortLinks$ = this.processingResults$.pipe(
@@ -200,6 +210,7 @@ export class AffiliateLinksComponent implements OnInit {
   }
 
   protected loadLinks(): void {
+    this.selection.clear();
     this.refresh$.next();
   }
 
@@ -211,6 +222,7 @@ export class AffiliateLinksComponent implements OnInit {
       },
       employeeId: null
     });
+    this.selection.clear();
   }
 
   protected setTodayDateRange(): void {
@@ -218,6 +230,7 @@ export class AffiliateLinksComponent implements OnInit {
       start: this.getTodayStart(),
       end: this.getTodayEnd()
     });
+    this.selection.clear();
   }
 
   protected isTodayDateRangeSelected(): boolean {
@@ -293,6 +306,7 @@ export class AffiliateLinksComponent implements OnInit {
 
     this.affiliateLinkService.delete(link.id).subscribe({
       next: () => {
+        this.selection.deselect(link.id);
         this.successMessage$.next(`Registro #${link.id} removido com sucesso.`);
         this.refresh$.next();
       },
@@ -334,6 +348,87 @@ export class AffiliateLinksComponent implements OnInit {
     });
   }
 
+  protected isAllSelected(): boolean {
+    return this.visibleFilteredLinks.length > 0 && this.selection.selected.length === this.visibleFilteredLinks.length;
+  }
+
+  protected masterToggle(): void {
+    if (this.isAllSelected()) {
+      this.selection.clear();
+      return;
+    }
+
+    this.visibleFilteredLinks.forEach((row) => this.selection.select(row.id));
+  }
+
+  protected toggleRow(row: AffiliateLink): void {
+    this.selection.toggle(row.id);
+  }
+
+  protected checkboxLabel(row?: AffiliateLink): string {
+    if (!row) {
+      return `${this.isAllSelected() ? 'Desmarcar' : 'Selecionar'} todos`;
+    }
+
+    return `${this.selection.isSelected(row.id) ? 'Desmarcar' : 'Selecionar'} registro #${row.id}`;
+  }
+
+  protected copySelectedLinks(): void {
+    const selected = this.getSelectedRows();
+    if (!selected.length) {
+      return;
+    }
+
+    const content = selected.map((item) => item.affiliateLink).join('\n');
+    this.copyTextToClipboard(content).then((copied) => {
+      if (!copied) {
+        this.errorMessage$.next('Nao foi possivel copiar os links selecionados.');
+        return;
+      }
+
+      this.snackBar.open(`${selected.length} link(s) copiado(s).`, 'Fechar', {
+        duration: 2500
+      });
+    });
+  }
+
+  protected async removeSelectedLinks(): Promise<void> {
+    const selected = this.getSelectedRows();
+    if (!selected.length) {
+      return;
+    }
+
+    if (!confirm(`Excluir ${selected.length} registro(s) selecionado(s)?`)) {
+      return;
+    }
+
+    this.errorMessage$.next(null);
+    this.successMessage$.next(null);
+
+    const results = await Promise.allSettled(selected.map((item) => firstValueFrom(this.affiliateLinkService.delete(item.id))));
+    const deletedCount = results.filter((result) => result.status === 'fulfilled').length;
+    const failedCount = results.length - deletedCount;
+
+    if (deletedCount > 0) {
+      this.successMessage$.next(`${deletedCount} registro(s) removido(s) com sucesso.`);
+    }
+
+    if (failedCount > 0) {
+      this.errorMessage$.next(
+        failedCount === results.length
+          ? 'Nao foi possivel remover os registros selecionados.'
+          : `${failedCount} registro(s) nao puderam ser removido(s).`
+      );
+    }
+
+    this.selection.clear();
+    this.refresh$.next();
+  }
+
+  protected clearSelection(): void {
+    this.selection.clear();
+  }
+
   protected clearHistory(): void {
     if (!confirm('Deseja limpar todo o historico visivel para seu perfil?')) {
       return;
@@ -344,6 +439,7 @@ export class AffiliateLinksComponent implements OnInit {
 
     this.affiliateLinkService.clearAll().subscribe({
       next: ({ deletedCount }) => {
+        this.selection.clear();
         this.successMessage$.next(`${deletedCount} registro(s) removido(s) do historico.`);
         this.refresh$.next();
       },
@@ -430,6 +526,7 @@ export class AffiliateLinksComponent implements OnInit {
                 this.form.controls.originalLinksText.markAsPristine();
                 this.form.controls.originalLinksText.markAsUntouched();
                 this.form.controls.originalLinksText.updateValueAndValidity();
+                this.selection.clear();
                 this.refresh$.next();
 
                 this.dialog.open(AffiliateLinksResultsDialogComponent, {
@@ -739,5 +836,9 @@ export class AffiliateLinksComponent implements OnInit {
 
     document.body.removeChild(textArea);
     return copied;
+  }
+
+  private getSelectedRows(): AffiliateLink[] {
+    return this.visibleFilteredLinks.filter((item) => this.selection.isSelected(item.id));
   }
 }

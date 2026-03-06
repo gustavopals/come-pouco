@@ -32,6 +32,19 @@ interface DisableTwoFactorBody {
   code?: string;
 }
 
+interface ForgotPasswordBody {
+  email?: string;
+}
+
+interface ResetPasswordBody {
+  token?: string;
+  newPassword?: string;
+}
+
+const FORGOT_PASSWORD_RATE_LIMIT_MAX = 5;
+const FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const forgotPasswordBuckets = new Map<string, number[]>();
+
 const trustedDeviceCookieOptions = {
   httpOnly: true,
   secure: env.appEnv === 'production',
@@ -56,6 +69,27 @@ const parsePositiveId = (idRaw: string): number => {
   }
 
   return id;
+};
+
+const buildForgotRateLimitKey = (req: Request, email: string): string => {
+  const ip = req.ip || req.headers['x-forwarded-for']?.toString().split(',')[0]?.trim() || 'unknown';
+  return `${ip}::${email.trim().toLowerCase()}`;
+};
+
+const isForgotRateLimited = (key: string): boolean => {
+  const now = Date.now();
+  const windowStart = now - FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS;
+  const existing = forgotPasswordBuckets.get(key) ?? [];
+  const inWindow = existing.filter((timestamp) => timestamp >= windowStart);
+
+  if (inWindow.length >= FORGOT_PASSWORD_RATE_LIMIT_MAX) {
+    forgotPasswordBuckets.set(key, inWindow);
+    return true;
+  }
+
+  inWindow.push(now);
+  forgotPasswordBuckets.set(key, inWindow);
+  return false;
 };
 
 const login = async (
@@ -137,6 +171,52 @@ const register = async (
 
     const response = await authService.register({ fullName, username, email, password });
     res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const forgotPassword = async (
+  req: Request<Record<string, never>, unknown, ForgotPasswordBody>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const normalizedEmail = (req.body.email || '').trim().toLowerCase();
+
+    if (!normalizedEmail.length) {
+      throw new HttpError(400, 'E-mail e obrigatorio.', 'AUTH_INVALID_REQUEST');
+    }
+
+    const key = buildForgotRateLimitKey(req, normalizedEmail);
+
+    if (isForgotRateLimited(key)) {
+      res.status(429).json({ message: 'Se o e-mail estiver cadastrado, enviaremos instrucoes.' });
+      return;
+    }
+
+    await authService.forgotPassword({ email: normalizedEmail, requesterIp: req.ip });
+    res.status(200).json({ message: 'Se o e-mail estiver cadastrado, enviaremos instrucoes.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resetPassword = async (
+  req: Request<Record<string, never>, unknown, ResetPasswordBody>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const token = (req.body.token || '').trim();
+    const newPassword = req.body.newPassword || '';
+
+    if (!token || !newPassword) {
+      throw new HttpError(400, 'token e newPassword sao obrigatorios.', 'AUTH_INVALID_REQUEST');
+    }
+
+    await authService.resetPassword({ token, newPassword });
+    res.status(200).json({ message: 'Senha redefinida com sucesso.' });
   } catch (error) {
     next(error);
   }
@@ -250,10 +330,12 @@ export {
   adminResetTwoFactor,
   confirmTwoFactor,
   disableTwoFactor,
+  forgotPassword,
   listTrustedDevices,
   login,
   loginTwoFactor,
   me,
+  resetPassword,
   register,
   revokeTrustedDevice,
   setupTwoFactor

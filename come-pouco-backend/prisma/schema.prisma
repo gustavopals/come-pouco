@@ -33,6 +33,7 @@ enum PurchasePlatformType {
 model Company {
   id                   Int               @id @default(autoincrement())
   name                 String            @unique @db.VarChar(160)
+  historyRetentionDays Int               @default(30) @map("history_retention_days")
   shopeePlatformId     Int?              @map("shopee_platform_id")
   shopeePlatformTestId Int?              @map("shopee_platform_test_id")
   shopeePlatformProdId Int?              @map("shopee_platform_prod_id")
@@ -71,6 +72,7 @@ model User {
   apiRequestLogs         ApiRequestLog[]
   twoFactorBackupCodes   TwoFactorBackupCode[]
   trustedDevices         TrustedDevice[]
+  passwordResetTokens    PasswordResetToken[]
 
   @@map("users")
 }
@@ -118,7 +120,22 @@ model AffiliateLink {
   company         Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
   createdByUser   User?     @relation("affiliate_links_created_by", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
+  @@index([companyId, createdAt])
   @@map("affiliate_links")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    Int      @map("user_id")
+  tokenHash String   @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model PurchasePlatform {
@@ -176,4 +193,28 @@ model ApiRequestLog {
   @@index([mode])
   @@index([createdAt])
   @@map("api_request_logs")
+}
+
+model SystemEmailConfig {
+  id             Int      @id @default(1)
+  provider       String   @db.VarChar(20)
+  fromEmail      String   @map("from_email") @db.VarChar(255)
+  fromName       String?  @map("from_name") @db.VarChar(160)
+  smtpHost       String?  @map("smtp_host") @db.VarChar(255)
+  smtpPort       Int?     @map("smtp_port")
+  smtpUser       String?  @map("smtp_user") @db.VarChar(255)
+  smtpPassword   String?  @map("smtp_password")
+  smtpSecure     Boolean? @default(false) @map("smtp_secure")
+  resendApiKey   String?  @map("resend_api_key")
+  sendgridApiKey String?  @map("sendgrid_api_key")
+  sesAccessKey   String?  @map("ses_access_key")
+  sesSecretKey   String?  @map("ses_secret_key")
+  sesRegion      String?  @map("ses_region") @db.VarChar(100)
+  mailgunApiKey  String?  @map("mailgun_api_key")
+  mailgunDomain  String?  @map("mailgun_domain") @db.VarChar(255)
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("system_email_configs")
 }

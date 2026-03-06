@@ -27,7 +27,24 @@
         <button mat-flat-button color="primary" type="submit" [disabled]="vm.isSubmitting">
           {{ vm.isSubmitting ? 'Entrando...' : 'Entrar' }}
         </button>
+
+        <a mat-stroked-button routerLink="/forgot-password">Esqueci minha senha</a>
       </form>
+
+      <div class="login-help" *ngIf="!vm.tempToken">
+        <span class="login-help-text">Nao tem conta? Gostaria de testar seu gerenciador de links afiliados?</span>
+        <a
+          mat-stroked-button
+          color="primary"
+          class="login-whatsapp-btn"
+          href="https://wa.me/5542988086146?text=Ol%C3%A1%2C%20gostaria%20de%20testar%20o%20gerenciador%20de%20links%20afiliados"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <mat-icon>chat</mat-icon>
+          WhatsApp
+        </a>
+      </div>
 
       <form *ngIf="vm.tempToken" [formGroup]="twoFactorForm" (ngSubmit)="submit(vm)" class="auth-form">
         <mat-form-field appearance="outline">

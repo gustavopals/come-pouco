@@ -6,6 +6,7 @@
   display: grid;
   gap: var(--panel-grid-gap);
   grid-template-columns: minmax(var(--panel-form-col-min), var(--panel-form-col-max)) 1fr;
+  align-items: start;
 }
 
 .form-card,
@@ -35,6 +36,16 @@ mat-card-header {
   gap: var(--panel-actions-gap);
   flex-wrap: wrap;
   padding-top: 0.35rem;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.mobile-users-list {
+  display: none;
 }
 
 .table-shell {
@@ -79,9 +90,72 @@ mat-card-header {
 }
 
 .row-actions {
+  align-items: center;
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.row-actions .mat-mdc-icon-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.user-card {
+  border: 1px solid rgba(21, 66, 102, 0.14);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.user-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.user-created-at {
+  font-size: 0.82rem;
+  color: #4b5563;
+  text-align: right;
+}
+
+.user-name {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+  font-weight: 700;
+  color: #123f61;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.user-meta-grid {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.user-meta-grid p {
+  margin: 0;
+  color: #1f2937;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.mobile-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.mobile-row-actions .mat-mdc-icon-button {
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .empty-state {
@@ -97,5 +171,62 @@ mat-card-header {
 
   .data-table {
     min-width: 720px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-shell,
+  .page-main,
+  .admin-grid,
+  .form-card,
+  .table-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .admin-grid {
+    gap: 0.9rem;
+  }
+
+  mat-card-header {
+    padding-bottom: 0.4rem;
+  }
+
+  .table-header {
+    flex-wrap: wrap;
+  }
+
+  .table-header > :first-child {
+    width: 100%;
+  }
+
+  .toolbar-spacer {
+    display: none;
+  }
+
+  .header-refresh-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .entity-actions {
+    width: 100%;
+  }
+
+  .entity-actions .mat-mdc-button-base {
+    flex: 1 1 100%;
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .table-shell {
+    display: none;
+  }
+
+  .mobile-users-list {
+    display: grid;
+    gap: 0.7rem;
+    margin-top: 0.9rem;
   }
 }

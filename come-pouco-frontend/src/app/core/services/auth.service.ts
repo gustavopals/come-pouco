@@ -44,6 +44,14 @@ export class AuthService {
       .pipe(tap((response) => this.setSession(response)));
   }
 
+  forgotPassword(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/forgot-password`, { email });
+  }
+
+  resetPassword(token: string, newPassword: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/reset-password`, { token, newPassword });
+  }
+
   me(): Observable<{ user: AuthUser }> {
     return this.http.get<{ user: AuthUser }>(`${environment.apiUrl}/auth/me`).pipe(
       tap(({ user }) => {

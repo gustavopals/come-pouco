@@ -41,6 +41,24 @@
   min-height: 44px;
 }
 
+.login-help {
+  margin-top: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.login-help-text {
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.login-whatsapp-btn {
+  min-height: 44px;
+}
+
 .credentials-hint {
   margin-top: 1rem;
   padding: 0.9rem;
@@ -52,4 +70,16 @@
 
 mat-card-actions {
   padding: 0 1rem 1rem;
+}
+
+@media (max-width: 600px) {
+  .login-help {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .login-whatsapp-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }

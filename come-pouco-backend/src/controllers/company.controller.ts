@@ -1,10 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 
+import { ALLOWED_HISTORY_RETENTION_DAYS } from '../constants/company.constants';
 import * as companyService from '../services/company.service';
 import HttpError from '../utils/httpError';
 
 interface CreateCompanyBody {
   name?: string;
+  historyRetentionDays?: number;
   shopeePlatformId?: number | null;
   shopeePlatformTestId?: number | null;
   shopeePlatformProdId?: number | null;
@@ -13,6 +15,7 @@ interface CreateCompanyBody {
 
 interface UpdateCompanyBody {
   name?: string;
+  historyRetentionDays?: number;
   shopeePlatformId?: number | null;
   shopeePlatformTestId?: number | null;
   shopeePlatformProdId?: number | null;
@@ -49,6 +52,27 @@ const parseShopeeMode = (value: unknown): 'TEST' | 'PROD' | undefined => {
   throw new HttpError(400, 'Modo Shopee invalido. Use TEST ou PROD.');
 };
 
+const parseHistoryRetentionDays = (value: unknown): number | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new HttpError(400, 'historyRetentionDays invalido.');
+  }
+
+  if (!ALLOWED_HISTORY_RETENTION_DAYS.includes(parsed)) {
+    throw new HttpError(
+      400,
+      `historyRetentionDays invalido. Valores permitidos: ${ALLOWED_HISTORY_RETENTION_DAYS.join(', ')}.`
+    );
+  }
+
+  return parsed;
+};
+
 const parseCompanyId = (value: string): number => {
   const id = Number(value);
 
@@ -75,6 +99,7 @@ const createCompany = async (
 ): Promise<void> => {
   try {
     const { name } = req.body;
+    const historyRetentionDays = parseHistoryRetentionDays(req.body.historyRetentionDays);
     const shopeePlatformId = parseShopeePlatformId(req.body.shopeePlatformId);
     const shopeePlatformTestId = parseShopeePlatformId(req.body.shopeePlatformTestId);
     const shopeePlatformProdId = parseShopeePlatformId(req.body.shopeePlatformProdId);
@@ -86,6 +111,7 @@ const createCompany = async (
 
     const company = await companyService.createCompany({
       name,
+      historyRetentionDays,
       shopeePlatformId,
       shopeePlatformTestId,
       shopeePlatformProdId,
@@ -105,6 +131,7 @@ const updateCompany = async (
   try {
     const id = parseCompanyId(req.params.id);
     const { name } = req.body;
+    const historyRetentionDays = parseHistoryRetentionDays(req.body.historyRetentionDays);
     const shopeePlatformId = parseShopeePlatformId(req.body.shopeePlatformId);
     const shopeePlatformTestId = parseShopeePlatformId(req.body.shopeePlatformTestId);
     const shopeePlatformProdId = parseShopeePlatformId(req.body.shopeePlatformProdId);
@@ -112,6 +139,7 @@ const updateCompany = async (
 
     const company = await companyService.updateCompany(id, {
       name,
+      historyRetentionDays,
       shopeePlatformId,
       shopeePlatformTestId,
       shopeePlatformProdId,

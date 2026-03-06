@@ -73,6 +73,11 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "allowedHosts": [
+              "hypophyseal-lorita-unnihilistic.ngrok-free.dev"
+            ]
+          },
           "configurations": {
             "production": {
               "buildTarget": "come-pouco-frontend:build:production"

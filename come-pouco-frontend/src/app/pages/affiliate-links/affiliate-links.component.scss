@@ -179,6 +179,30 @@ mat-form-field.auto-subid1-active {
   background: #fff;
 }
 
+.bulk-actions-bar {
+  margin-top: 0.9rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(20, 83, 116, 0.2);
+  border-radius: 12px;
+  background: rgba(224, 242, 254, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.bulk-actions-count {
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+.bulk-actions-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .data-table {
   width: 100%;
   min-width: 980px;
@@ -209,6 +233,29 @@ mat-form-field.auto-subid1-active {
   background: #ffe6cd;
   color: #7b3a0d;
   font-weight: 700;
+}
+
+.id-pill-inline {
+  padding: 0.1rem 0.48rem;
+  font-size: 0.76rem;
+}
+
+.original-link-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.select-column-header,
+.select-column-cell {
+  width: 64px;
+  max-width: 64px;
+}
+
+.select-column-cell .mat-mdc-checkbox,
+.select-column-header .mat-mdc-checkbox {
+  display: inline-flex;
+  padding: 0.2rem;
 }
 
 .thumb {
@@ -344,13 +391,11 @@ mat-form-field.auto-subid1-active {
   }
 
   .table-shell {
-    display: none;
+    display: block;
   }
 
   .mobile-history-list {
-    display: grid;
-    gap: 0.7rem;
-    margin-top: 0.9rem;
+    display: none;
   }
 
   .history-card {
@@ -421,6 +466,15 @@ mat-form-field.auto-subid1-active {
   .history-link-actions .mat-mdc-icon-button {
     min-height: 44px;
     min-width: 44px;
+  }
+
+  .bulk-actions-buttons {
+    width: 100%;
+  }
+
+  .bulk-actions-buttons .mat-mdc-button-base {
+    flex: 1 1 100%;
+    width: 100%;
   }
 
 }

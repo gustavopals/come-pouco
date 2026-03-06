@@ -161,11 +161,36 @@
         </div>
 
         <ng-container *ngIf="(filteredLinks$ | async) as links">
+          <div class="bulk-actions-bar" *ngIf="selection.selected.length > 0">
+            <span class="bulk-actions-count">{{ selection.selected.length }} selecionado(s)</span>
+            <div class="bulk-actions-buttons">
+              <button mat-stroked-button type="button" (click)="copySelectedLinks()">Copiar selecionados</button>
+              <button mat-flat-button color="warn" type="button" (click)="removeSelectedLinks()">Excluir selecionados</button>
+              <button mat-button type="button" (click)="clearSelection()">Limpar selecao</button>
+            </div>
+          </div>
+
           <div class="table-shell" *ngIf="!(isLoading$ | async) && links.length">
             <table mat-table [dataSource]="links" class="data-table">
-              <ng-container matColumnDef="id">
-                <th mat-header-cell *matHeaderCellDef>ID</th>
-                <td mat-cell *matCellDef="let link"><span class="id-pill">#{{ link.id }}</span></td>
+              <ng-container matColumnDef="select">
+                <th mat-header-cell *matHeaderCellDef class="select-column-header">
+                  <mat-checkbox
+                    color="primary"
+                    (change)="masterToggle()"
+                    [checked]="isAllSelected()"
+                    [indeterminate]="selection.hasValue() && !isAllSelected()"
+                    [aria-label]="checkboxLabel()"
+                  ></mat-checkbox>
+                </th>
+                <td mat-cell *matCellDef="let link" class="select-column-cell">
+                  <mat-checkbox
+                    color="primary"
+                    (click)="$event.stopPropagation()"
+                    (change)="toggleRow(link)"
+                    [checked]="selection.isSelected(link.id)"
+                    [aria-label]="checkboxLabel(link)"
+                  ></mat-checkbox>
+                </td>
               </ng-container>
 
               <ng-container matColumnDef="createdBy">
@@ -178,7 +203,10 @@
               <ng-container matColumnDef="originalLink">
                 <th mat-header-cell *matHeaderCellDef>Link original</th>
                 <td mat-cell *matCellDef="let link">
-                  <a [href]="link.originalLink" target="_blank" rel="noreferrer">Abrir</a>
+                  <div class="original-link-inline">
+                    <span class="id-pill id-pill-inline">#{{ link.id }}</span>
+                    <a [href]="link.originalLink" target="_blank" rel="noreferrer">Abrir</a>
+                  </div>
                 </td>
               </ng-container>
 

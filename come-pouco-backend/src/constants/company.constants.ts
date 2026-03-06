@@ -1,0 +1,3 @@
+const ALLOWED_HISTORY_RETENTION_DAYS: ReadonlyArray<number> = [7, 15, 30, 60, 90, 180, 365];
+
+export { ALLOWED_HISTORY_RETENTION_DAYS };
