@@ -5,6 +5,7 @@ import requireRole from '../middlewares/role.middleware';
 import adminRouter from './admin.routes';
 import affiliateLinkRouter from './affiliate-link.routes';
 import authRouter from './auth.routes';
+import dashboardRouter from './dashboard.routes';
 import integrationRouter from './integration.routes';
 import purchasePlatformRouter from './purchase-platform.routes';
 import companyRouter from './company.routes';
@@ -17,6 +18,7 @@ router.get('/health', (_req, res) => {
 });
 
 router.use('/auth', authRouter);
+router.use('/dashboard', authMiddleware, dashboardRouter);
 router.use('/users', authMiddleware, userRouter);
 router.use('/companies', authMiddleware, requireRole('ADMIN'), companyRouter);
 router.use('/affiliate-links', authMiddleware, affiliateLinkRouter);

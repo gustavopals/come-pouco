@@ -42,5 +42,35 @@
         <a mat-flat-button color="primary" routerLink="/affiliate-links">Ir para afiliados</a>
       </mat-card-actions>
     </mat-card>
+
+    <mat-card class="production-health-card" appearance="outlined" *ngIf="(productionSummary$ | async) as summary">
+      <mat-card-header>
+        <mat-card-title>Saude da Producao</mat-card-title>
+        <mat-card-subtitle>Indicadores de desempenho de links</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="summary-container">
+          <div class="main-indicator">
+            <span class="label">Total de Hoje</span>
+            <span class="value highlighted">{{ summary.todayCount }}</span>
+          </div>
+          
+          <div class="secondary-indicators">
+            <div class="indicator">
+              <span class="label">Media (7 dias)</span>
+              <span class="value">{{ summary.avgLast7Days }}</span>
+            </div>
+            <div class="indicator">
+              <span class="label">Maxima (7 dias)</span>
+              <span class="value">{{ summary.maxLast7Days }}</span>
+            </div>
+            <div class="indicator">
+              <span class="label">Minima (7 dias)</span>
+              <span class="value">{{ summary.minLast7Days }}</span>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
   </main>
 </section>

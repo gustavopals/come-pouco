@@ -9,6 +9,7 @@ import { map } from 'rxjs/operators';
 
 import { AuthService } from '../../core/services/auth.service';
 import { CompanyService } from '../../core/services/company.service';
+import { DashboardService, ProductionSummary } from '../../core/services/dashboard.service';
 
 @Component({
   selector: 'app-home',
@@ -26,10 +27,12 @@ import { CompanyService } from '../../core/services/company.service';
 export class HomeComponent implements OnInit {
   protected readonly errorMessage$ = new BehaviorSubject<string | null>(null);
   protected companyName$: Observable<string | null> = of(null);
+  protected productionSummary$ = new BehaviorSubject<ProductionSummary | null>(null);
 
   constructor(
     protected readonly authService: AuthService,
-    private readonly companyService: CompanyService
+    private readonly companyService: CompanyService,
+    private readonly dashboardService: DashboardService
   ) {}
 
   ngOnInit(): void {
@@ -37,7 +40,10 @@ export class HomeComponent implements OnInit {
 
     if (!user) {
       this.authService.me().subscribe({
-        next: () => this.setupCompanyNameStream(),
+        next: () => {
+          this.setupCompanyNameStream();
+          this.loadProductionSummary();
+        },
         error: () => {
           this.errorMessage$.next('Falha ao carregar dados do usuario.');
           this.authService.logout();
@@ -47,6 +53,14 @@ export class HomeComponent implements OnInit {
     }
 
     this.setupCompanyNameStream();
+    this.loadProductionSummary();
+  }
+
+  private loadProductionSummary(): void {
+    this.dashboardService.getProductionSummary().subscribe({
+      next: (summary) => this.productionSummary$.next(summary),
+      error: () => this.errorMessage$.next('Erro ao carregar resumo de producao.')
+    });
   }
 
   private setupCompanyNameStream(): void {

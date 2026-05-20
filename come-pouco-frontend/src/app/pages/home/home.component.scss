@@ -1,31 +1,75 @@
-:host {
-  display: block;
-}
-
-.welcome-card {
-  border-radius: 20px;
-  background: linear-gradient(135deg, #f8fffd, #ffffff 28%, #fff7ef);
-}
-
-mat-card-content {
-  display: grid;
-  gap: 1rem;
-}
-
-mat-card-actions {
+.page-shell {
+  padding: 24px;
   display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  justify-content: center;
 }
 
-mat-chip-set {
+.page-main {
+  width: 100%;
+  max-width: 800px;
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 24px;
 }
 
-mat-chip {
-  background: #e8fff7;
-  border: 1px solid rgba(14, 165, 164, 0.25);
-  color: #0f2942;
+.welcome-card, .production-health-card {
+  width: 100%;
+}
+
+.status-error {
+  color: #f44336;
+  margin-top: 16px;
+  font-weight: 500;
+}
+
+.summary-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 16px 0;
+}
+
+.main-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  .label {
+    font-size: 1.1rem;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .value.highlighted {
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: #3f51b5;
+  }
+}
+
+.secondary-indicators {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  padding-top: 24px;
+
+  .indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 120px;
+
+    .label {
+      font-size: 0.9rem;
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    .value {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+  }
 }
