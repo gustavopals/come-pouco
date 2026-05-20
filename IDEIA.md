@@ -1285,3 +1285,565 @@ Cada Subtask é redigida no infinitivo ("Adicionar X", "Configurar Y") e idealme
 6. Task 3.12 — analytics (depende de ter conversões reais)
 7. Tasks 3.13 + 3.14 — retenção/observabilidade + testes + lançamento
 
+---
+
+### Fase 4 — Landing Page Institucional (Marketing Site)
+
+> **🎯 Esta fase deve ser executada com Claude Opus 4.7 + skill de frontend design.** A entrega é visual antes de tudo — copywriting, hierarquia, micro-animações, polimento — e exige o modelo mais capaz combinado com a habilidade especializada em design para sair com qualidade de referência (Linear, Vercel, Stripe, Notion).
+
+**Objetivo da fase**: criar um **site institucional/marketing** novo no monorepo, separado da aplicação autenticada, com missão única: **converter visitante em lead/cliente**. Apresenta a proposta de valor da Come Pouco (gestão profissional de afiliados Shopee + módulo público Alli + multi-tenant), constrói confiança e captura interesse via formulário ou planos. Visual moderno, mobile-first, performance impecável (Lighthouse 100/100 como meta), SEO bem feito desde o dia 1.
+
+**Critério de "pronta"**:
+- Novo projeto `come-pouco-landing/` rodando em Astro + Tailwind v4, com `npm run dev:landing` no root
+- Domínio próprio servindo a landing (`come-pouco.com.br` raiz; app continua em `app.come-pouco.com.br`)
+- Todas as seções implementadas e revisadas: Hero, Trust strip, Features, Showcase Alli, Como funciona, Segurança, Pricing (3 tiers), FAQ, CTA final, Footer
+- Captura de lead funcional integrada com `SystemEmailConfig` existente (reusa transporter já configurado)
+- SEO: sitemap.xml, robots.txt, meta tags por página, schema.org `Organization`/`Product`/`FAQPage`, Open Graph com imagem dinâmica
+- Dark mode com persistência + respeito a `prefers-color-scheme`
+- Lighthouse: Performance ≥ 95, A11y ≥ 95, Best Practices ≥ 95, SEO = 100 (mobile e desktop)
+- Tamanho de JS enviado ao cliente < 30kb gzipped (Astro shipping zero JS por padrão, ilhas mínimas)
+- Auditoria WCAG AA com axe-core: 0 violações
+- Analytics privacy-first ativo (Plausible ou Umami self-hosted)
+- Documentação: `come-pouco-landing/README.md` com como rodar, criar nova seção, editar conteúdo
+
+**Stack escolhida**: Astro 5 + Tailwind v4 + Lucide icons + Motion One (animações leves) + MDX (para blog futuro) + Resend (envio do form de lead) + Plausible/Umami (analytics privacy-first).
+
+**Decisões macro tomadas** (alinhadas com usuário):
+- **Stack**: Astro + Tailwind v4 (HTML estático, zero-JS por padrão, ilhas onde precisa)
+- **Idioma**: PT-BR apenas no lançamento. Estrutura preparada pra i18n futuro, mas sem rotas `/pt` `/en` por enquanto.
+- **Pricing**: 3 tiers públicos (**Free / Pro / Enterprise**) com preço visível em Free e Pro; Enterprise "Fale conosco".
+- **Domínio**: landing em `come-pouco.com.br` (raiz); app autenticada em `app.come-pouco.com.br`. Módulo Alli (Fase 3) continua em `app.come-pouco.com.br/p/<slug>`.
+- **Identidade visual**: reusa tokens da Fase 1 (paleta, tipografia Manrope, raios, sombras) mas com **aesthetic de marketing** (mais respiro, mais hero visual, mais movimento sutil) — versão "marketing" do design system, não cópia do app.
+- **Captura de lead**: integra com `SystemEmailConfig` da app existente via endpoint compartilhado no backend (`POST /api/public/leads`). Sem provider externo (Formspree, HubSpot) por enquanto.
+
+**Não-escopo desta fase** (explicitamente adiado):
+- Blog (estrutura MDX pronta, mas sem posts iniciais — fase futura)
+- Casos de uso reais / depoimentos com fotos (usa placeholders ou logos genéricos por enquanto)
+- A/B testing framework
+- CMS (Sanity, Strapi) — conteúdo vive em `.mdx` no repo, edição via PR
+- Live chat (Intercom, Crisp)
+- Páginas legais completas (Política de Privacidade e Termos: páginas placeholder linkadas no footer; revisão jurídica fica fora desta fase)
+- Versão inglês
+
+**Princípios de design da landing** (referências e racional):
+- **Linear** — clareza brutal, tipografia bem trabalhada, dark mode lindo, hero focado
+- **Vercel** — gradientes sutis, performance como diferencial visível, Lighthouse score público
+- **Stripe** — autoridade técnica, ilustrações conceituais, código no hero
+- **Notion** — emocional sem perder utilidade, micro-animações pontuais
+- Aplicação: nosso visual = **clareza Linear + sutileza Vercel + autoridade Stripe**, em PT-BR com pegada brasileira (sem ser cafona). Evitar gradiente arco-íris, evitar muita ilustração 3D, evitar copy infantilizada.
+
+---
+
+#### Task 4.1 — Setup do projeto Astro no monorepo
+
+- **Objetivo**: criar `come-pouco-landing/` como terceiro pacote do monorepo (irmão de `come-pouco-backend` e `come-pouco-frontend`), com Astro 5 + Tailwind v4 configurados, tokens da Fase 1 importados, scripts `dev/build` integrados aos do root.
+- **Critério de aceite**:
+  - Diretório `come-pouco-landing/` criado com `package.json`, `astro.config.mjs`, `tailwind.config.ts`, `tsconfig.json`
+  - Scripts no `package.json` root: `dev:landing`, `build:landing`, `install:landing` (este último entra no `postinstall` de root)
+  - `npm run dev` (root) ganha opção `dev:all` que sobe backend + frontend + landing em paralelo (concurrently)
+  - Tokens da Fase 1 importados como CSS variables compartilhadas (`@cp/tokens` ou simples symlink/copy)
+  - Hot reload funcionando, `http://localhost:4321` abre uma página "Em construção" com tipografia Manrope aplicada
+  - `npm run build:landing` produz output estático em `come-pouco-landing/dist/`
+  - `.gitignore` correto, `tsconfig` paths definidos
+- **Dependências**: idealmente Fase 1 Task 1.1 (tokens definidos)
+- **Notas técnicas**: Astro 5 traz `astro:env` para vars tipadas, `astro:assets` para image optimization, `@astrojs/sitemap` e `@astrojs/mdx` como integrações oficiais. Tailwind v4 usa `@import "tailwindcss"` direto no CSS (config-less por padrão). Tema dark via `darkMode: 'class'`. Concurrently já está no root (Fase 0).
+
+**Subtasks**:
+- [ ] **4.1.1** — `npm create astro@latest come-pouco-landing -- --template minimal --typescript strict --tailwind`
+- [ ] **4.1.2** — Configurar Tailwind v4: importar `@cp/tokens.css` (CSS vars da Fase 1), `darkMode: 'class'`, paths corretos
+- [ ] **4.1.3** — Adicionar fontes Manrope variable via `@fontsource-variable/manrope` (mesma da Fase 1)
+- [ ] **4.1.4** — Configurar `astro.config.mjs`: site URL (`https://come-pouco.com.br`), integrations `@astrojs/sitemap`, `@astrojs/mdx`, `@astrojs/icon` (Lucide via `lucide-astro`)
+- [ ] **4.1.5** — Adicionar scripts no `package.json` root: `dev:landing`, `build:landing`, `install:landing` (incluir no `postinstall`)
+- [ ] **4.1.6** — Adicionar script `dev:all` rodando backend + frontend + landing com concurrently
+- [ ] **4.1.7** — Criar `come-pouco-landing/README.md` com instruções (dev, build, estrutura de pastas)
+- [ ] **4.1.8** — Criar `come-pouco-landing/.env.example` com `PUBLIC_SITE_URL`, `PUBLIC_PLAUSIBLE_DOMAIN`, `LEAD_API_URL`
+
+---
+
+#### Task 4.2 — Brand kit e identidade visual da marca
+
+- **Objetivo**: definir o sistema visual **da marca Come Pouco** (não confundir com o design system da aplicação autenticada). Logo, paleta de marketing, ilustrações conceituais, fotografia/mockups, tom de voz.
+- **Critério de aceite**:
+  - Logo Come Pouco em SVG (versão completa + monograma) — preto, branco, gradient
+  - Favicon completo (`favicon.svg`, `apple-touch-icon.png` 180×180, `manifest.json`)
+  - Paleta de marketing documentada em `docs/brand.md`: cor primária, secundárias, neutros, semânticos. Pode reusar 100% Fase 1 ou adicionar 1-2 cores específicas de marketing (gradiente do hero)
+  - Conjunto de **ilustrações conceituais** definido: 3-5 ilustrações simples e geométricas (estilo abstrato/isométrico leve, não 3D pesado) cobrindo: "afiliados", "automação", "dashboard", "segurança", "público convertendo"
+  - Mockups do app: 3 screenshots-chave do admin renderizados em frames (browser frame para desktop, phone frame para mobile)
+  - Tom de voz documentado: direto, técnico-acessível, brasileiro sem regionalismos, 2ª pessoa ("você") — exemplos de "como falar" e "como NÃO falar"
+- **Dependências**: Task 4.1
+- **Notas técnicas**: ilustrações podem vir de bibliotecas open-source (unDraw, Open Peeps, Reshot) **com ajuste de cor** pra paleta — evitar visual genérico. Mockups de produto devem ser **da app real**, não inventados — capturar screenshots de telas finalizadas pós-Fase 1. Frames de mockup: usar componentes Astro simples (CSS puro), não plugin pesado.
+
+**Subtasks**:
+- [ ] **4.2.1** — Criar logo Come Pouco em SVG (wordmark + ícone), 3 variações (color, mono dark, mono light)
+- [ ] **4.2.2** — Gerar favicons completos (favicon.ico, .svg, apple-touch-icon, manifest)
+- [ ] **4.2.3** — Documentar paleta de marketing em `come-pouco-landing/docs/brand.md`
+- [ ] **4.2.4** — Selecionar/produzir 3-5 ilustrações conceituais SVG (estilo geométrico leve)
+- [ ] **4.2.5** — Capturar 3 screenshots do app pós-Fase 1 (Dashboard, Affiliate Links, Alli admin) e renderizar em browser frame
+- [ ] **4.2.6** — Capturar 1 screenshot mobile do módulo Alli público em phone frame
+- [ ] **4.2.7** — Documentar tom de voz e copywriting em `come-pouco-landing/docs/voice.md`
+- [ ] **4.2.8** — Adicionar todos os assets em `come-pouco-landing/public/` ou `src/assets/` (decidir conforme uso)
+
+---
+
+#### Task 4.3 — Design system de componentes Astro
+
+- **Objetivo**: criar a biblioteca de componentes Astro reutilizáveis que vai compor toda a landing — botões, cards, badges, container, seção, gradient blob, etc. Toda seção da landing consome esses primitivos, garantindo consistência.
+- **Critério de aceite**:
+  - Pasta `src/components/ui/` com componentes Astro:
+    - `Button.astro` (variants: `primary`, `secondary`, `ghost`, `link`; sizes: `sm`, `md`, `lg`)
+    - `Badge.astro` (variants: `default`, `success`, `info`, `accent`)
+    - `Container.astro` (max-width responsivo, padding lateral)
+    - `Section.astro` (wrapper com espaçamento vertical padronizado)
+    - `Card.astro` (com sombra/borda, hover state opcional)
+    - `GradientBlob.astro` (blob decorativo de fundo, posicionável)
+    - `BrowserFrame.astro` (frame com chrome dots + screenshot dentro)
+    - `PhoneFrame.astro` (frame mobile estilizado)
+    - `IconBox.astro` (ícone Lucide com background colorido — para listas de features)
+  - Cada componente tipado (props com TypeScript interface)
+  - Storybook **não** será criado nesta fase (overhead alto pra valor baixo no contexto); em vez disso, criar página `/dev/components` que renderiza todos os variants — só em dev
+  - Dark mode funcionando em todos os componentes
+- **Dependências**: Tasks 4.1, 4.2
+- **Notas técnicas**: Astro components são `.astro` (HTML+TS sem runtime React). Para variants, usar `class-variance-authority` ou função simples local. Evitar dependências pesadas — landing deve ser enxuta. Reusar tokens via CSS variables do Tailwind.
+
+**Subtasks**:
+- [ ] **4.3.1** — Criar `Container.astro` e `Section.astro` (primitivos de layout)
+- [ ] **4.3.2** — Criar `Button.astro` com 4 variants + 3 sizes
+- [ ] **4.3.3** — Criar `Badge.astro`, `IconBox.astro`, `Card.astro`
+- [ ] **4.3.4** — Criar `BrowserFrame.astro` e `PhoneFrame.astro` com slot para imagem/conteúdo
+- [ ] **4.3.5** — Criar `GradientBlob.astro` configurável (posição, cor, blur, opacidade)
+- [ ] **4.3.6** — Criar página `/dev/components` listando todos variants (só renderiza em `import.meta.env.DEV`)
+- [ ] **4.3.7** — Testar dark mode em todos os componentes manualmente
+- [ ] **4.3.8** — Adicionar `lucide-astro` para ícones e documentar quais ícones do set usar
+
+---
+
+#### Task 4.4 — Layout global: Header, Footer, navegação mobile
+
+- **Objetivo**: estruturar a casca da landing — header com logo + nav + CTA + toggle de tema; footer com links, contato, redes sociais, legal. Navegação mobile com drawer/sheet.
+- **Critério de aceite**:
+  - `src/layouts/BaseLayout.astro` é o layout único usado por todas as páginas, contendo `<head>` SEO completo, `<Header>` e `<Footer>`
+  - **Header**:
+    - Logo à esquerda (link pra `/`)
+    - Nav central com itens: Recursos, Como funciona, Preços, FAQ, Blog (placeholder)
+    - À direita: toggle dark mode + botão "Entrar" (link pra `app.come-pouco.com.br/login`) + botão CTA "Começar grátis" (primary, scroll para pricing ou form)
+    - Em mobile: hamburger abre drawer com mesmos itens
+    - Sticky no scroll com backdrop blur quando saiu do topo
+  - **Footer**:
+    - Coluna 1: logo + tagline curta + redes sociais (Instagram, LinkedIn, GitHub)
+    - Coluna 2: Produto (Recursos, Preços, Alli)
+    - Coluna 3: Empresa (Sobre, Blog, Contato)
+    - Coluna 4: Legal (Privacidade, Termos, LGPD)
+    - Faixa inferior: `© 2026 Come Pouco. Feito no Brasil.`
+  - Toggle de tema: 3 estados (`light`, `dark`, `system`), persistido em `localStorage`, FOUC eliminado (script inline antes do `<body>`)
+  - Drawer mobile usa `<dialog>` HTML nativo (zero JS) ou ilha Alpine.js mínima
+- **Dependências**: Tasks 4.1, 4.3
+- **Notas técnicas**: para eliminar FOUC em dark mode com Astro estático, injetar script blocking no `<head>` que lê `localStorage` antes do CSS aplicar. Drawer mobile com `<dialog>` é zero-JS e acessível por padrão. Sticky header com `backdrop-filter: blur` precisa de fallback pra navegadores antigos.
+
+**Subtasks**:
+- [ ] **4.4.1** — Criar `BaseLayout.astro` com `<head>` completo (charset, viewport, fonts preload, theme color)
+- [ ] **4.4.2** — Implementar script anti-FOUC de dark mode (inline `<head>` antes do CSS)
+- [ ] **4.4.3** — Criar `Header.astro` desktop (logo + nav + CTAs)
+- [ ] **4.4.4** — Implementar sticky com backdrop blur on scroll (CSS puro com `position: sticky` + IntersectionObserver leve)
+- [ ] **4.4.5** — Criar `MobileNav.astro` com `<dialog>` HTML nativo + animação CSS
+- [ ] **4.4.6** — Criar `Footer.astro` com 4 colunas + faixa inferior
+- [ ] **4.4.7** — Criar `ThemeToggle.astro` (ilha mínima ou inline script) com 3 estados
+- [ ] **4.4.8** — Testar nav em viewport 375px (sem scroll horizontal, drawer abre suave)
+
+---
+
+#### Task 4.5 — Hero + Social proof (Trust strip)
+
+- **Objetivo**: a primeira tela é a mais importante — em 5 segundos o visitante precisa entender **o que é**, **para quem é** e **por que é melhor**. Deve provocar emoção (visual) + clareza (copy) + ação (CTA).
+- **Critério de aceite**:
+  - **Hero**:
+    - Eyebrow badge ("✨ Novo: módulo Alli para conversão pública" — link pra seção)
+    - H1 grande (52-72px desktop, 36-44px mobile): proposta de valor em 1 frase forte. Sugestão de baseline: "Gere links de afiliado Shopee no automático e venda mais com sua audiência"
+    - Subhead (1-2 linhas): explica o que diferencia
+    - Dois CTAs: primary "Começar grátis" + secondary "Ver como funciona" (scroll suave pra seção)
+    - **Visual à direita** (desktop) / abaixo (mobile): `BrowserFrame` com screenshot animado do dashboard OU vídeo loop muito curto (≤ 5s, autoplay muted) OU mockup estático bem-feito
+    - Gradient blobs sutis no fundo, animados com `prefers-reduced-motion` respeitado
+  - **Trust strip** (logo bar): faixa horizontal logo abaixo do hero com texto "Empresas que já usam:" + 5-8 logos (placeholder no MVP, posteriormente reais). Grayscale por padrão, color on hover.
+  - Acessibilidade: H1 único na página, skip link funcional, contraste WCAG AA garantido mesmo sobre gradient
+  - Performance: imagem hero otimizada (AVIF + WebP + fallback PNG), lazy load abaixo da dobra
+- **Dependências**: Tasks 4.2, 4.3, 4.4
+- **Notas técnicas**: copy precisa de 3-5 variações testadas. Não usar buzzwords vazias ("revolucionário", "disruptivo", "world-class"). Focar em **resultado** ("venda mais"), **mecanismo** ("links no automático"), **público** ("sua audiência"). O hero visual idealmente é screenshot real do dashboard pós-Fase 1 — se ainda não estiver pronto, usar mockup figmoso com `BrowserFrame.astro`. Animação do hero usa Motion One (3kb).
+
+**Subtasks**:
+- [ ] **4.5.1** — Brainstorm + redigir 5 variações de H1 + subhead; escolher 1 com o usuário
+- [ ] **4.5.2** — Criar `sections/Hero.astro` com layout 2-col desktop / stacked mobile
+- [ ] **4.5.3** — Adicionar eyebrow badge linkado pra showcase do Alli
+- [ ] **4.5.4** — Implementar gradient blobs decorativos com SVG + CSS (não imagem)
+- [ ] **4.5.5** — Inserir screenshot/mockup do dashboard em `BrowserFrame` com sombra elegante
+- [ ] **4.5.6** — Animação de entrada sutil (fade-up) com Motion One, respeitando `prefers-reduced-motion`
+- [ ] **4.5.7** — Criar `sections/TrustStrip.astro` com 5-8 logos placeholder (SVG cinza)
+- [ ] **4.5.8** — Otimizar imagens via `astro:assets` (AVIF/WebP, dimensões corretas)
+- [ ] **4.5.9** — Validar contraste e legibilidade do H1 sobre gradient em light + dark
+
+---
+
+#### Task 4.6 — Seção "Recursos principais" (Features)
+
+- **Objetivo**: comunicar **3 a 6 features-âncora** que descrevem o produto. Cada feature ganha ícone + título + descrição curta + opcional mini-visual. Layout em grid responsivo.
+- **Critério de aceite**:
+  - Seção `Features.astro` com headline ("Tudo que você precisa pra escalar afiliados Shopee") + grid de cards
+  - Mínimo de 6 features cobrindo:
+    1. **Geração de links em massa** — cole várias URLs, receba todas convertidas
+    2. **Multi-tenant + multi-time** — empresas, donos, funcionários, cada um com seu acesso
+    3. **Dashboard com métricas** — produção diária, médias, top produtos
+    4. **Modo TEST e PROD da Shopee** — homologação sem queimar quota real
+    5. **Audit log + 2FA** — segurança bancária pro seu negócio
+    6. **API + integração webhooks** (placeholder se ainda não existir — marcar como "em breve")
+  - Cards com `IconBox` Lucide + título + 1-2 linhas; clique opcional pra modal/anchor com mais detalhes
+  - Hover state sutil (lift + shadow), respeitando `prefers-reduced-motion`
+  - Layout: 3 colunas desktop, 2 tablet, 1 mobile
+- **Dependências**: Tasks 4.3, 4.5
+- **Notas técnicas**: ícones Lucide consistentes (não misturar com outro set). Manter copy de cada card ≤ 100 caracteres. Se uma feature ainda não existe na app (ex.: webhooks), marcar com badge "Em breve" — manter honestidade.
+
+**Subtasks**:
+- [ ] **4.6.1** — Definir lista final de 6 features com o usuário (revisar quais já existem na app)
+- [ ] **4.6.2** — Escrever copy: título + descrição (≤ 100 chars) pra cada
+- [ ] **4.6.3** — Selecionar ícones Lucide pra cada feature (`Zap`, `Users`, `BarChart`, `TestTube`, `Shield`, `Webhook`)
+- [ ] **4.6.4** — Criar `sections/Features.astro` com grid responsivo
+- [ ] **4.6.5** — Adicionar hover state (lift + shadow + border highlight) com CSS puro
+- [ ] **4.6.6** — Badge "Em breve" para features ainda não implementadas
+- [ ] **4.6.7** — Validar legibilidade dos cards em dark mode
+
+---
+
+#### Task 4.7 — Showcase do módulo Alli (estrela da landing)
+
+- **Objetivo**: o módulo Alli (Fase 3) é o **maior diferencial competitivo** — concorrentes não oferecem landing pública pronta. Essa seção precisa de destaque visual, mockup interativo e mostrar a magia: "Cada empresa ganha sua própria página de cupons em segundos".
+- **Critério de aceite**:
+  - Seção `AlliShowcase.astro` com:
+    - Eyebrow "Exclusivo Come Pouco"
+    - H2 forte: "Sua audiência converte sozinha. Direto da Shopee."
+    - Subhead explicando: "Cada empresa tem uma URL própria (`/p/sua-loja`) onde seus seguidores colam qualquer link Shopee e voltam pra Shopee com seu link de afiliado aplicado."
+    - **Demo interativa** (ilha JS mínima):
+      - `PhoneFrame` à esquerda com mockup da landing pública
+      - Input "fake" pré-preenchido com URL Shopee de exemplo
+      - Botão "Buscar cupom" dispara animação: loading 1.5s → "Aplicando cupom..." → "Redirecionando..."
+      - **Não chama backend real** — pura animação ilustrativa
+    - À direita: 3 mini-benefícios com checkmark:
+      - "Funciona com `shope.ee` e link longo"
+      - "Atribuição por funcionário (`/p/loja/joao`)"
+      - "Fallback automático se Shopee falhar"
+    - CTA secundário "Ver demo ao vivo" abrindo `/p/demo` (slug reservado pra demo pública)
+- **Dependências**: Tasks 4.2 (mockups), 4.3 (PhoneFrame); contextual: precisa que Fase 3 esteja documentada (já está)
+- **Notas técnicas**: a demo interativa é a única ilha JS substancial da landing — manter ≤ 5kb. Pode usar Alpine.js (4kb) ou vanilla TS com Web Component. Animação CSS pura preferível. Slug `demo` precisa ser reservado na Fase 3 Task 3.1.7.
+
+**Subtasks**:
+- [ ] **4.7.1** — Criar `sections/AlliShowcase.astro` com layout 2-col
+- [ ] **4.7.2** — Inserir `PhoneFrame` com screenshot/mockup do Alli público
+- [ ] **4.7.3** — Implementar demo interativa em ilha (vanilla TS ou Alpine), zero chamadas reais
+- [ ] **4.7.4** — Animação CSS: pulse de loading → checkmark → fade
+- [ ] **4.7.5** — Lista de 3 benefícios com ícones Lucide (`Link`, `User`, `Shield`)
+- [ ] **4.7.6** — CTA "Ver demo ao vivo" → `/p/demo` (criar slug reservado quando Fase 3 rodar)
+- [ ] **4.7.7** — Validar performance: ilha não bloqueia LCP, anima só quando entra na viewport (`IntersectionObserver`)
+
+---
+
+#### Task 4.8 — Como funciona + Segurança (combinadas)
+
+- **Objetivo**: dois blocos curtos e visuais — "Como funciona em 4 passos" (onboarding) e "Segurança que você espera" (confiança). Ambos contribuem pra conversão: o primeiro reduz incerteza, o segundo reduz medo.
+- **Critério de aceite**:
+  - **Como funciona**:
+    - Headline "Comece em minutos"
+    - 4 passos com ícone numerado + título + descrição curta:
+      1. "Crie sua conta gratuita"
+      2. "Conecte sua conta Shopee Afiliados"
+      3. "Adicione seu time"
+      4. "Compartilhe sua URL pública e venda"
+    - Layout: horizontal timeline em desktop, vertical em mobile
+    - Linha conectora SVG entre os passos com gradient sutil
+  - **Segurança & confiança**:
+    - Headline "Segurança é padrão, não opcional"
+    - 6 selos/cards curtos: "2FA TOTP", "Criptografia AES-256 em repouso", "Audit log completo", "Conformidade LGPD", "Backups diários", "SSL/TLS em tudo"
+    - Cada selo: ícone Lucide + título + 1 linha
+    - Layout 3x2 desktop, 2x3 tablet, 1x6 mobile
+  - Ambas as seções respeitam o ritmo visual da página (espaçamentos consistentes)
+- **Dependências**: Tasks 4.3, 4.5
+- **Notas técnicas**: a linha conectora entre passos é SVG inline (não imagem) — pode animar com `stroke-dasharray` quando entra na viewport. Selos de segurança: usar ícones específicos (`KeyRound`, `Lock`, `FileSearch`, `ShieldCheck`, `HardDriveDownload`, `Globe`). Texto deve refletir o que a app **realmente** entrega — pós-Fase 2, vários desses estarão implementados; se algum ainda não, ajustar copy ou remover.
+
+**Subtasks**:
+- [ ] **4.8.1** — Criar `sections/HowItWorks.astro` com timeline horizontal/vertical
+- [ ] **4.8.2** — Implementar linha conectora SVG entre passos, animada com `stroke-dasharray`
+- [ ] **4.8.3** — Criar `sections/Security.astro` com grid 3x2 de selos
+- [ ] **4.8.4** — Auditar cada selo contra o que a app realmente entrega pós-Fase 2 (remover ou ajustar incertos)
+- [ ] **4.8.5** — Adicionar microcopy "Veja detalhes técnicos →" linkando pra blog ou docs (futuro)
+
+---
+
+#### Task 4.9 — Pricing (3 tiers públicos) + Comparison table
+
+- **Objetivo**: apresentar os planos de forma cristalina. Free pra atrair, Pro pra converter, Enterprise pra qualificar grandes contas. Tabela comparativa pra eliminar dúvidas.
+- **Critério de aceite**:
+  - Headline "Planos pra cada momento" + subhead curta
+  - 3 cards lado a lado (em mobile, stacked):
+    - **Free** — R$ 0 / mês — "Pra começar e validar"
+      - Recursos listados: 1 empresa, 1 usuário, até 100 links/mês, módulo Alli básico, suporte por email
+    - **Pro** (destacado, com badge "Mais escolhido") — R$ XX / mês — "Pra times sérios"
+      - Recursos: até 5 usuários, links ilimitados, Alli com customização total, audit log, suporte prioritário
+    - **Enterprise** — "Fale conosco" — "Pra operações grandes"
+      - Recursos: usuários ilimitados, SLA, onboarding dedicado, API customizada, white-label (futuro)
+  - CTA em cada card: "Começar grátis" / "Assinar Pro" / "Falar com vendas"
+  - **Toggle** Mensal / Anual (com desconto ~20% no anual, badge "2 meses grátis")
+  - **Tabela comparativa** completa abaixo dos cards: linha por recurso × coluna por plano, com checkmarks, X ou valor
+  - Note de rodapé: "Sem cartão necessário no Free. Cancele a qualquer momento."
+- **Dependências**: Tasks 4.3, 4.5; **decisão do usuário sobre valores** dos planos
+- **Notas técnicas**: cards de pricing devem ter highlight visual claro no Pro (border colorida + sombra mais forte). Toggle mensal/anual pode ser ilha Alpine (~3kb) ou vanilla TS. Tabela comparativa em desktop é horizontal; em mobile, vira "swipe" lateral ou colapsa por plano (decidir pelo desempenho — preferir colapsar). Valores em placeholder até confirmar com usuário.
+
+**Subtasks**:
+- [ ] **4.9.1** — Definir com o usuário: valores mensais Pro, % desconto anual, limites exatos de cada plano
+- [ ] **4.9.2** — Criar `sections/Pricing.astro` com 3 cards
+- [ ] **4.9.3** — Implementar toggle Mensal/Anual (ilha JS mínima)
+- [ ] **4.9.4** — Destacar plano Pro (border, shadow, badge "Mais escolhido")
+- [ ] **4.9.5** — Criar `sections/PricingComparison.astro` com tabela completa
+- [ ] **4.9.6** — Tabela comparativa: comportamento mobile (colapsar por plano com tabs)
+- [ ] **4.9.7** — Wire-up dos CTAs: Free/Pro → `app.come-pouco.com.br/register?plan=...`; Enterprise → scroll para form de contato
+- [ ] **4.9.8** — Note de rodapé com micropolíticas (sem cartão, cancele a qualquer momento)
+
+---
+
+#### Task 4.10 — FAQ + CTA final + Captura de lead
+
+- **Objetivo**: três blocos que fecham a página — FAQ derruba objeções, CTA final converte quem chegou até o fim, formulário de captura pega quem não converteu ainda mas demonstrou interesse.
+- **Critério de aceite**:
+  - **FAQ**:
+    - Headline "Perguntas frequentes"
+    - 8-10 perguntas com accordion (`<details>` HTML nativo, zero JS)
+    - Perguntas baseline (revisar com usuário):
+      1. "Preciso ter conta na Shopee Afiliados?"
+      2. "Como funciona o módulo Alli?"
+      3. "Quantos links posso gerar?"
+      4. "Posso adicionar funcionários?"
+      5. "Meus dados estão seguros?"
+      6. "Posso cancelar quando quiser?"
+      7. "Tem teste grátis?"
+      8. "Como integro com meu Instagram/TikTok?"
+      9. "Posso ter mais de uma empresa?"
+      10. "Vocês têm API?"
+  - **CTA final**:
+    - Banner grande com gradient (sutil, dentro da paleta)
+    - Headline emocional: "Pronto pra parar de fazer link na mão?"
+    - Subhead curta
+    - 2 CTAs grandes: "Começar grátis" (primary) + "Agendar demo" (secondary)
+  - **Captura de lead**:
+    - Formulário simples acima do footer ou ao lado do CTA final
+    - Campos: nome, email, mensagem opcional (ou: nome, email, "qual seu volume mensal?")
+    - Submit → `POST /api/public/leads` no backend (reusa SystemEmailConfig pra enviar pro time)
+    - Honeypot anti-spam (campo `website` hidden — mesma técnica da Fase 3)
+    - Estados: idle / loading / success ("Obrigado, entraremos em contato!") / error
+    - Endpoint no backend cria registro em nova tabela `Lead` (opcional, decidir com usuário) + envia email
+- **Dependências**: Tasks 4.3, 4.5; **backend**: endpoint `POST /api/public/leads`
+- **Notas técnicas**: `<details>` HTML nativo é acessível por padrão e zero JS — usar `+ summary` com chevron CSS rotacionado. Formulário com `fetch` ilha mínima (~2kb). Backend: endpoint público com rate limit (10/h/IP), validação zod (email), persist `Lead`, envia email. Considerar Schema.org `FAQPage` no markup pro SEO (Task 4.11).
+
+**Subtasks**:
+- [ ] **4.10.1** — Redigir 10 perguntas+respostas do FAQ com o usuário
+- [ ] **4.10.2** — Criar `sections/FAQ.astro` com `<details>` nativo + estilização
+- [ ] **4.10.3** — Adicionar schema.org `FAQPage` no markup (JSON-LD em `BaseLayout`)
+- [ ] **4.10.4** — Criar `sections/FinalCTA.astro` com banner gradient
+- [ ] **4.10.5** — Criar `sections/LeadForm.astro` com 3 campos + honeypot
+- [ ] **4.10.6** — Backend: criar endpoint `POST /api/public/leads` com zod + rate limit + envio de email + persist
+- [ ] **4.10.7** — Decidir com usuário se cria tabela `Lead` ou só dispara email (recomendado: tabela + email)
+- [ ] **4.10.8** — Implementar estados do form (idle/loading/success/error) com aria-live
+- [ ] **4.10.9** — Smoke test: submeter form e confirmar email recebido
+
+---
+
+#### Task 4.11 — SEO técnico, OG dinâmico, sitemap, schema.org
+
+- **Objetivo**: garantir que a landing é descoberta, compartilhada com preview bonito e indexada corretamente. SEO técnico é barato e dá retorno enorme se feito desde o dia 1.
+- **Critério de aceite**:
+  - **Meta tags por página** via `BaseLayout`:
+    - `<title>` único por página
+    - `meta description` (≤ 160 chars) único
+    - canonical URL
+    - charset, viewport, theme-color (com variantes light/dark)
+  - **Open Graph** + **Twitter Card** completos:
+    - `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `og:locale=pt_BR`
+    - `twitter:card=summary_large_image`, `twitter:title`, etc.
+  - **OG image dinâmica**: gerada em build time via `@vercel/og` ou solução Astro nativa — template SVG com título + logo + gradient
+  - **Sitemap.xml** gerado automaticamente via `@astrojs/sitemap`
+  - **robots.txt** servido em `/robots.txt` com `Sitemap:` apontando pro sitemap
+  - **Schema.org** JSON-LD:
+    - `Organization` (logo, nome, sameAs com redes sociais)
+    - `WebSite` (com `SearchAction` se houver busca futura)
+    - `Product` (com `offers` apontando pros planos)
+    - `FAQPage` (Task 4.10)
+  - **Validações**:
+    - Lighthouse SEO = 100
+    - Google Rich Results Test passa em todos os schemas
+    - Open Graph Debugger (Facebook + LinkedIn) renderiza preview correto
+- **Dependências**: Tasks 4.4, 4.10
+- **Notas técnicas**: OG image dinâmica em Astro pode usar `astro-og-canvas` (popular, sem dependência de Vercel) ou `satori` direto. Manter imagem em 1200×630 (padrão). JSON-LD vai inline no `<head>` em `<script type="application/ld+json">`. Em landing PT-BR, não precisa `hreflang` por enquanto.
+
+**Subtasks**:
+- [ ] **4.11.1** — Implementar `<head>` SEO completo em `BaseLayout` com props tipadas
+- [ ] **4.11.2** — Adicionar Open Graph + Twitter Card meta tags
+- [ ] **4.11.3** — Instalar e configurar `astro-og-canvas` (ou similar) pra OG image dinâmica
+- [ ] **4.11.4** — Configurar `@astrojs/sitemap` no `astro.config.mjs`
+- [ ] **4.11.5** — Criar `public/robots.txt` apontando pro sitemap
+- [ ] **4.11.6** — Adicionar JSON-LD `Organization`, `WebSite`, `Product`, `FAQPage`
+- [ ] **4.11.7** — Validar com Google Rich Results Test + Facebook Sharing Debugger
+- [ ] **4.11.8** — Validar Lighthouse SEO = 100
+
+---
+
+#### Task 4.12 — Performance, a11y, dark mode, micro-animações
+
+- **Objetivo**: o polimento final que separa "landing OK" de "landing referência". Lighthouse 100, zero violações axe-core, animações sutis e elegantes em todas as seções.
+- **Critério de aceite**:
+  - **Performance**:
+    - Lighthouse Performance ≥ 95 mobile, ≥ 99 desktop
+    - LCP < 1.5s mobile / < 1.0s desktop (4G simulado)
+    - CLS < 0.05
+    - JS total enviado < 30kb gzipped
+    - CSS crítico inline, resto deferido
+    - Todas as imagens em AVIF + WebP fallback, com `width/height` para evitar CLS
+  - **Acessibilidade**:
+    - axe-core: 0 violações
+    - WCAG AA contraste em light + dark
+    - Skip link funcional
+    - Foco visível em todos os elementos interativos
+    - Aria-labels em ícones-only buttons
+    - `prefers-reduced-motion` respeitado em todas as animações
+  - **Dark mode**:
+    - Toggle 3-estados (light/dark/system) com persistência
+    - FOUC zero
+    - Todas as imagens com variantes light/dark onde fizer sentido (mockups especialmente)
+  - **Micro-animações**:
+    - Fade-up de seções ao entrar na viewport (Motion One, stagger sutil)
+    - Hover states em cards (lift + shadow)
+    - Botões com transição suave
+    - Gradient blob com `prefers-reduced-motion` respeitado (estático se desabilitado)
+- **Dependências**: todas as seções implementadas (4.4-4.10)
+- **Notas técnicas**: Motion One é minúsculo (3kb) e usa `Web Animations API` nativa. Para detectar viewport entry, `IntersectionObserver` puro é suficiente. Imagens AVIF/WebP geradas pelo `astro:assets`. CSS crítico inline é automático no Astro 5.
+
+**Subtasks**:
+- [ ] **4.12.1** — Audit Lighthouse mobile e desktop, listar gaps, atacar um por um
+- [ ] **4.12.2** — Audit axe-core e corrigir 100% das violações
+- [ ] **4.12.3** — Adicionar `width/height` em todas as imagens (evita CLS)
+- [ ] **4.12.4** — Instalar `motion` package, criar helper `animateOnEnter` reusável
+- [ ] **4.12.5** — Aplicar fade-up stagger em todas as seções principais
+- [ ] **4.12.6** — Validar `prefers-reduced-motion` em todas as animações
+- [ ] **4.12.7** — Testar dark mode em todas as páginas e mockups
+- [ ] **4.12.8** — Skip link funcional + foco visível auditado por teclado
+- [ ] **4.12.9** — Benchmark final: rodar Lighthouse em 3 dispositivos diferentes, anexar prints em `docs/lighthouse.md`
+
+---
+
+#### Task 4.13 — Analytics privacy-first + conversion tracking
+
+- **Objetivo**: medir o que importa sem invadir privacidade do visitante. Tráfego, conversões em CTAs, submissões de form. Sem cookies, sem GA4, sem 3rd parties barulhentos.
+- **Critério de aceite**:
+  - Plausible.io OU Umami self-hosted ativo na landing
+  - Events trackeados:
+    - `cta_click_hero_primary`
+    - `cta_click_hero_secondary`
+    - `cta_click_pricing_free`
+    - `cta_click_pricing_pro`
+    - `cta_click_pricing_enterprise`
+    - `cta_click_final`
+    - `lead_form_submit`
+    - `lead_form_success`
+    - `alli_demo_interact`
+    - `pricing_toggle_yearly`
+  - Dashboard de analytics acessível (Plausible cloud ou Umami self-hosted no mesmo Coolify)
+  - Sem cookies, sem fingerprinting, sem consent banner necessário (LGPD compliance natural)
+  - Script de analytics deferido, < 1kb
+- **Dependências**: Task 4.10; decisão Plausible cloud vs Umami self-hosted
+- **Notas técnicas**: Plausible cloud é mais simples (~$9/mês), Umami self-hosted é grátis mas exige manter container. Recomendação: começar com Umami no mesmo Coolify (zero custo, zero vendor lock-in). Migrar pra Plausible se time crescer. Eventos custom via `window.umami.track(name, props)`.
+
+**Subtasks**:
+- [ ] **4.13.1** — Decidir com usuário: Plausible cloud vs Umami self-hosted
+- [ ] **4.13.2** — Provisionar instância (Umami via docker-compose no Coolify ou Plausible signup)
+- [ ] **4.13.3** — Adicionar script no `BaseLayout` com `defer` + `data-website-id`
+- [ ] **4.13.4** — Criar helper `trackEvent(name, props?)` em `src/lib/analytics.ts`
+- [ ] **4.13.5** — Instrumentar todos os events listados
+- [ ] **4.13.6** — Validar que sem-cookies funciona (DevTools → Application → Cookies vazio)
+- [ ] **4.13.7** — Documentar eventos em `docs/analytics.md`
+
+---
+
+#### Task 4.14 — Deploy, CI/CD, custom domain, launch checklist
+
+- **Objetivo**: pôr a landing no ar de forma confiável. Pipeline CI/CD, domínio custom configurado, certificado TLS, headers de segurança, checklist de lançamento completo.
+- **Critério de aceite**:
+  - Landing deployada em `come-pouco.com.br` (raiz) servindo HTTPS com TLS válido
+  - App continua em `app.come-pouco.com.br` (separação clara de domínios)
+  - DNS configurado: A/CNAME corretos, redirect `www → apex`
+  - Pipeline CI/CD (GitHub Actions ou Coolify auto-deploy):
+    - On push `main` → build → deploy se passar
+    - Build em ~30s
+    - Notification em Slack/Discord opcional
+  - Headers de segurança server-side:
+    - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+    - `Content-Security-Policy` específico (analytics, imagens, fonts permitidos)
+    - `X-Content-Type-Options: nosniff`
+    - `Referrer-Policy: strict-origin-when-cross-origin`
+    - `Permissions-Policy` minimal
+  - Cache headers corretos: assets com hash → 1 ano imutável; HTML → no-cache; OG images → 1 dia
+  - Checklist de lançamento (`docs/launch-checklist.md`) com 30+ itens validados
+- **Dependências**: todas as Tasks 4.1-4.13
+- **Notas técnicas**: opções de deploy: **Coolify** no mesmo VPS (zero custo extra) ou **Cloudflare Pages** (CDN global grátis). Cloudflare Pages tem edge global e Lighthouse melhor; Coolify mantém tudo no mesmo lugar. Recomendação: começar Coolify, migrar pra CF Pages se latência global virar problema. CSP precisa permitir domínio de analytics e fontes externas (se houver).
+
+**Subtasks**:
+- [ ] **4.14.1** — Decidir host: Coolify (mesmo VPS) vs Cloudflare Pages
+- [ ] **4.14.2** — Configurar DNS apex + www redirect
+- [ ] **4.14.3** — Provisionar TLS (Let's Encrypt via Caddy/Traefik no Coolify, ou automático no CF)
+- [ ] **4.14.4** — Configurar headers de segurança no servidor
+- [ ] **4.14.5** — Pipeline CI/CD: GH Actions ou Coolify auto-deploy on push
+- [ ] **4.14.6** — Smoke test pós-deploy: curl HEAD em todas as páginas + check de headers
+- [ ] **4.14.7** — Validar HTTPS, redirect www, OG render, sitemap acessível
+- [ ] **4.14.8** — Criar `docs/launch-checklist.md` com 30+ itens (SEO, perf, a11y, headers, analytics, conteúdo, legal)
+- [ ] **4.14.9** — **Soft launch**: compartilhar com 5-10 pessoas próximas pra feedback antes do hard launch
+- [ ] **4.14.10** — **Hard launch**: anúncio nas redes, atualizar bio Instagram/LinkedIn, post no LinkedIn
+
+---
+
+### Resumo da Fase 4 em uma página
+
+**O que ganha**:
+- Site institucional novo, separado da app, com domínio próprio (`come-pouco.com.br`)
+- Apresentação visual de referência (padrão Linear/Vercel/Stripe) em PT-BR
+- 3 tiers de pricing públicos → autosserviço pra Free/Pro, qualificação pra Enterprise
+- Captura de lead conectada ao próprio SystemEmailConfig (sem dependência de Formspree/HubSpot)
+- Showcase do módulo Alli como diferencial competitivo principal
+- SEO bem feito + analytics privacy-first sem cookies
+- Lighthouse ≥ 95 em todas as métricas, JS < 30kb gzipped
+- Base sólida pra adicionar blog/casos depois (MDX já configurado)
+
+**O que não ganha (adiado por escopo)**:
+- Blog com posts iniciais (estrutura pronta, sem conteúdo)
+- Casos de uso com depoimentos reais (placeholders no MVP)
+- A/B testing
+- CMS visual (conteúdo via PR)
+- Live chat
+- Versão inglês
+- Páginas legais com revisão jurídica
+
+**Stack nova introduzida**:
+- Astro 5 + Tailwind v4 + Lucide Astro + Motion One (3kb) + MDX + `astro-og-canvas` + Umami/Plausible
+
+**Riscos identificados**:
+- Copywriting é o maior risco — visual não vende sozinho. Reservar tempo dedicado pra escrever e revisar 2-3 vezes.
+- Mockups: depende de Fase 1 estar avançada. Se não, usar mockups figmosos no MVP e atualizar quando Fase 1 entregar.
+- Domínio: validar se `come-pouco.com.br` (ou outro) está disponível e em mãos antes de começar.
+- Lead form: rate limit + honeypot ajuda, mas spam ainda chega. Definir caixa de email de destino fora do email pessoal.
+
+**Ordem de execução recomendada**:
+1. Task 4.1 (setup Astro) — fundação
+2. Task 4.2 (brand kit) — pode rodar em paralelo com 4.3
+3. Task 4.3 (design system Astro) — habilita todas as seções
+4. Task 4.4 (layout global) — header/footer/dark mode
+5. Tasks 4.5 → 4.10 — seções da landing, em ordem (cada uma é independente, mas a ordem dá fluxo)
+6. Task 4.11 (SEO) — depois que páginas existem
+7. Task 4.12 (perf/a11y/animação) — polimento final
+8. Task 4.13 (analytics) — pode entrar antes ou depois do polimento
+9. Task 4.14 (deploy + launch) — fim, com checklist
+
+**Dependência crítica com outras fases**:
+- Idealmente Fase 1 (Design System) está pelo menos com Task 1.1 (paleta e tokens) terminada antes de começar 4.1 — assim a landing usa os mesmos tokens da app.
+- Fase 3 (Alli) **não** precisa estar pronta — o showcase é demonstrativo. Mas se Fase 3 entrega antes, o CTA "Ver demo ao vivo" funciona pra valer.
+- Fase 2 (Segurança) **não** bloqueia — mas selos de segurança da Task 4.8 ficam mais honestos pós-Fase 2.
+
