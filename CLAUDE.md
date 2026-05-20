@@ -151,3 +151,38 @@ Some environments predate the Prisma migration history. See `come-pouco-backend/
 ## Testing credentials (local)
 - Username: `admin`
 - Password: `comepouco102030@`
+
+## Development plan rules (IDEIA.md §17)
+
+When the user shares an idea, requirement, or improvement direction, it goes into [IDEIA.md](IDEIA.md) section **17. Plano de desenvolvimento** following a strict hierarchy:
+
+```
+Fase N — <macro goal / milestone>
+├── Task N.M — <concrete deliverable>
+│   ├── Subtask N.M.K — <atomic step, ~1 PR>
+│   └── Subtask N.M.K — ...
+```
+
+### Rules to follow when elaborating the plan
+
+- **Three levels, always**: Fase → Task → Subtask. Never flatten or skip a level.
+- **Fase** = thematic milestone (e.g., "Foundation of Quality", "Observability"). Has a clear "done" criterion.
+- **Task** = measurable deliverable inside the Fase. Each Task must specify:
+  - **Objetivo** — what + why
+  - **Critério de aceite** — how to know it's done
+  - **Dependências** — prerequisite Tasks/Fases (or `nenhuma`)
+  - **Notas técnicas** — libs, design choices, risks
+- **Subtask** = atomic step in infinitive form ("Adicionar X", "Configurar Y"), small enough for one focused PR.
+- **Aim for first-class application**: every Task considers tests, observability, security, performance, accessibility, and docs — not as afterthoughts.
+- **No functional regressions**: each Fase keeps the app running; each Subtask leaves the app compiling.
+- **Best practices by default**: SOLID, clean code, separation of concerns, tests live near the code they test.
+- **Keep docs in sync**: when a Task changes behavior or stack, update [CLAUDE.md](CLAUDE.md) and [IDEIA.md](IDEIA.md) (other sections too, not just §17).
+- **Numbering is stable**: once a Fase/Task/Subtask is numbered, don't renumber later additions. Append new ones at the end of their level.
+- **Status tracking**: as Subtasks are completed, mark them with a checkbox (`- [x]`) or a `✅` prefix. Leave pending ones unchecked.
+- **Ask before assuming scope**: when the user's idea is ambiguous, ask 1-3 targeted questions before writing the plan; better to clarify than to scaffold a wrong plan.
+
+When the user sends a new idea, the workflow is:
+1. Confirm understanding (briefly summarize what you understood).
+2. Ask clarifying questions if scope is ambiguous.
+3. Propose the Fase/Tasks/Subtasks breakdown — append to §17.
+4. Wait for approval before implementing any code.

@@ -1,0 +1,59 @@
+1. Escopo Funcional (Funcionalidades)
+Módulo Público (Frontend do Usuário)
+Interface Single Page (Responsiva): Design focado em conversão, otimizado para dispositivos móveis (onde ocorre a maior parte dos acessos via Instagram/TikTok/Telegram).
+
+Banner de Urgência: Aviso personalizável (ex: "Restam poucos cupons disponíveis!") para aumentar a taxa de cliques.
+
+Campo de Input Inteligente: Validação em tempo real para garantir que o link inserido seja um link válido da Shopee (shopee.com.br/... ou shope.ee/...).
+
+Botão de Ação Destacado: Gatilho para processamento da conversão.
+
+Seção "Como Funciona": Passo a passo didático em texto e ícones para o usuário final.
+
+Tela de Resultado/Redirecionamento: * Opção A: Exibir o link convertido com um botão "Copiar Link" ou "Ir para a Shopee".
+
+Opção B (Recomendada para UX): Redirecionar o usuário automaticamente após 2-3 segundos, exibindo uma tela de "Aplicando cupom..." para simular a validação.
+
+Módulo de Integração (Backend & API)
+De-shortener de Links: Capacidade de receber links encurtados da Shopee (shope.ee/...), expandi-los para a URL completa e extrair o itemId e o shopId do produto.
+
+Consumo da Shopee API (Custom Link Generation): Enviar a URL original extraída para o endpoint da Shopee e receber a URL de afiliado vinculada ao seu ID de rastreamento (sub_id).
+
+Fallback de Links: Caso a API da Shopee falhe ou fique fora do ar, o sistema deve ter uma regra de fallback para redirecionar o usuário para a página inicial da Shopee com o seu link de afiliado geral, garantindo que o tráfego não seja perdido.
+
+2. Arquitetura Técnica Recomendada
+Para um projeto com esse perfil, a escolha ideal é uma estrutura de Monorepo. Isso facilita o compartilhamento de tipos (TypeScript) entre o frontend e o backend, além de centralizar o deploy.
+
+Stack Tecnológica
+Frontend: Angular (v17+ com SSR/Signals para máxima performance e SEO básico) ou React/Next.js para renderização rápida.
+
+Backend: Node.js com Express ou NestJS (caso queira uma estrutura mais opinativa e robusta).
+
+Banco de Dados (Opcional, mas recomendado para métricas): PostgreSQL gerenciado via Prisma ORM.
+
+Nota: O banco servirá para guardar logs de cliques, produtos mais convertidos e métricas de acessos, sem desacelerar a conversão.
+
+Cache: Redis (Essencial para cachear resoluções de links encurtados e evitar requisições repetidas à API da Shopee para o mesmo produto).
+
+3. Fluxo de Dados da Aplicação
+O core business do sistema reside no tratamento da URL. O fluxo técnico deve seguir estes passos:
+
+[Usuário insere Link] 
+         │
+         ▼
+[Validar se é domínio Shopee] ──(Se inválido)──> [Erro: Link inválido]
+         │
+         ▼
+[É link encurtado shope.ee?] ──(Sim)──> [Fazer requisição HTTP HEAD para expandir a URL]
+         │                                               │
+       (Não)                                             ▼
+         │────────────────────────────────────────> https://www.spanishdict.com/translate/completa
+                                                         │
+                                                         ▼
+                                       [Chamar Shopee API: generateAffiliateLink]
+                                                         │
+                                                         ▼
+                                       [Retornar URL de Afiliado Customizada]
+                                                         │
+                                                         ▼
+                                       [Redirecionar Usuário / Exibir Botão]

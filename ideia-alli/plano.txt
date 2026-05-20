@@ -1,0 +1,41 @@
+4. Plano de Desenvolvimento (Milestones e Sprints)
+Dividiremos o projeto em 4 fases principais para garantir uma entrega ágil e testável (MVP).
+
+Fase 1: Setup e Infraestrutura (Semana 1)
+Configuração do ambiente Monorepo com Docker (Containers para Node.js, PostgreSQL e Redis).
+
+Configuração do Prisma ORM e modelagem inicial do banco (Tabelas: Conversions, ClickLogs).
+
+Criação das credenciais no Console de Desenvolvedor da Shopee e homologação da API de Afiliados.
+
+Fase 2: Backend & Integração com Shopee (Semana 2)
+Desenvolvimento do endpoint POST /api/v1/convert.
+
+Implementação da lógica de expansão de links (shope.ee para link longo).
+
+Integração com o endpoint graphql ou REST da Shopee API para geração de links personalizados (custom_link).
+
+Implementação do cache no Redis: se o link X já foi convertido nos últimos 30 minutos, devolve o cache em vez de gastar uma requisição da API.
+
+Fase 3: Frontend & Experiência do Usuário (Semana 3)
+Desenvolvimento da interface responsiva baseada na imagem fornecida.
+
+Implementação do estado de loading e feedback visual ("Buscando melhores cupons...").
+
+Integração do frontend com o endpoint de conversão do backend.
+
+Validações de formulário e tratamento de erros amigáveis para o usuário.
+
+Fase 4: Telemetria, Segurança e Deploy (Semana 4)
+Implementação de Rate Limiting no backend (ex: máximo de 10 conversões por minuto por IP) para evitar ataques de negação de serviço (DDoS) ou abuso da sua API Key.
+
+Criação de um dashboard básico (ou integração com ferramentas de analytics) para monitorar quais produtos estão sendo mais colados.
+
+Deploy em produção (Sugerido: VPS como DigitalOcean/Hetzner ou plataformas PaaS como Render/Railway para o backend, e Vercel/Cloudflare Pages para o frontend).
+
+5. Riscos e Pontos de Atenção
+Limites da API da Shopee (Rate Limits): A API de afiliados possui limites estritos de requisições por minuto. O uso de cache (Redis) para links idênticos e um fallback robusto para o seu link geral de afiliado são obrigatórios.
+
+Mudança de Estrutura de Links: A Shopee frequentemente altera o formato dos seus links internos. O código de extração de parâmetros por Regex deve ser isolado e de fácil manutenção.
+
+Experiência de Compra: O "cupom de seguidor" mencionado exige que o usuário final siga a loja na Shopee. Como o sistema apenas direciona o usuário através do link de afiliado, vale adicionar uma pequena nota no "Como Funciona" lembrando o usuário de clicar em "Seguir" ao abrir o app para garantir aquele desconto específico.
