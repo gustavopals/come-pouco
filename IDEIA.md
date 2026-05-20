@@ -827,5 +827,461 @@ Cada Subtask é redigida no infinitivo ("Adicionar X", "Configurar Y") e idealme
 
 ---
 
-<!-- Fase 3 — A ser definida -->
+### Fase 3 — Módulo Público "Alli" (Conversor de Links Shopee)
+
+**Objetivo da fase**: criar um produto público **sem login**, focado em conversão para tráfego social (Instagram/TikTok/Telegram). Cada Company ganha uma landing page (`/p/<companySlug>`) onde seus seguidores colam **qualquer URL Shopee** (longa ou `shope.ee/...`) e recebem em segundos a mesma URL com o link de afiliado da empresa aplicado. Mobile-first, instantâneo, com fallback robusto e telemetria pra entender o que converte. Reaproveita toda a integração Shopee já existente (`shopee-integration.service`) e o modelo multi-tenant — nada de duplicar credenciais ou lógica de assinatura.
+
+**Critério de "pronta"**:
+- URL pública `/p/<companySlug>[/<employeeSlug>]` carrega landing customizada da empresa em < 1.5s no 4G mobile (Lighthouse perf ≥ 90)
+- Usuário cola URL Shopee → vê loading "Buscando melhores cupons…" → em < 3s é redirecionado automaticamente pra Shopee com link de afiliado correto
+- Backend resolve `shope.ee/...` (shortlink) → URL longa, extrai `itemId`/`shopId`, chama Shopee Affiliate API, devolve URL com `sub_id` correto
+- Cache em memória (`lru-cache`) de URLs já resolvidas (TTL 30min) evita gastar quota Shopee em links repetidos
+- **Fallback robusto**: se Shopee API falhar ou retornar vazio, redireciona pro link genérico de afiliado da empresa (`Company.fallbackAffiliateUrl`) — usuário **nunca** vê erro técnico, sempre cai em algo monetizável
+- Cada conversão (sucesso, fallback ou erro) grava em `Conversion` pra analytics
+- Rate limit estrito por IP (30/min) + honeypot + hash de IP (LGPD)
+- Dashboard owner/admin mostra: top produtos, conversões/dia, taxa de sucesso, taxa de fallback, employees com mais conversões
+- Documentação `docs/public-module.md` explicando onboarding de empresa nova
+
+**Decisões macro tomadas** (alinhadas com usuário):
+- **URL strategy**: `/p/<companySlug>[/<employeeSlug>]` dentro do mesmo Angular app, lazy-loaded, **sem `AuthInterceptor`**. Custom domain por empresa fica pra fase futura.
+- **Tracking (sub_id)**: dois níveis — slug de empresa (obrigatório) + slug de employee (opcional). Mapeamento Shopee: `sub_id1 = company.slug`, `sub_id2 = employee.slug || 'direct'`, `sub_id3 = conversion.id` (rastreabilidade ponta-a-ponta).
+- **UX final**: redirect automático em 2-3s com tela "Aplicando cupom…", **com botão visível** como fallback se o redirect for bloqueado.
+- **Cache**: `lru-cache` em memória (sem Redis nesta fase — casa com Fase 2). TTL 30min para conversões; 7 dias para shortlinks expandidos (raramente mudam).
+- **Captcha**: NÃO usar (atrito alto demais). Proteção via rate limit + honeypot + análise simples de padrões.
+- **Privacidade**: IP armazenado como hash HMAC-SHA256 com salt em env (`PUBLIC_IP_HASH_SALT`).
+
+**Não-escopo desta fase** (explicitamente adiado):
+- Custom domain por empresa (TLS automático, validação DNS)
+- SSR / SSG para SEO avançado (landing é destino de social, não busca)
+- A/B test framework
+- Captcha / reCAPTCHA
+- Edição visual rica do conteúdo da landing (apenas campos texto/cor por enquanto)
+
+---
+
+#### Task 3.1 — Modelagem de dados e migrations
+
+- **Objetivo**: criar as estruturas de dados que sustentam o módulo público — slugs únicos, configuração de landing por empresa, registro de cada conversão. Sem isso, nada do resto encaixa.
+- **Critério de aceite**:
+  - `Company` ganha colunas `publicSlug String? @unique`, `fallbackAffiliateUrl String?`
+  - `User` ganha coluna `publicSlug String?` (único por `companyId`, não global)
+  - Novo modelo `LandingConfig` com 1-para-1 com `Company`: `bannerText`, `bannerEmoji`, `heroTitle`, `heroSubtitle`, `howItWorksSteps Json`, `primaryColor`, `logoUrl`, `isActive Boolean`, `createdAt`, `updatedAt`
+  - Novo modelo `Conversion`: `id`, `companyId`, `employeeId?`, `originalUrl`, `normalizedUrl?`, `affiliateUrl?`, `itemId?`, `shopId?`, `status` (`SUCCESS|FALLBACK|ERROR`), `errorReason?`, `mode` (`MOCK|REAL`), `ipHash`, `userAgent`, `referrer?`, `responseTimeMs Int`, `createdAt`
+  - Índices criados: `conversions(companyId, createdAt DESC)`, `conversions(employeeId, createdAt DESC)`, `conversions(itemId)`, `conversions(status, createdAt DESC)`
+  - Migration roda em DB seed sem perda de dados existentes
+- **Dependências**: nenhuma
+- **Notas técnicas**: `publicSlug` da empresa deve ser slugificado (kebab-case, sem acentos) e validado contra reservados (`admin`, `login`, `api`, `health`, `assets`). Considerar coluna `publicSlug` com `@unique` parcial (apenas quando `NOT NULL`) — Prisma não tem suporte direto, alternativa é tratar uniqueness no service. Para `User.publicSlug` é único **por empresa** (composto), evita conflito entre empresas. `ipHash` é `String @db.VarChar(64)` (hex SHA-256).
+
+**Subtasks**:
+- [ ] **3.1.1** — Adicionar `publicSlug` e `fallbackAffiliateUrl` em `Company` no `schema.prisma` + validação no service
+- [ ] **3.1.2** — Adicionar `publicSlug` em `User` com unique composto `(companyId, publicSlug)`
+- [ ] **3.1.3** — Criar modelo `LandingConfig` (1:1 com `Company`) + relação reversa
+- [ ] **3.1.4** — Criar modelo `Conversion` com todos os campos + índices
+- [ ] **3.1.5** — Definir enums `ConversionStatus` e `ConversionMode` (`MOCK|REAL`)
+- [ ] **3.1.6** — Gerar migration `npx prisma migrate dev --name add-public-module`
+- [ ] **3.1.7** — Documentar lista de slugs reservados em `config/reserved-slugs.ts`
+- [ ] **3.1.8** — Atualizar `prisma/seed.ts` (se existir) para criar `LandingConfig` default ao criar Company
+
+---
+
+#### Task 3.2 — Serviço de validação e normalização de URL Shopee
+
+- **Objetivo**: isolar o parsing de URLs Shopee num serviço puro, sem efeitos colaterais — recebe string, devolve `{ valid, kind, originalUrl, itemId?, shopId? }`. Suporta os três formatos principais: link longo (`shopee.com.br/...`), shortlink (`shope.ee/...`) e link já com afiliado (detectar e tratar).
+- **Critério de aceite**:
+  - Função `parseShopeeUrl(input: string): ShopeeUrlAnalysis` que reconhece:
+    - `https://shopee.com.br/product/{shopId}/{itemId}` (formato canônico)
+    - `https://shopee.com.br/{slug}-i.{shopId}.{itemId}` (formato slug-i)
+    - `https://shope.ee/{code}` (shortlink — marca como `kind: 'short'`)
+    - `https://s.shopee.com.br/{code}` (shortlink alternativo)
+    - Outras URLs Shopee não-produto (categoria, busca, perfil) — marca `kind: 'non-product'` e passa pro fluxo mesmo assim (fallback)
+  - Validação rejeita: URLs malformadas, domínios não-Shopee, esquemas não-HTTP(S)
+  - Retorna estrutura tipada exportada em `types/shopee-url.ts`
+  - 100% de cobertura de teste unitário com casos reais coletados (mín. 20 casos)
+- **Dependências**: nenhuma
+- **Notas técnicas**: usar `URL` do Node nativo + regex bem comentadas e nomeadas. Centralizar em `src/services/shopee-url-parser.service.ts` (sem dependência de Prisma). Coletar exemplos reais de URLs Shopee antes (incluir variações com query params, anchors, mobile URLs `m.shopee.com.br`).
+
+**Subtasks**:
+- [ ] **3.2.1** — Coletar 20+ exemplos reais de URLs Shopee (longa, shortlink, com query, mobile, categoria) em `tests/fixtures/shopee-urls.json`
+- [ ] **3.2.2** — Criar `shopee-url-parser.service.ts` com `parseShopeeUrl` puro
+- [ ] **3.2.3** — Criar regex isoladas e nomeadas (`SHOPEE_PRODUCT_REGEX_CANONICAL`, `SHOPEE_PRODUCT_REGEX_SLUG_I`, etc.) com comentários explicando cada uma
+- [ ] **3.2.4** — Definir tipo `ShopeeUrlAnalysis` em `types/shopee-url.ts`
+- [ ] **3.2.5** — Tratar URLs com `?` (sub_id já presente, tracking parameters) — normalizar removendo afiliados de outros
+- [ ] **3.2.6** — Escrever testes unitários cobrindo todos os fixtures + casos inválidos (Vitest)
+
+---
+
+#### Task 3.3 — Expansão de shortlinks (`shope.ee` → URL longa)
+
+- **Objetivo**: dado um shortlink Shopee, descobrir a URL completa pra qual ele redireciona. É a operação mais sensível do módulo (chama internet, pode travar, pode ser bloqueada).
+- **Critério de aceite**:
+  - Função `expandShortlink(url: string): Promise<{ finalUrl: string; hops: number }>` em `src/services/shortlink-expander.service.ts`
+  - Usa `fetch` com `redirect: 'manual'` e segue redirects em loop (máximo 5 hops)
+  - User-Agent realista (mobile Chrome) configurado
+  - Timeout total de 5s (`AbortSignal.timeout`)
+  - Tenta `HEAD` primeiro; se Shopee retornar 405 ou similar, faz `GET` (sem ler body — `abort` após receber headers)
+  - Cache de resultados via cache central da Task 3.4, TTL **7 dias** (shortlinks raramente mudam destino)
+  - Erros tratados: timeout → `SHORTLINK_TIMEOUT`, loop infinito → `SHORTLINK_LOOP`, 4xx/5xx final → `SHORTLINK_UNREACHABLE`
+  - Logs estruturados com `requestId` (vem da Fase 2.1)
+- **Dependências**: Task 3.4 (cache); idealmente Fase 2.1 (request-id e timeout pattern)
+- **Notas técnicas**: Shopee às vezes bloqueia user agents óbvios de bot. Testar empiricamente — começar com `Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15...`. Considerar pool de UAs no futuro se bloqueio aparecer. Não logar URL com query params em texto puro se contiver sub_id de terceiros (sanitizar).
+
+**Subtasks**:
+- [ ] **3.3.1** — Criar `shortlink-expander.service.ts` com `expandShortlink` baseado em `fetch` nativo
+- [ ] **3.3.2** — Loop manual de redirects com contador de hops + abort em 5 hops
+- [ ] **3.3.3** — Timeout via `AbortSignal.timeout(5_000)` configurável por env (`SHORTLINK_TIMEOUT_MS`)
+- [ ] **3.3.4** — Lógica `HEAD → fallback GET` quando Shopee não suportar HEAD
+- [ ] **3.3.5** — Integrar com cache (`cache.getOrSet('shortlink:' + url, fn, 7*24*60*60)`)
+- [ ] **3.3.6** — Tratar erros com códigos próprios (`SHORTLINK_TIMEOUT`, `SHORTLINK_LOOP`, `SHORTLINK_UNREACHABLE`)
+- [ ] **3.3.7** — Testes de integração com URLs Shopee reais (skip em CI por padrão, rodar manual)
+
+---
+
+#### Task 3.4 — Cache em memória com `lru-cache`
+
+- **Objetivo**: criar um cache central reutilizável para shortlinks expandidos e URLs convertidas. Single-flight (evita 2 requests simultâneos pra mesma URL chamarem Shopee duas vezes). Em-memória apenas — alinhado com decisão da Fase 2 de não introduzir Redis.
+- **Critério de aceite**:
+  - `src/utils/cache.ts` expõe `Cache` com métodos `get`, `set`, `delete`, `getOrSet(key, fn, ttlSec)`
+  - Implementação baseada em `lru-cache` v11 com `maxSize` e `ttl` por entrada
+  - Suporte a single-flight via `Map<key, Promise>` interno — dois `getOrSet` concorrentes na mesma key compartilham a mesma promise
+  - Métricas expostas: `hits`, `misses`, `size` (endpoint `/api/admin/cache-stats` admin-only)
+  - Configurável por env: `PUBLIC_CACHE_MAX_ENTRIES` (default 10_000), `PUBLIC_CACHE_DEFAULT_TTL_SEC` (default 1800)
+- **Dependências**: nenhuma
+- **Notas técnicas**: cuidado com vazamento de memória se cache crescer demais — `lru-cache` resolve via LRU eviction. Em deploy com várias instâncias atrás de load balancer, o cache é por-instância (não compartilha) — aceitável nesta fase. Anotar em `CLAUDE.md` que migrar pra Redis é trivial (mesma interface).
+
+**Subtasks**:
+- [ ] **3.4.1** — Instalar `lru-cache@^11` no backend
+- [ ] **3.4.2** — Criar `src/utils/cache.ts` com classe `Cache` + interface tipada
+- [ ] **3.4.3** — Implementar `getOrSet` com single-flight (Map interno de promises pendentes)
+- [ ] **3.4.4** — Contadores de `hits`/`misses` + endpoint `/api/admin/cache-stats` protegido
+- [ ] **3.4.5** — Instância singleton `publicCache` exportada de `src/cache/public.cache.ts`
+- [ ] **3.4.6** — Adicionar envs em `config/env.ts` e `.env.example`
+
+---
+
+#### Task 3.5 — Serviço de conversão pública (orquestrador)
+
+- **Objetivo**: orquestrar o fluxo completo de conversão pública: validar → expandir → chamar Shopee → cachear → registrar → fallback. Reusa `shopee-integration.service` existente em vez de duplicar a lógica de assinatura GraphQL.
+- **Critério de aceite**:
+  - `src/services/public-conversion.service.ts` expõe `convertPublicUrl({ url, companySlug, employeeSlug?, ipHash, userAgent, referrer? }): Promise<ConversionResult>`
+  - Fluxo:
+    1. Resolve `companySlug` → `Company` (404 se não existir ou `LandingConfig.isActive = false`)
+    2. Resolve `employeeSlug` opcional → `User` da empresa (warn-log se inválido, segue como `direct`)
+    3. Parse via `shopee-url-parser` (Task 3.2)
+    4. Se shortlink, expande via `shortlink-expander` (Task 3.3)
+    5. Verifica cache `(companyId, normalizedUrl)` — hit retorna direto
+    6. Constrói `sub_id1/2/3` (Decisões Macro) e chama `shopee-integration.service.generateShortlink(...)`
+    7. Persiste `Conversion` (fire-and-forget, não bloqueia resposta)
+    8. Erro Shopee → retorna URL de fallback (`Company.fallbackAffiliateUrl`) e persiste `status: FALLBACK`
+  - Tempo total p95 ≤ 2.5s no fluxo "URL longa, cache hit"; ≤ 4s no "shortlink + cache miss"
+  - Mode `MOCK` é respeitado (mesma flag de `PurchasePlatform.mockMode`)
+- **Dependências**: Tasks 3.1, 3.2, 3.3, 3.4
+- **Notas técnicas**: importante reaproveitar `shopee-integration.service` em vez de criar caminho paralelo — assim qualquer melhoria/bug-fix no Shopee client beneficia ambos os fluxos (autenticado e público). A diferença é apenas no monitoramento (`ConversionMode` ao invés de `ApiRequestLog`) e no source dos `sub_id`. Considerar: marcar `Conversion.id` antes do `await` Shopee para usar no `sub_id3`.
+
+**Subtasks**:
+- [ ] **3.5.1** — Criar `public-conversion.service.ts` com a função `convertPublicUrl`
+- [ ] **3.5.2** — Implementar resolução de `companySlug` + `LandingConfig.isActive` (404 se off)
+- [ ] **3.5.3** — Implementar resolução opcional de `employeeSlug` (case-insensitive, escopado por empresa)
+- [ ] **3.5.4** — Wire-up: validate → expand (se shortlink) → cache lookup → Shopee call → persist
+- [ ] **3.5.5** — Construir `sub_id1/2/3` conforme decisão macro
+- [ ] **3.5.6** — Implementar fallback para `Company.fallbackAffiliateUrl` em erro/timeout
+- [ ] **3.5.7** — Persistência de `Conversion` fire-and-forget (`.catch(err => logger.error(...))`)
+- [ ] **3.5.8** — Testes de integração com `shopee.mockMode = true` cobrindo: sucesso, fallback, employee inválido, shortlink expansion
+
+---
+
+#### Task 3.6 — Endpoints públicos (`/api/public/*`)
+
+- **Objetivo**: expor o módulo Alli via 3 endpoints REST públicos, sem `authMiddleware`, mas com proteções específicas do módulo.
+- **Critério de aceite**:
+  - Router `src/routes/public.routes.ts` montado em `/api/public` antes do `authMiddleware` global
+  - `GET /api/public/landing/:slug` → devolve `LandingConfig` + `Company` (apenas campos seguros: `name`, `publicSlug`, `landingConfig`). Cache HTTP `Cache-Control: public, max-age=300`. 404 se slug inexistente ou `isActive=false`. **Não expõe `fallbackAffiliateUrl` aqui**.
+  - `POST /api/public/convert` → recebe `{ url, companySlug, employeeSlug?, honeypot? }`. Devolve `{ status, affiliateUrl, conversionId }` ou `{ status: 'error', errorCode }`. **Nunca expõe stack traces nem detalhes internos.**
+  - `GET /api/public/healthz` → liveness probe pública (200 sempre, sem DB hit)
+  - Validação via zod (Fase 2.2) — schema em `src/schemas/public.schema.ts`
+  - CORS configurado para aceitar requests do próprio domínio + opcionalmente domínios extras (env `PUBLIC_CORS_ORIGINS`)
+- **Dependências**: Tasks 3.5; idealmente Fase 2.2 (zod) + Fase 2.1 (rate limit) — se Fase 2 ainda não rodou, criar zod local mínimo
+- **Notas técnicas**: importante registrar `/api/public` em `routes/index.ts` **antes** do `app.use(authMiddleware)` global das outras rotas — caso contrário, JWT ausente derruba o request. Honeypot é um campo escondido no form (`website`, `email_alt`) que se preenchido marca a request como bot e devolve sucesso fake (não chama Shopee, salva `status: BOT_DETECTED` no log).
+
+**Subtasks**:
+- [ ] **3.6.1** — Criar `src/routes/public.routes.ts` + `src/controllers/public.controller.ts`
+- [ ] **3.6.2** — Schemas zod em `src/schemas/public.schema.ts` (URL, slugs, honeypot)
+- [ ] **3.6.3** — Endpoint `GET /landing/:slug` com cache HTTP de 5 min
+- [ ] **3.6.4** — Endpoint `POST /convert` integrando `public-conversion.service`
+- [ ] **3.6.5** — Endpoint `GET /healthz`
+- [ ] **3.6.6** — Configurar CORS específico do módulo público (mais permissivo que o resto da API)
+- [ ] **3.6.7** — Garantir montagem antes do `authMiddleware` global em `routes/index.ts`
+- [ ] **3.6.8** — Honeypot: aceitar campo `website` (vazio esperado); se preenchido, salvar `Conversion(status='BOT_DETECTED')` e devolver sucesso fake
+- [ ] **3.6.9** — Smoke test: curl + verificar resposta sem `Authorization` header
+
+---
+
+#### Task 3.7 — Rate limit + segurança do módulo público
+
+- **Objetivo**: proteger o endpoint de conversão contra abuso sem prejudicar UX legítima. Combina rate limit por IP, honeypot (Task 3.6) e hash de IP (LGPD).
+- **Critério de aceite**:
+  - Rate limit em `/api/public/convert`: 30 req/min por IP, 200 req/dia por IP (janela rolling)
+  - Rate limit em `/api/public/landing/:slug`: 60 req/min por IP (mais leve, é GET cacheado)
+  - Headers padronizados: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+  - Hash de IP via HMAC-SHA256 com salt em env `PUBLIC_IP_HASH_SALT` (boot falha em prod se vazio)
+  - Sanitização de User-Agent: limita a 256 chars, remove caracteres de controle
+  - Log de rate-limit hit em `audit_logs` (se Fase 2.5 já existir) ou em `console.warn` estruturado
+- **Dependências**: Task 3.6; ideal Fase 2.1 (express-rate-limit) + Fase 2.5 (audit log)
+- **Notas técnicas**: cuidado com `trust proxy` para que o IP seja o real (vem do Coolify). Considerar IPv6 — usar `/64` em vez de `/128` para rate limit (caso contrário, abusers IPv6 contornam trocando o último segmento). `express-rate-limit` aceita `keyGenerator` customizado pra isso.
+
+**Subtasks**:
+- [ ] **3.7.1** — Criar `src/middlewares/public-rate-limit.middleware.ts` reusando factory da Fase 2.1
+- [ ] **3.7.2** — Configurar key generator com IPv6 /64 mask
+- [ ] **3.7.3** — Aplicar nos endpoints `/convert` e `/landing/:slug`
+- [ ] **3.7.4** — Criar `src/utils/ip-hash.ts` com HMAC-SHA256 e salt da env
+- [ ] **3.7.5** — Adicionar `PUBLIC_IP_HASH_SALT` em `config/env.ts` (obrigatório em prod, default dev seguro)
+- [ ] **3.7.6** — Sanitização de User-Agent + referrer em middleware
+- [ ] **3.7.7** — Log estruturado quando rate limit dispara (`audit_logs` se possível)
+
+---
+
+#### Task 3.8 — Painel admin: gestão de LandingConfig e slugs
+
+- **Objetivo**: dar ao OWNER (e ADMIN) controle visual sobre a landing pública da própria empresa. Editar slug, banner, textos, cores e fallback URL. Também gerenciar slugs dos employees.
+- **Critério de aceite**:
+  - Endpoints autenticados (gated por OWNER/ADMIN):
+    - `GET /api/companies/:id/landing-config`
+    - `PUT /api/companies/:id/landing-config`
+    - `PUT /api/companies/:id/public-slug` (validação de slug único + reservados)
+    - `PUT /api/companies/:id/fallback-url`
+    - `PUT /api/users/:id/public-slug` (OWNER só pode editar slug de employees da própria empresa)
+  - Página `/my-company` ganha aba "Landing Pública" com:
+    - Toggle `isActive`
+    - Input para `publicSlug` com validação live (debounced, mostra "✓ disponível" / "✗ em uso")
+    - Editor de banner (texto + emoji)
+    - Editor de "Como funciona" — lista dinâmica de até 4 passos
+    - Color picker para `primaryColor`
+    - Upload simples de logo (ou URL externa por enquanto)
+    - Input de `fallbackAffiliateUrl` com validação Shopee
+    - Preview ao vivo da landing (iframe `/p/<slug>?preview=true`)
+  - Página `/users` ganha coluna "Slug público" editável inline
+- **Dependências**: Task 3.1, Task 3.6
+- **Notas técnicas**: o preview em iframe deve passar header/query `preview=true` para o frontend público mostrar um banner "modo preview". Upload de logo pode começar simples (URL externa); upload binário fica pra fase futura (precisa S3/MinIO). Validação de slug case-insensitive, kebab-case forçado server-side.
+
+**Subtasks**:
+- [ ] **3.8.1** — Criar `landing-config.service.ts` + controller + 4 endpoints listados
+- [ ] **3.8.2** — Service de validação de slug: kebab-case, length 3-32, lista de reservados
+- [ ] **3.8.3** — Service Angular `LandingConfigService` no front
+- [ ] **3.8.4** — Aba "Landing Pública" em `my-company.component` com formulário reativo
+- [ ] **3.8.5** — Validação live de slug (debounced 300ms + chamada `HEAD /api/public/landing/:slug`)
+- [ ] **3.8.6** — Editor dinâmico de "Como funciona" (FormArray com 1-4 passos)
+- [ ] **3.8.7** — Preview em iframe da landing
+- [ ] **3.8.8** — Coluna editável "Slug público" em `/users` (só OWNER da mesma empresa)
+- [ ] **3.8.9** — Testes: validação de slug duplicado entre empresas, OWNER não pode editar slug de employee de outra empresa
+
+---
+
+#### Task 3.9 — Frontend público: scaffolding, roteamento e layout
+
+- **Objetivo**: criar a estrutura Angular do módulo público isolada da app autenticada — lazy-loaded, sem `AuthInterceptor`, com layout dedicado (sem sidebar, sem topbar admin).
+- **Critério de aceite**:
+  - Pasta `src/app/public/` com módulo lazy `public.routes.ts`
+  - Rota `app.routes.ts` adicionada: `{ path: 'p/:companySlug', loadChildren: () => import('./public/public.routes') }`
+  - Subrota `{ path: ':employeeSlug', component: ... }` para opcionalmente capturar employee
+  - `AuthInterceptor` ignora requests para `/api/public/*` (não anexa Authorization header)
+  - Layout próprio `PublicLayoutComponent` (sem sidebar) com slots para hero, conteúdo, footer
+  - Tema escuro/claro respeitado, mas usa cores customizadas da empresa (`primaryColor` de LandingConfig)
+  - Fontes/styles carregados lazily (chunk separado, não infla bundle admin)
+  - Build inicial < 100kb gzipped no chunk público
+- **Dependências**: Task 3.6; ideal Fase 1 (design system) para reuso de tokens
+- **Notas técnicas**: garantir que rotas autenticadas usem prefixo `/app/...` OU manter raiz e só reservar `/p/...` para público — definir cedo. Recomendação: manter como hoje (autenticadas na raiz, públicas em `/p`), incluir `p` na lista de slugs reservados de empresas (Task 3.1.7) — caso contrário um company.slug `p` quebra tudo.
+
+**Subtasks**:
+- [ ] **3.9.1** — Criar diretório `src/app/public/` com `public.routes.ts`, `public-layout.component.ts/html/scss`, `services/`, `models/`
+- [ ] **3.9.2** — Registrar rota lazy em `app.routes.ts` com `path: 'p/:companySlug'` e subrota `:employeeSlug`
+- [ ] **3.9.3** — Atualizar `AuthInterceptor` para skip em `/api/public/*` (não anexar token)
+- [ ] **3.9.4** — Criar `PublicLayoutComponent` minimalista (header com logo + footer leve)
+- [ ] **3.9.5** — Service `PublicLandingService` para `GET /api/public/landing/:slug` (com cache local de 5min via signal)
+- [ ] **3.9.6** — Service `PublicConvertService` para `POST /api/public/convert`
+- [ ] **3.9.7** — Resolver de rota: carrega `LandingConfig` antes de renderizar (404 se inexistente)
+- [ ] **3.9.8** — Aplicar `primaryColor` da empresa via CSS variable dinamicamente no `PublicLayoutComponent`
+
+---
+
+#### Task 3.10 — Frontend público: tela de conversão (mobile-first)
+
+- **Objetivo**: implementar a landing principal — hero impactante, input inteligente, CTA, "Como funciona". Otimizada para conversão em dispositivo móvel.
+- **Critério de aceite**:
+  - Componente `PublicHomeComponent` carregado em `/p/:companySlug`
+  - Layout responsivo, mobile-first; viewport 375px sem scroll horizontal
+  - Hero: banner de urgência configurável + título + subtítulo
+  - Input de URL com validação real-time (regex Shopee), label + placeholder + error inline
+  - Botão CTA grande, primary color da empresa, com loading state ("Buscando melhores cupons…")
+  - Seção "Como funciona" com até 4 passos visualmente (ícones + texto), respondendo aos passos configurados em LandingConfig
+  - Honeypot field (`<input name="website" hidden tabindex="-1" autocomplete="off">`)
+  - Trap de paste: se usuário cola URL Shopee, valida + auto-foca botão CTA
+  - Acessibilidade: labels, aria-live no error, contrast WCAG AA
+  - Lighthouse mobile: perf ≥ 90, a11y ≥ 95
+- **Dependências**: Task 3.9
+- **Notas técnicas**: validação client-side **não** é fonte da verdade — sempre valida no backend. Cliente apenas evita request óbvio. Considerar pre-carregar `/api/public/convert` com `prefetch` de DNS/preconnect para reduzir TTFB do primeiro request. Para detecção de paste, escutar evento `paste` no input.
+
+**Subtasks**:
+- [ ] **3.10.1** — Criar `PublicHomeComponent` com template mobile-first
+- [ ] **3.10.2** — Implementar input com validação reativa de URL Shopee (regex Task 3.2)
+- [ ] **3.10.3** — Seção hero com banner + título + subtítulo bindados ao LandingConfig
+- [ ] **3.10.4** — Seção "Como funciona" iterando sobre `howItWorksSteps` (FormArray no admin)
+- [ ] **3.10.5** — Honeypot field hidden + nunca submitar se preenchido (client-side fail-fast)
+- [ ] **3.10.6** — Loading state inline no CTA com skeleton/spinner do Angular Material
+- [ ] **3.10.7** — Listener de evento `paste` para validação imediata
+- [ ] **3.10.8** — Testes E2E (Playwright/Cypress) cobrindo: colar URL válida, URL inválida, honeypot acionado
+- [ ] **3.10.9** — Auditoria Lighthouse mobile e ajustes de perf (preconnect, lazy imgs)
+
+---
+
+#### Task 3.11 — Frontend público: tela de resultado / redirect
+
+- **Objetivo**: após o backend converter, mostrar "Aplicando cupom…" e redirecionar automaticamente em 2-3s. Botão visível como fallback. Tratar todos os cenários (sucesso, fallback, erro).
+- **Critério de aceite**:
+  - Componente `PublicResultComponent` (ou estado interno do `PublicHomeComponent`) ativa após resposta da API
+  - Estado `loading`: spinner + "Buscando melhores cupons…" (durante request)
+  - Estado `success`: tela "✓ Cupom aplicado! Redirecionando…" com countdown 2s → `window.location.href = affiliateUrl`
+  - Botão "Ir para Shopee agora" sempre visível durante o countdown (escape hatch)
+  - Estado `fallback`: mesma UX que success, mas com microcopy ajustada ("Direcionando você pra Shopee…")
+  - Estado `error` (erro inesperado): "Algo deu errado, tente novamente" + botão "Tentar de novo" voltando ao input
+  - Captura de eventos: `trackConversionView`, `trackRedirectClick` via service simples (Task 3.13)
+  - Acessibilidade: aria-live em "Aplicando cupom" para leitores de tela
+- **Dependências**: Tasks 3.6, 3.10
+- **Notas técnicas**: `window.location.assign` é melhor que `.href` (mantém history limpo). Considerar `<meta http-equiv="refresh">` como fallback se JS falhar — improvável mas barato. Bloqueadores de pop-up não afetam `window.location` (afeta `window.open`).
+
+**Subtasks**:
+- [ ] **3.11.1** — Adicionar estados `loading | success | fallback | error` no componente Home
+- [ ] **3.11.2** — Implementar countdown de 2s com `RxJS interval` e cancelable
+- [ ] **3.11.3** — Auto-redirect via `window.location.assign(affiliateUrl)`
+- [ ] **3.11.4** — Botão "Ir para Shopee agora" sempre clicável durante countdown
+- [ ] **3.11.5** — Tela de erro com botão "Tentar de novo" que reseta o form
+- [ ] **3.11.6** — Microcopy diferenciada para `success` vs `fallback` (UX é a mesma; texto interno difere)
+- [ ] **3.11.7** — `aria-live="polite"` no container de status
+- [ ] **3.11.8** — Testes E2E: sucesso (mockado), fallback, erro 500
+
+---
+
+#### Task 3.12 — Analytics e dashboard de conversões
+
+- **Objetivo**: dar ao OWNER/ADMIN visibilidade sobre o que está acontecendo na landing pública. Top produtos, conversões por dia, taxa de sucesso, atribuição por employee.
+- **Critério de aceite**:
+  - Endpoints autenticados em `dashboard.controller.ts`:
+    - `GET /api/dashboard/conversions/summary?range=7d|30d|90d` → totais, taxa de sucesso, taxa de fallback
+    - `GET /api/dashboard/conversions/top-products?range=...&limit=10` → top `itemId` por contagem (com nome do produto se disponível)
+    - `GET /api/dashboard/conversions/by-employee?range=...` → conversões agregadas por employee
+    - `GET /api/dashboard/conversions/timeline?range=...&bucket=day|hour` → série temporal pra gráfico
+  - Página `/home` ganha card "Conversões da Landing" se Company tem `LandingConfig.isActive=true`
+  - Página dedicada `/conversions` (OWNER+) com:
+    - Cards de resumo (total, sucesso %, fallback %, médio diário)
+    - Gráfico de linha temporal (chart.js ou ng2-charts)
+    - Tabela de top produtos + tabela de top employees
+    - Filtro por range (7d, 30d, 90d) + filtro por employee
+- **Dependências**: Tasks 3.1, 3.5; idealmente Fase 2.6 (paginação)
+- **Notas técnicas**: queries de agregação em `Conversion` precisam dos índices da Task 3.1 funcionando. Considerar uma view materializada futuramente se volume crescer, mas começar com query direta. Top produtos por `itemId` é o mínimo — enriquecer com nome do produto requer chamar Shopee API ou cachear nome no `Conversion` (preferível: salvar `productName` se Shopee retornar).
+
+**Subtasks**:
+- [ ] **3.12.1** — Estender `dashboard.service.ts` com queries de agregação de `Conversion`
+- [ ] **3.12.2** — Endpoints REST listados acima + zod schemas pra query params
+- [ ] **3.12.3** — Salvar `productName` em `Conversion` se Shopee API retornar (alterar Task 3.5 retroativamente se necessário — migration na 3.1)
+- [ ] **3.12.4** — Instalar `ng2-charts` + `chart.js` no frontend
+- [ ] **3.12.5** — Criar `ConversionsDashboardComponent` em `pages/conversions/`
+- [ ] **3.12.6** — Cards de resumo + gráfico de linha + tabelas
+- [ ] **3.12.7** — Filtros (range + employee select)
+- [ ] **3.12.8** — Card resumo na `home.component` (já tem `production-summary`, adicionar similar)
+- [ ] **3.12.9** — Menu lateral ganha entrada "Conversões" visível para OWNER+
+
+---
+
+#### Task 3.13 — Retenção, LGPD e observabilidade
+
+- **Objetivo**: garantir que o módulo público é sustentável a longo prazo — não acumula dados pessoais, tem retenção clara, e exporta métricas/logs estruturados para diagnóstico.
+- **Critério de aceite**:
+  - Retenção configurável `CONVERSION_RETENTION_DAYS` (default 180 dias)
+  - Cleanup job estendido (Fase 2.7) cobrindo `conversions` em adição às outras tabelas
+  - Endpoint admin `DELETE /api/admin/conversions/anonymize?olderThan=...` para anonimização sob demanda (zera `ipHash` e `userAgent`)
+  - Logs estruturados em todos os pontos do fluxo: `[public-convert]` prefix, JSON com `requestId`, `companySlug`, `employeeSlug`, `status`, `responseTimeMs`
+  - Métrica simples expostas em `/api/admin/metrics/public-module`: cache hit ratio, conversions per minute, fallback ratio
+  - Documento `docs/lgpd-public-module.md` listando dados coletados, base legal, retenção, direitos do titular
+- **Dependências**: Task 3.1, 3.5; idealmente Fase 2.7 (cleanup job estendido)
+- **Notas técnicas**: hash de IP já é forma de pseudoanonimização — defender se questionado por usuário. Considerar adicionar consent banner antes da primeira conversão se o usuário estiver na UE/UK (campo `consent_at` em `Conversion`? — adiar pra fase futura, fora do escopo).
+
+**Subtasks**:
+- [ ] **3.13.1** — Adicionar `CONVERSION_RETENTION_DAYS` em `config/env.ts` + `.env.example`
+- [ ] **3.13.2** — Estender cleanup job (Fase 2.7) ou criar `conversion-retention.job.ts` rodando às 03:30
+- [ ] **3.13.3** — Endpoint admin `DELETE /api/admin/conversions/anonymize?olderThan=...`
+- [ ] **3.13.4** — Logger estruturado com prefix `[public-convert]` em todo `public-conversion.service`
+- [ ] **3.13.5** — Endpoint `GET /api/admin/metrics/public-module` (cache stats, taxas, contagens últimos 24h)
+- [ ] **3.13.6** — Documentar LGPD em `docs/lgpd-public-module.md`
+- [ ] **3.13.7** — Atualizar `CLAUDE.md` com nova arquitetura do módulo público
+
+---
+
+#### Task 3.14 — Testes E2E, documentação e lançamento
+
+- **Objetivo**: validar o fluxo ponta-a-ponta com testes automatizados, documentar onboarding de empresa nova, fazer dry-run em ambiente de homologação e habilitar pra primeira empresa-piloto.
+- **Critério de aceite**:
+  - Suíte E2E (Playwright recomendado) cobrindo:
+    - URL longa Shopee → conversão sucesso → redirect
+    - Shortlink → expansão → conversão sucesso
+    - URL inválida → erro inline
+    - Honeypot acionado → "sucesso" fake sem chamar Shopee
+    - Shopee API down (mock) → fallback URL aplicada
+    - Slug inexistente → 404
+    - Employee slug inválido → log warn + flui como direct
+  - Documento `docs/public-module.md`:
+    - Diagrama de arquitetura
+    - Como onboarding uma empresa nova (criar slug, configurar landing, definir fallback URL, ativar)
+    - Como debugar conversões (audit log, conversion table, request-id)
+    - Política de retenção e LGPD
+  - Checklist de lançamento (`docs/public-module-launch-checklist.md`):
+    - Env vars setadas em prod (`PUBLIC_IP_HASH_SALT`, retention)
+    - Migrations aplicadas
+    - Empresa piloto criada e validada (1 conversão real ponta-a-ponta)
+    - Smoke test pós-deploy verde
+- **Dependências**: todas as Tasks 3.1 a 3.13
+- **Notas técnicas**: testes E2E rodam em pipeline em backend mockado (`SHOPEE_MOCK=true`). Não rodar contra API real Shopee em CI — ela tem rate limit e custos. Empresa piloto: escolher uma com pouco tráfego pra validar antes de massificar.
+
+**Subtasks**:
+- [ ] **3.14.1** — Instalar Playwright no monorepo (pasta `e2e/` na raiz)
+- [ ] **3.14.2** — Escrever specs E2E listadas no critério de aceite
+- [ ] **3.14.3** — Criar `docs/public-module.md` com diagrama + onboarding + debug
+- [ ] **3.14.4** — Criar `docs/public-module-launch-checklist.md`
+- [ ] **3.14.5** — Atualizar `IDEIA.md` (esta seção) marcando Subtasks completas e `CLAUDE.md` com endpoints novos
+- [ ] **3.14.6** — Smoke test pós-deploy estendido (`smoke:postdeploy`) cobrindo conversão pública mockada
+- [ ] **3.14.7** — Dry-run de onboarding com empresa piloto: criar slug, ativar landing, 1 conversão real
+- [ ] **3.14.8** — Comunicação interna: changelog + screenshots no canal de produto
+
+---
+
+### Resumo da Fase 3 em uma página
+
+**O que ganha**:
+- Produto novo, voltado a end-user (não admin) — abre porta pra crescer base de afiliados
+- Cada Company ganha landing page pronta sem precisar codar nada
+- Cada Employee/influenciador tem URL própria com atribuição (`/p/empresa/joao`)
+- Telemetria forte: top produtos, conversões por canal, taxa de sucesso
+- Reaproveita 100% da integração Shopee existente — zero duplicação
+
+**O que não ganha (adiado por escopo)**:
+- Custom domain por empresa (TLS automático)
+- SSR / SEO avançado (landing é destino social, não orgânico)
+- Captcha / 3rd-party anti-bot
+- Upload binário de logo (URL externa por enquanto)
+- A/B testing framework
+- Cache distribuído / Redis (continua in-memory)
+
+**Stack adicionada**: `lru-cache@^11`, `chart.js` + `ng2-charts`, Playwright pra E2E. Nada disso é pesado.
+
+**Riscos identificados**:
+- Shopee pode bloquear bot/user-agent inválido na expansão de shortlinks → mitigação: UA realista + monitorar logs
+- Cache em-memória não compartilha entre instâncias → aceitável pra single-instance Coolify atual, migração pra Redis trivial
+- Volume da tabela `conversions` cresce rápido se vazar pra spam → retenção 180d + rate limit + honeypot
+- LGPD: hash de IP cobre, mas se um produto X virar viral, queries de agregação podem ficar lentas → índices da Task 3.1 + considerar view materializada em fase futura
+
+**Ordem de execução recomendada**:
+1. Task 3.1 (modelagem) — fundação, não tem como pular
+2. Tasks 3.2 + 3.3 + 3.4 — peças backend independentes, podem ser feitas em paralelo
+3. Task 3.5 + 3.6 + 3.7 — orquestrador + endpoints + segurança em sequência
+4. Tasks 3.9, 3.10, 3.11 — frontend público (depois que endpoints existem)
+5. Task 3.8 — painel admin de configuração (pode rodar em paralelo com 3.9-3.11)
+6. Task 3.12 — analytics (depende de ter conversões reais)
+7. Tasks 3.13 + 3.14 — retenção/observabilidade + testes + lançamento
 
