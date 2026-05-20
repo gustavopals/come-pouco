@@ -176,9 +176,11 @@ Fase N — <macro goal / milestone>
 - **Aim for first-class application**: every Task considers tests, observability, security, performance, accessibility, and docs — not as afterthoughts.
 - **No functional regressions**: each Fase keeps the app running; each Subtask leaves the app compiling.
 - **Best practices by default**: SOLID, clean code, separation of concerns, tests live near the code they test.
+- **Validate thoroughly**: every implementation should follow programming best practices and include appropriate verification, such as type-checks, unit/integration tests, builds, smoke tests, or focused manual checks according to the risk of the change.
 - **Keep docs in sync**: when a Task changes behavior or stack, update [CLAUDE.md](CLAUDE.md) and [IDEIA.md](IDEIA.md) (other sections too, not just §17).
 - **Numbering is stable**: once a Fase/Task/Subtask is numbered, don't renumber later additions. Append new ones at the end of their level.
 - **Status tracking**: as Subtasks are completed, mark them with a checkbox (`- [x]`) or a `✅` prefix. Leave pending ones unchecked.
+- **Implementation completion tracking**: whenever implementing any Task or Subtask from [IDEIA.md](IDEIA.md), update §17 in the same change to mark the completed item(s) as done; if all Subtasks under a Task are complete, mark the parent Task complete as well.
 - **Ask before assuming scope**: when the user's idea is ambiguous, ask 1-3 targeted questions before writing the plan; better to clarify than to scaffold a wrong plan.
 
 When the user sends a new idea, the workflow is:

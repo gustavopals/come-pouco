@@ -1847,3 +1847,1106 @@ Cada Subtask é redigida no infinitivo ("Adicionar X", "Configurar Y") e idealme
 - Fase 3 (Alli) **não** precisa estar pronta — o showcase é demonstrativo. Mas se Fase 3 entrega antes, o CTA "Ver demo ao vivo" funciona pra valer.
 - Fase 2 (Segurança) **não** bloqueia — mas selos de segurança da Task 4.8 ficam mais honestos pós-Fase 2.
 
+---
+
+### Fase 5 — Testes automatizados, CI/CD e qualidade de código
+
+**Objetivo da fase**: estabelecer a **fundação invisível** que destrava velocidade segura — cobertura mínima viável nos pontos críticos, pipeline CI/CD rodando em todo PR, gerenciamento de dependências automatizado e ferramentas de qualidade no nível certo. Ao final, todo PR roda lint + type-check + test + build automaticamente, merges quebrados em prod viram raridade e contributors novos rodam o projeto em <5min.
+
+**Critério de "pronta"**:
+- Vitest backend com ≥ 70% cobertura nos services críticos (`auth`, `shopee-integration`, `public-conversion`, `billing`, `affiliate-link`)
+- Vitest frontend Angular com ≥ 50% cobertura em services e guards
+- Playwright E2E cobrindo 5 fluxos críticos: login+2FA, gerar link, módulo Alli público, billing checkout, reset de senha
+- GitHub Actions rodando em todo PR: lint + type-check + test + build (backend + frontend + landing)
+- Coverage report acessível via Codecov + badge no README
+- PR não consegue mergear se CI falha (branch protection rule)
+- Renovate configurado pra updates semanais agrupados
+- ESLint compartilhado + Prettier + `lefthook` pra hooks de commit/push
+- Documentação `docs/testing.md` explicando estrutura, como rodar, como escrever testes
+
+**Decisões macro tomadas**:
+- **Test runner**: Vitest em todos os pacotes (já está no frontend; adicionar no backend e landing)
+- **E2E**: Playwright (mais rápido que Cypress, multi-browser nativo, single binary)
+- **CI**: GitHub Actions (gratuito até o limite, ecossistema gigante)
+- **Coverage**: `@vitest/coverage-v8` nativo, upload Codecov (free tier para repo público; privado: usar artifact GH)
+- **Dep updates**: Renovate (mais flexível que Dependabot — agrupamento por tipo, scheduling fino)
+- **Hooks**: `lefthook` (binário único, mais rápido que husky)
+- **Lint**: ESLint flat config compartilhado entre os 3 pacotes via `eslint.config.mjs` raiz
+
+**Decisões fechadas**:
+- **Coverage reporting**: `vitest-coverage-report-action` (local, gratuito, sem 3rd-party) postando comment em PR. Codecov fica para futuro se time crescer.
+- **Branch protection**: ativar `require CI green` desde já; `require 1 approval` ativa assim que houver mais de 1 dev no projeto.
+
+**Não-escopo desta fase**:
+- Testes de carga / stress (k6, Artillery) — Fase futura
+- Mutation testing (Stryker) — overkill no MVP
+- Visual regression (Percy, Chromatic) — Fase futura
+- Contract testing (Pact) — só faz sentido quando houver API externa consumida
+
+---
+
+#### Task 5.1 — Setup Vitest backend + estrutura de testes
+
+- **Objetivo**: trazer Vitest ao backend (hoje só smoke tests via scripts) com estrutura de pastas clara, mocks reutilizáveis e DB de teste isolado. Sem isso, todas as outras tasks de teste backend ficam sem chão.
+- **Critério de aceite**:
+  - `vitest`, `@vitest/coverage-v8` instalados em `come-pouco-backend`
+  - `vitest.config.ts` configurado: paths absolutos, alias, coverage com `include`/`exclude` corretos, `setupFiles` para reset de mocks
+  - Estrutura: testes co-localizados (`*.spec.ts` ao lado do código) para unit, `tests/integration/` para integração
+  - Helper `tests/helpers/prisma-test.ts` que cria DB de teste isolado por suite (schema `test_<random>` via `prisma migrate deploy`)
+  - Mock factories em `tests/factories/` para `User`, `Company`, `PurchasePlatform`, etc. (usando `@faker-js/faker`)
+  - Script `npm test` no backend roda Vitest; `npm run test:watch`, `npm run test:cov`
+  - 1 teste "smoke" passando (`httpError.spec.ts` ou similar) pra validar o setup
+- **Dependências**: nenhuma
+- **Notas técnicas**: para DB isolado, alternativa mais leve é Testcontainers (sobe Postgres efêmero em Docker por suite) — porém adiciona ~3s de boot. Para começar, usar mesmo Postgres do `docker-compose.yml` com schema separado é suficiente. Mockar Prisma com `vitest-mock-extended` para testes unitários puros (sem DB).
+
+**Subtasks**:
+- [ ] **5.1.1** — Instalar `vitest`, `@vitest/coverage-v8`, `vitest-mock-extended`, `@faker-js/faker`
+- [ ] **5.1.2** — Criar `vitest.config.ts` com alias + coverage config
+- [ ] **5.1.3** — Criar `tests/helpers/prisma-test.ts` com setup/teardown de schema isolado
+- [ ] **5.1.4** — Criar factories em `tests/factories/` (User, Company, PurchasePlatform, AffiliateLink, LandingConfig)
+- [ ] **5.1.5** — Adicionar scripts `test`, `test:watch`, `test:cov` em `package.json`
+- [ ] **5.1.6** — Escrever 1 teste smoke (`utils/httpError.spec.ts`)
+- [ ] **5.1.7** — Atualizar `CLAUDE.md` com instruções de teste no backend
+
+---
+
+#### Task 5.2 — Cobertura unitária dos services críticos backend
+
+- **Objetivo**: cobrir com testes unitários os services onde bug = dinheiro ou segurança comprometida. Foco em `auth.service`, `shopee-integration.service`, `public-conversion.service` (Fase 3), `billing.service` (Fase 7), `affiliate-link.service`.
+- **Critério de aceite**:
+  - Cobertura ≥ 70% nos services listados (medida por `vitest --coverage`)
+  - Cobertura ≥ 60% no projeto backend como um todo
+  - Cenários críticos testados explicitamente:
+    - `auth.service`: login OK, login senha errada, login com 2FA, 2FA inválido, lockout após N falhas, password reset, geração/validação de trusted device token
+    - `shopee-integration.service`: assinatura HMAC correta, modo MOCK retorna determinístico, modo REAL parseia GraphQL response, erro Shopee dispara fallback
+    - `public-conversion.service`: cache hit/miss, expansion de shortlink, fallback URL aplicada em erro
+    - `affiliate-link.service`: visibilidade por role (EMPLOYEE vê só os próprios, OWNER vê empresa, ADMIN vê tudo)
+  - Mocks de Prisma e fetch isolados — testes não dependem de DB nem rede
+- **Dependências**: Task 5.1
+- **Notas técnicas**: `vitest-mock-extended` gera mock tipado do Prisma client. Para mockar `fetch`, usar `vi.fn()` substituindo `globalThis.fetch`. Cuidado pra não testar implementação (ex.: "chamou prisma.user.findUnique") — testar **comportamento** (input → output). Cobertura virou meta, não medida — focar em path crítico.
+
+**Subtasks**:
+- [ ] **5.2.1** — Escrever testes de `auth.service` cobrindo todos os fluxos listados
+- [ ] **5.2.2** — Escrever testes de `shopee-integration.service` (com fetch mockado)
+- [ ] **5.2.3** — Escrever testes de `public-conversion.service` (depende de Fase 3 modelagem)
+- [ ] **5.2.4** — Escrever testes de `affiliate-link.service` cobrindo visibilidade por role
+- [ ] **5.2.5** — Escrever testes de `audit.service` (Fase 2.5) — fire-and-forget não bloqueia
+- [ ] **5.2.6** — Escrever testes de `email.service` (multi-provider — verificar que escolhe certo conforme config)
+- [ ] **5.2.7** — Rodar `npm run test:cov` e ajustar gaps até atingir alvos
+
+---
+
+#### Task 5.3 — Testes de integração backend (com DB real isolado)
+
+- **Objetivo**: validar que controllers + services + Prisma + middlewares funcionam juntos como o cliente espera. Diferente do unit, esses tocam DB de teste real. Cobrir os endpoints críticos end-to-end no servidor.
+- **Critério de aceite**:
+  - Suite `tests/integration/` cobrindo:
+    - `POST /auth/login` (sucesso, senha errada, conta sem 2FA, conta com 2FA → tempToken)
+    - `POST /auth/login/2fa` (token válido, expirado, inválido)
+    - `POST /integrations/shopee/generate-shortlinks` (MOCK + auth + role check)
+    - `POST /api/public/convert` (Fase 3) — sucesso, fallback, slug inexistente, honeypot
+    - `GET /affiliate-links` paginado e com role-based filter
+    - `POST /api/public/leads` (Fase 4.10) — sucesso + rate limit
+  - Suite roda em < 30s no GH Actions
+  - Setup global cria DB schema fresh por run, teardown deleta no fim
+  - Helper `tests/helpers/request.ts` usando `supertest` ou `undici` direto
+- **Dependências**: Task 5.1; idealmente Fases 2/3 já em andamento
+- **Notas técnicas**: integração é mais lenta que unit — manter um número manejável (15-25 specs). Para velocidade, paralelizar com `vitest --pool=forks`. JWT de teste pode ser gerado com `jsonwebtoken` direto, sem passar pelo login real. Para Shopee, manter `SHOPEE_MOCK=true` em test env.
+
+**Subtasks**:
+- [ ] **5.3.1** — Instalar `supertest` ou usar `undici.request` direto
+- [ ] **5.3.2** — Criar helper `request(app)` que gera Express app de teste sem `listen`
+- [ ] **5.3.3** — Escrever specs de `/auth/*`
+- [ ] **5.3.4** — Escrever specs de `/integrations/shopee/*` em modo MOCK
+- [ ] **5.3.5** — Escrever specs de `/api/public/*` (Fase 3)
+- [ ] **5.3.6** — Escrever specs de `/affiliate-links` cobrindo paginação + roles
+- [ ] **5.3.7** — Garantir que toda suite roda em < 30s
+
+---
+
+#### Task 5.4 — Testes frontend Angular + componentes-chave
+
+- **Objetivo**: trazer testes ao frontend Angular nos pontos onde bug = experiência quebrada — `AuthService`, `AuthInterceptor`, guards (auth, admin, owner), e 3-5 componentes complexos.
+- **Critério de aceite**:
+  - Vitest configurado no `come-pouco-frontend` (já existe — ajustar se necessário)
+  - Cobertura ≥ 50% em `core/services/` e `core/guards/`
+  - Specs cobrindo:
+    - `AuthService`: signal currentUser, login, logout, isAdmin/isOwner
+    - `AuthInterceptor`: anexa Authorization, skip em `/api/public/*` (Fase 3), trata 401 invalid token
+    - `authGuard`, `adminGuard`, `ownerGuard`, `guestGuard`
+    - `LoginComponent`: estados (idle/loading/2fa/error), submissão, redirect pós-success
+    - `AffiliateLinksComponent`: listagem, paginação, criação, deleção
+    - `MyCompanyComponent` (aba LandingConfig — Fase 3 Task 3.8)
+  - `npm test` no frontend roda Vitest, `npm run test:watch`, `npm run test:cov`
+- **Dependências**: Task 5.1 (padrão estabelecido)
+- **Notas técnicas**: Angular Testing Library tem boa interop com Vitest. Pra componentes Material, usar `@angular/cdk/testing` (harnesses). HTTP mockado com `HttpTestingController` ou `MSW` (mais realista). Signals do Angular se testam via `runInInjectionContext`.
+
+**Subtasks**:
+- [ ] **5.4.1** — Auditar/ajustar config Vitest existente no frontend
+- [ ] **5.4.2** — Adicionar `@testing-library/angular`, `@angular/cdk/testing`, `msw`
+- [ ] **5.4.3** — Specs de `AuthService` + `AuthInterceptor`
+- [ ] **5.4.4** — Specs dos 4 guards
+- [ ] **5.4.5** — Specs de `LoginComponent` (cobrindo 2FA flow)
+- [ ] **5.4.6** — Specs de `AffiliateLinksComponent` (CRUD + paginação)
+- [ ] **5.4.7** — Specs de `MyCompanyComponent` (validação live de slug)
+- [ ] **5.4.8** — Rodar coverage e ajustar até atingir alvo
+
+---
+
+#### Task 5.5 — Setup Playwright E2E + fluxos críticos
+
+- **Objetivo**: validar que o sistema funciona ponta-a-ponta na perspectiva do usuário real — browser de verdade, banco de verdade, módulo Alli público de verdade. Cobre 5 fluxos críticos onde regressão = receita perdida.
+- **Critério de aceite**:
+  - Pasta `e2e/` na raiz do monorepo com Playwright configurado
+  - 5 specs principais:
+    1. **Login + 2FA**: cadastra user com 2FA, faz login, valida TOTP, chega no dashboard
+    2. **Gerar affiliate link**: OWNER conecta Shopee MOCK, gera 5 shortlinks, valida que aparecem na lista
+    3. **Módulo Alli público**: visita `/p/<slug>`, cola URL Shopee, vê loading, é redirecionado
+    4. **Billing checkout** (Fase 7): user clica em "Assinar Pro", completa checkout Stripe test mode, vê plano ativo
+    5. **Reset de senha**: requisita reset, lê email (Mailpit ou similar), abre link, define nova senha, faz login
+  - Specs rodam em headless por padrão, com `--headed` opcional para debug
+  - Helpers para setup: criar empresa, criar user, login programático via API (não via UI a cada teste)
+  - Auto-start de backend + frontend + landing antes da suite (via `webServer` config do Playwright)
+  - Roda em < 3 min localmente, < 5 min no GH Actions
+- **Dependências**: Task 5.1; idealmente fluxos das Fases 3 e 7 já estão estáveis
+- **Notas técnicas**: Playwright `webServer` config sobe os 3 servidores automaticamente. Para email de reset, usar Mailpit (`docker run mailpit/mailpit`) como SMTP de teste — bate na inbox HTTP API pra ler o link. Para Stripe checkout, usar test mode com cartões `4242 4242 4242 4242`. Manter test data isolada via prefixo de email (`e2e-<uuid>@test.local`).
+
+**Subtasks**:
+- [ ] **5.5.1** — `npm init playwright@latest` na raiz, configurar `playwright.config.ts`
+- [ ] **5.5.2** — Configurar `webServer` para subir backend + frontend + landing antes
+- [ ] **5.5.3** — Criar helpers `e2e/helpers/auth.ts` (login via API, criar user com seed)
+- [ ] **5.5.4** — Adicionar Mailpit ao `docker-compose.yml` em ambiente de test
+- [ ] **5.5.5** — Spec 1: login + 2FA (gera TOTP com `otplib`)
+- [ ] **5.5.6** — Spec 2: gerar affiliate link em modo MOCK
+- [ ] **5.5.7** — Spec 3: módulo Alli público (depende Fase 3)
+- [ ] **5.5.8** — Spec 4: billing checkout Stripe test mode (depende Fase 7)
+- [ ] **5.5.9** — Spec 5: reset de senha via Mailpit
+- [ ] **5.5.10** — Ajustar suite para rodar em < 3min localmente
+
+---
+
+#### Task 5.6 — Pipeline CI/CD com GitHub Actions
+
+- **Objetivo**: pipeline rodando em todo PR e em push de `main`, validando lint + type-check + test + build dos 3 pacotes. PR não merge se CI falha. Cache otimizado para CI < 5min.
+- **Critério de aceite**:
+  - `.github/workflows/ci.yml` com jobs paralelos:
+    - `lint` — ESLint + Prettier check
+    - `type-check` — `tsc --noEmit` em backend, frontend, landing
+    - `test-backend` — Vitest backend + coverage upload
+    - `test-frontend` — Vitest frontend + coverage upload
+    - `build` — build dos 3 pacotes
+    - `e2e` — Playwright em headless (só em PRs labelados `e2e` ou em push para main, pra economizar minutos)
+  - Cache de `node_modules` via `actions/setup-node@v4` (cache npm)
+  - Cache de Playwright browsers
+  - Job `e2e` sobe Postgres via service container, roda migrations
+  - PR comment com coverage diff (via `vitest-coverage-report-action` ou Codecov)
+  - Branch protection em `main`: exige CI verde + (futuro) 1 review
+  - Time total p95 ≤ 5min sem E2E, ≤ 10min com E2E
+- **Dependências**: Tasks 5.1-5.5
+- **Notas técnicas**: GH Actions tem 2000 min/mês free pra repo privado — vigiar consumo. `pull_request_target` é tentador mas perigoso (executa workflow do fork) — não usar. Concurrency com `cancel-in-progress: true` cancela runs antigos quando novo push vem. Coverage agrupado: cada job sobe seu coverage com tag, Codecov junta.
+
+**Subtasks**:
+- [ ] **5.6.1** — Criar `.github/workflows/ci.yml` com jobs base (lint, type-check, test, build)
+- [ ] **5.6.2** — Configurar cache de npm e Playwright browsers
+- [ ] **5.6.3** — Adicionar service container Postgres pro job de E2E
+- [ ] **5.6.4** — Concurrency group + cancel-in-progress
+- [ ] **5.6.5** — Coverage upload (Codecov se viável, senão artifact + bot comment)
+- [ ] **5.6.6** — Configurar branch protection em `main` (settings GH)
+- [ ] **5.6.7** — Job `e2e` rodando só em `main` ou em PR com label `e2e`
+- [ ] **5.6.8** — Badge de status do CI no `README.md` raiz
+- [ ] **5.6.9** — Medir tempo total e otimizar gargalos
+
+---
+
+#### Task 5.7 — Code quality: ESLint compartilhado, Prettier, hooks
+
+- **Objetivo**: padronizar estilo e prevenir bugs comuns nos 3 pacotes via ESLint flat config compartilhado, Prettier rodando em pre-commit, lefthook orquestrando hooks. Manter consistência sem fricção.
+- **Critério de aceite**:
+  - `eslint.config.mjs` na raiz com regras compartilhadas, e configs específicas por pacote (`backend/.eslintrc`, `frontend/.eslintrc`, `landing/.eslintrc`) que estendem o root
+  - Regras importantes ativas: `@typescript-eslint/no-floating-promises`, `no-unused-vars`, `prefer-const`, `eqeqeq`, `no-console` (warn em prod), Angular-specific no frontend, Astro-specific na landing
+  - `.prettierrc` raiz unificado (largura 100, single quote, trailing comma)
+  - `lefthook.yml` na raiz:
+    - `pre-commit`: prettier --write + eslint --fix nos arquivos staged
+    - `pre-push`: type-check + test affected (opcional)
+    - `commit-msg`: validate conventional commits (opcional)
+  - `.editorconfig` raiz pra consistência básica entre editors
+  - Script `npm run lint` na raiz roda nos 3 pacotes
+- **Dependências**: nenhuma
+- **Notas técnicas**: ESLint flat config é o padrão moderno (substitui `.eslintrc.json`). Para Angular, usar `@angular-eslint`. Para Astro, usar `eslint-plugin-astro`. Lefthook é binário Go, instala via npm e roda rápido. Conventional commits opcional — útil pra gerar changelog automático no futuro.
+
+**Subtasks**:
+- [ ] **5.7.1** — Criar `eslint.config.mjs` raiz com regras base
+- [ ] **5.7.2** — Adicionar `@angular-eslint` no frontend
+- [ ] **5.7.3** — Adicionar `eslint-plugin-astro` na landing
+- [ ] **5.7.4** — Criar `.prettierrc` e `.editorconfig` raiz
+- [ ] **5.7.5** — Instalar lefthook + configurar `lefthook.yml`
+- [ ] **5.7.6** — Hook `pre-commit` rodando prettier + eslint nos staged
+- [ ] **5.7.7** — Rodar lint em todos os pacotes e corrigir warnings/errors antes de ativar `--max-warnings 0`
+- [ ] **5.7.8** — Script `npm run lint` e `npm run format` no root
+
+---
+
+#### Task 5.8 — Gerenciamento de dependências + auditoria de segurança
+
+- **Objetivo**: manter dependências atualizadas sem virar trabalho manual. Renovate agrupa updates por categoria e ritmo. Auditoria de vulnerabilidades (`npm audit`) rodando em CI.
+- **Critério de aceite**:
+  - `renovate.json` na raiz configurado:
+    - Update minor/patch semanal (segunda 06:00 BRT), agrupado em 1 PR por workspace
+    - Update major mensal, 1 PR por dep (revisão manual)
+    - Lock file maintenance mensal
+    - Vulnerability alerts: PR imediato
+  - Job `audit` no CI roda `npm audit --production` e falha se houver crítica
+  - Allowlist de vulnerabilidades aceitas (com justificativa) em `.npmrc` ou similar
+  - Documento `docs/dependencies.md` listando deps "core" (não atualizar sem revisão) — ex.: Prisma, Express, Angular
+- **Dependências**: Task 5.6 (pipeline CI existindo)
+- **Notas técnicas**: Renovate é mais flexível que Dependabot — bot da Renovate funciona em repo público; para privado, usar Renovate self-hosted via GH Action é trivial. `npm audit fix --force` é perigoso (pode quebrar APIs); preferir fix manual. Para Prisma, atualização major exige regenerar client e testar migrations.
+
+**Subtasks**:
+- [ ] **5.8.1** — Adicionar Renovate ao repo (instalar GitHub App ou usar `renovate-bot/renovate` action)
+- [ ] **5.8.2** — Criar `renovate.json` com presets recomendados + customizações
+- [ ] **5.8.3** — Adicionar job `audit` no CI
+- [ ] **5.8.4** — Criar `docs/dependencies.md` listando deps core + política
+- [ ] **5.8.5** — Rodar primeira rodada de audit + fix das vulnerabilidades existentes
+- [ ] **5.8.6** — Configurar Slack/Discord notification de PRs Renovate (opcional)
+
+---
+
+#### Task 5.9 — Coverage reporting, badges e visibilidade
+
+- **Objetivo**: cobertura é métrica útil só se for visível. Codecov (ou alternativa) integrado, badge no README, PR comment com diff. Não vira meta cega — vira sinal.
+- **Critério de aceite**:
+  - Coverage de backend + frontend + landing publicado em cada PR
+  - Badges no `README.md` raiz: CI status, coverage backend, coverage frontend, license
+  - PR comment automático com tabela: cobertura atual, diff vs base branch, arquivos sem cobertura no PR
+  - Threshold mínimo configurado em `vitest.config.ts`: backend services ≥ 60%, frontend ≥ 45% (alvo, não bloqueante no início)
+- **Dependências**: Task 5.6
+- **Notas técnicas**: Codecov é a opção mais polida (free tier limita repos privados). Alternativas: `vitest-coverage-report-action` que gera comment direto sem 3rd party. Para repo privado sem orçamento, alternativa é guardar JSON coverage como artifact e gerar comment com action custom.
+
+**Subtasks**:
+- [ ] **5.9.1** — Decidir: Codecov vs action local (recomendação: action local pra começar)
+- [ ] **5.9.2** — Integrar coverage upload na pipeline CI
+- [ ] **5.9.3** — Configurar comment automático em PR com diff de coverage
+- [ ] **5.9.4** — Adicionar thresholds em `vitest.config.ts` (warning, não fail por enquanto)
+- [ ] **5.9.5** — Atualizar `README.md` raiz com badges
+
+---
+
+#### Task 5.10 — Documentação de testes + onboarding contributor
+
+- **Objetivo**: documentação que faz alguém novo no projeto rodar tudo em < 5min e escrever o primeiro teste em < 30min. Reduz o atrito de contribuir.
+- **Critério de aceite**:
+  - `docs/testing.md` cobrindo:
+    - Estrutura de pastas (unit, integration, e2e)
+    - Como rodar: `npm test`, `npm run test:cov`, `npm run e2e`
+    - Convenções: nomes, helpers disponíveis, factories
+    - Padrões: como mockar Prisma, como testar guards Angular, como escrever spec Playwright
+    - Anti-padrões: testar implementação em vez de comportamento, mocks frágeis
+  - `docs/contributing.md` com:
+    - Setup local em 5 passos
+    - Fluxo de PR (branch naming, commit convention, run lint+test antes de push)
+    - Como pedir review
+  - `CLAUDE.md` atualizado com seção "Testes" referenciando `docs/testing.md`
+  - Template de PR (`.github/PULL_REQUEST_TEMPLATE.md`) com checklist (testes, docs, type-check, lint)
+- **Dependências**: Tasks 5.1-5.9
+- **Notas técnicas**: docs curtas e diretas valem mais que extensas. Manter 1 arquivo por tema. Atualizar quando padrão mudar.
+
+**Subtasks**:
+- [ ] **5.10.1** — Escrever `docs/testing.md`
+- [ ] **5.10.2** — Escrever `docs/contributing.md`
+- [ ] **5.10.3** — Criar `.github/PULL_REQUEST_TEMPLATE.md`
+- [ ] **5.10.4** — Atualizar `CLAUDE.md` com seção de testes
+- [ ] **5.10.5** — Atualizar `README.md` raiz com link pra docs
+
+---
+
+### Resumo da Fase 5 em uma página
+
+**O que ganha**:
+- Cobertura de testes mínima viável em pontos críticos
+- Pipeline CI/CD rodando em todo PR — quebras chegam antes do merge
+- E2E em browser real cobrindo 5 fluxos que importam
+- Dependências atualizadas automaticamente, sem virar débito
+- Padrão de código uniforme nos 3 pacotes
+- Onboarding de novos contributors em < 5min
+
+**Stack adicionada**: Vitest backend + landing, Playwright, GitHub Actions, Renovate, lefthook, ESLint flat config, Codecov (ou alternativa).
+
+**Riscos / armadilhas**:
+- Cobertura virar meta cega → manter como sinal, não bloqueio inicial
+- E2E lentos demais → manter < 3min ou times param de rodar localmente
+- CI consumindo minutos demais → cache agressivo + concurrency cancel
+- Testes frágeis (depender de implementação) → educar via `docs/testing.md` e code review
+
+**Ordem recomendada**:
+1. Task 5.1 (setup Vitest backend) — fundação
+2. Tasks 5.2 + 5.3 em paralelo (unit + integração backend)
+3. Task 5.4 (frontend) — independente do backend
+4. Task 5.7 (lint+prettier+hooks) — pode rodar em paralelo desde o início
+5. Task 5.6 (CI) — só depois das suites existirem
+6. Task 5.5 (E2E) — depois que CI básico estiver verde
+7. Tasks 5.8, 5.9, 5.10 — fechamento
+
+---
+
+### Fase 6 — Observabilidade & Monitoring
+
+**Objetivo da fase**: parar de operar no escuro. Hoje, se algo quebra em produção, você descobre quando o cliente reclama. Esta fase coloca **logs estruturados, error tracking, métricas e alerting** num nível razoável — não enterprise-grade, mas suficiente pra responder "está tudo bem?" em < 30s e investigar incidentes em < 10min.
+
+**Critério de "pronta"**:
+- `pino` substituiu `console.log` no backend; todos os logs em JSON estruturado com `requestId`, `userId?`, `companyId?`, `eventType`
+- Sentry integrado no backend + frontend + landing capturando erros não-tratados; PII filtrada
+- `/api/health` retorna check aprofundado (DB, Shopee API, email transport, cache stats)
+- Métricas básicas expostas em `/api/metrics` (formato Prometheus): conversions/min, shopee API latency p50/p95/p99, auth attempts/min, queue depth (futuro), cache hit ratio
+- Dashboard único (Grafana ou OpenObserve) mostrando: requests/min, error rate, p95 latency, conversões/h, shopee success rate, top errors
+- Alerting configurado em 5 condições críticas (canal Discord ou Telegram):
+  - Error rate > 5% em 5min
+  - Shopee API success rate < 80% em 10min
+  - DB latency p95 > 500ms em 5min
+  - Backend offline > 1min (healthcheck falha)
+  - Queue depth > 1000 (quando houver queue)
+- Status page interna (não-público ainda) listando histórico de incidentes
+- Runbooks em `docs/runbooks/` pra 5 cenários comuns: "Shopee API caiu", "DB lento", "Erro 500 em pico", "Email não envia", "Cache lotado"
+
+**Decisões macro tomadas**:
+- **Logger**: `pino` (mais rápido que Winston, JSON nativo, ecossistema sólido)
+- **Error tracking**: Sentry (free tier 5k events/mês é suficiente pra começar; alternativa OSS GlitchTip se quiser self-host)
+- **Métricas**: `prom-client` no Node + Grafana + Prometheus self-hosted (no mesmo Coolify) OU OpenObserve (single binary, mais simples)
+- **Alerting**: Grafana Alerts → Discord webhook (ou Telegram via bot)
+- **Tracing distribuído**: NÃO nesta fase (overhead alto pra valor médio no MVP — Fase futura com OpenTelemetry)
+
+**Decisões fechadas**:
+- **Error tracking**: **Sentry cloud** (free 5k events/mês cobre MVP; migra pra GlitchTip self-hosted só se volume passar 5k consistentemente)
+- **Métricas + dashboard**: **OpenObserve** self-hosted no mesmo Coolify (single binary, combina logs + métricas + traces, muito mais simples de operar que Grafana+Prometheus)
+- **Canal de alerta**: **Discord** webhook (gratuito, bom pra dev, formatação rica). Telegram fica como fallback se a equipe quiser push mobile depois.
+
+**Não-escopo desta fase**:
+- Tracing distribuído (OpenTelemetry, Tempo, Jaeger)
+- APM full-stack (Datadog, New Relic) — caro
+- Log aggregation com retenção longa (Loki, Elasticsearch) — começar simples
+- Real User Monitoring (RUM) — sentry tem versão básica que já cobre
+- Synthetic monitoring (Checkly) — Fase futura
+
+---
+
+#### Task 6.1 — Substituir `console` por `pino` no backend
+
+- **Objetivo**: logs estruturados em JSON são a base de toda observabilidade. `console.log` espalhado pelo código é ruído. `pino` é rápido (não bloqueia event loop) e gera JSON pronto pra ingestão.
+- **Critério de aceite**:
+  - `pino` instalado, configurado em `src/lib/logger.ts`
+  - Logger child por request (com `requestId` da Fase 2.1) acessível via `req.log`
+  - Níveis: `trace`, `debug`, `info`, `warn`, `error`, `fatal`; default `info` em prod, `debug` em dev
+  - Pretty print só em dev (`pino-pretty`), JSON puro em prod
+  - 100% dos `console.log/error/warn` substituídos por `logger.info/error/warn`
+  - PII redaction configurada: nunca logar `password`, `token`, `twoFactorSecret`, `apiKey` (mesmo se aparecerem em payload por engano)
+  - Configurável via env: `LOG_LEVEL`, `LOG_FORMAT` (`json` | `pretty`)
+- **Dependências**: idealmente Fase 2.1 (requestId middleware)
+- **Notas técnicas**: `pino` aceita `redact` config — listar paths de campos sensíveis. Para `req.log` per-request, usar `pino-http` middleware (ele cria child logger automaticamente). Cuidado com objetos circulares — `pino` lida, mas warning vale.
+
+**Subtasks**:
+- [ ] **6.1.1** — Instalar `pino`, `pino-pretty`, `pino-http`
+- [ ] **6.1.2** — Criar `src/lib/logger.ts` com config base + redact list
+- [ ] **6.1.3** — Adicionar `pino-http` middleware em `app.ts`
+- [ ] **6.1.4** — Substituir todos `console.*` por `logger.*` (grep + revisão)
+- [ ] **6.1.5** — Atualizar audit service (Fase 2.5) para usar logger
+- [ ] **6.1.6** — Atualizar history cleanup job + future jobs para usar logger
+- [ ] **6.1.7** — Adicionar envs `LOG_LEVEL`, `LOG_FORMAT` em `config/env.ts`
+- [ ] **6.1.8** — Documentar política de log em `docs/logging.md`
+
+---
+
+#### Task 6.2 — Sentry integrado (backend + frontend + landing)
+
+- **Objetivo**: capturar erros não-tratados em produção com stack trace, contexto, breadcrumbs. Saber **quando** algo quebra antes do cliente reclamar.
+- **Critério de aceite**:
+  - Sentry SDK em backend (`@sentry/node`), frontend (`@sentry/angular`) e landing (`@sentry/astro`)
+  - DSNs por env (`SENTRY_DSN_BACKEND`, `SENTRY_DSN_FRONTEND`, `SENTRY_DSN_LANDING`)
+  - Configurações:
+    - `tracesSampleRate: 0.1` em prod (10% de transações pra perf monitoring), `1.0` em dev
+    - `environment` setado conforme `APP_ENV`
+    - `release` setado com SHA do commit (via build var)
+    - PII filtering ativo (Sentry tem `beforeSend` — remover `password`, `token`, etc.)
+  - Backend: error handler global encaminha pra Sentry com `requestId`, `userId`, `companyId` tags
+  - Frontend: `ErrorHandler` Angular customizado encaminha
+  - Landing: já vem do SDK Astro
+  - Source maps uploaded em build (não em runtime)
+- **Dependências**: Task 6.1 (logger contextual ajuda)
+- **Notas técnicas**: free tier Sentry é 5k events/mês — vigia consumo. PII filtering é crítico: Sentry pode pegar body de request com password se mal configurado. `sentry-cli` faz upload de source maps no CI (Task 5.6). Alternativa OSS: GlitchTip (compatível com Sentry SDK, self-host).
+
+**Subtasks**:
+- [ ] **6.2.1** — Criar projeto Sentry (ou GlitchTip self-hosted) e gerar DSNs
+- [ ] **6.2.2** — Instalar `@sentry/node` no backend, configurar com `Sentry.init()` antes de tudo
+- [ ] **6.2.3** — Integrar no error handler global do Express com tags `requestId`/`userId`/`companyId`
+- [ ] **6.2.4** — Configurar PII filtering via `beforeSend`
+- [ ] **6.2.5** — Instalar `@sentry/angular` no frontend, ErrorHandler customizado
+- [ ] **6.2.6** — Instalar `@sentry/astro` na landing
+- [ ] **6.2.7** — Upload de source maps no pipeline CI (Fase 5.6)
+- [ ] **6.2.8** — Testar: forçar erro 500 em prod-like e ver chegar no Sentry com contexto
+
+---
+
+#### Task 6.3 — Health checks aprofundados
+
+- **Objetivo**: `/api/health` hoje é trivial. Promovê-lo a check completo que valida DB, Shopee, email transport, cache. Usado por load balancer, monitoring externo e dashboards.
+- **Critério de aceite**:
+  - `GET /api/health` — liveness simples (200 sempre, sem DB)
+  - `GET /api/health/ready` — readiness com checks:
+    - DB: query `SELECT 1` < 100ms
+    - Shopee API: ping ao endpoint base (modo HEAD, timeout 3s, opcional desligar via env)
+    - Email transport: valida config carregada (sem enviar email real)
+    - Cache: report de `hits`, `misses`, `size`
+    - Disk space: opcional
+  - Resposta JSON estruturada:
+    ```json
+    {
+      "status": "ok|degraded|down",
+      "checks": {
+        "database": { "status": "ok", "latencyMs": 12 },
+        "shopee": { "status": "degraded", "latencyMs": 850 },
+        ...
+      },
+      "uptime": 12345,
+      "version": "1.2.3"
+    }
+    ```
+  - HTTP status: 200 se `ok`, 200 se `degraded` (não derruba LB), 503 se `down`
+- **Dependências**: Task 6.1
+- **Notas técnicas**: separar liveness (cu agente alive?) de readiness (capaz de servir tráfego?) é prática padrão K8s — útil mesmo fora de K8s. Health check não deve fazer chamadas externas pesadas — timeout curto, paralelo. `version` vem do `package.json` ou de build var.
+
+**Subtasks**:
+- [ ] **6.3.1** — Refatorar `/api/health` em liveness + readiness
+- [ ] **6.3.2** — Criar `src/services/health.service.ts` com checks individuais
+- [ ] **6.3.3** — Check `database` via Prisma raw query
+- [ ] **6.3.4** — Check `shopee` (configurável via env, default off pra economizar quota)
+- [ ] **6.3.5** — Check `email` (valida config, não envia)
+- [ ] **6.3.6** — Check `cache` reportando stats
+- [ ] **6.3.7** — Documentar em `docs/health-checks.md`
+
+---
+
+#### Task 6.4 — Métricas estilo Prometheus (`/api/metrics`)
+
+- **Objetivo**: expor métricas chave em formato Prometheus pra ingestão por OpenObserve/Grafana. Sem métricas, dashboards e alertas não existem.
+- **Critério de aceite**:
+  - `prom-client` instalado, instância global de `Registry`
+  - Métricas instrumentadas:
+    - `http_requests_total{method,route,status}` (counter)
+    - `http_request_duration_seconds{method,route,status}` (histogram, buckets 50ms-10s)
+    - `shopee_api_calls_total{mode,success}` (counter)
+    - `shopee_api_duration_seconds` (histogram)
+    - `conversions_total{status}` (counter — Fase 3)
+    - `auth_attempts_total{result}` (counter)
+    - `cache_hits_total`, `cache_misses_total`, `cache_size` (gauges)
+    - `nodejs_*` métricas default (heap, event loop lag, etc.)
+  - Endpoint `GET /api/metrics` protegido por basic auth (`METRICS_USER`/`METRICS_PASSWORD`) ou IP allowlist
+  - Frontend Angular: usar `web-vitals` package, enviar pro backend via `/api/metrics/rum` (opcional simplificado nesta fase)
+- **Dependências**: Task 6.1
+- **Notas técnicas**: histogram é mais útil que summary pra latência (permite agregação correta). `route` deve ser o template (`/users/:id`), não o path final (`/users/123`) — evita explosão de cardinalidade. Métricas custom em services específicos (ex.: `conversion.service` chama `conversionsTotal.inc({status: 'SUCCESS'})`).
+
+**Subtasks**:
+- [ ] **6.4.1** — Instalar `prom-client`, criar `src/lib/metrics.ts` com Registry + métricas
+- [ ] **6.4.2** — Middleware que mede `http_request_duration_seconds` em todo request
+- [ ] **6.4.3** — Instrumentar `shopee-integration.service` com counter + histogram
+- [ ] **6.4.4** — Instrumentar `public-conversion.service` (Fase 3) com counter
+- [ ] **6.4.5** — Instrumentar `auth.service` com counter de attempts
+- [ ] **6.4.6** — Endpoint `GET /api/metrics` com basic auth
+- [ ] **6.4.7** — Documentar lista de métricas em `docs/metrics.md`
+
+---
+
+#### Task 6.5 — Dashboard único (OpenObserve ou Grafana)
+
+- **Objetivo**: 1 tela que responde "está tudo bem?" e "o que aconteceu nas últimas 24h?". Não 17 dashboards confusos. Foco em métricas que importam.
+- **Critério de aceite**:
+  - Stack escolhida instalada e rodando no mesmo Coolify
+  - Dashboard único "Come Pouco — Saúde" com painéis:
+    - Requests/min (timeline)
+    - Error rate % (gauge + timeline)
+    - Latency p50/p95/p99 (timeline)
+    - Shopee API success rate (gauge + timeline)
+    - Conversões/h (timeline, breakdown por status — Fase 3)
+    - Top 10 errors (tabela)
+    - Event loop lag (timeline — sinal de Node sob stress)
+    - DB latency (timeline)
+    - Active users (gauge — calculado de tokens ativos)
+  - Dashboard exportado em JSON e versionado em `infra/dashboards/`
+  - Dashboard configurado pra time range default = 24h
+- **Dependências**: Task 6.4
+- **Notas técnicas**: OpenObserve combina logs + métricas + traces num só binário (mais simples). Grafana + Prometheus é mais clássico mas tem 2 peças. Pra MVP, OpenObserve ganha em simplicidade. Dashboard como código (JSON em repo) facilita reprodução.
+
+**Subtasks**:
+- [ ] **6.5.1** — Decidir com usuário: OpenObserve vs Grafana+Prometheus
+- [ ] **6.5.2** — Provisionar via docker-compose / Coolify
+- [ ] **6.5.3** — Configurar scrape do `/api/metrics` (com basic auth)
+- [ ] **6.5.4** — Criar dashboard "Saúde" com os painéis listados
+- [ ] **6.5.5** — Exportar dashboard JSON e versionar em `infra/dashboards/`
+- [ ] **6.5.6** — Documentar `docs/observability.md` com link, credenciais (em vault), guia de uso
+
+---
+
+#### Task 6.6 — Alerting (Discord/Telegram) em condições críticas
+
+- **Objetivo**: ser **notificado** antes do cliente reclamar. 5 alertas críticos configurados, com runbook curto cada um pra time agir rápido.
+- **Critério de aceite**:
+  - 5 alertas configurados em Grafana Alerts ou OpenObserve:
+    1. **Error rate > 5% em 5min** → severidade alta
+    2. **Shopee success rate < 80% em 10min** → severidade alta
+    3. **Backend healthcheck falha > 1min consecutivo** → severidade crítica
+    4. **DB latency p95 > 500ms em 5min** → severidade média
+    5. **Sentry: novo erro com > 10 ocorrências em 1h** → severidade média
+  - Canal: webhook Discord com mensagem rica (título, severidade, gráfico embed, link pro dashboard, link pro runbook)
+  - Throttle: mesmo alerta não dispara mais de 1× a cada 15min
+  - Resolução: notification de "RESOLVIDO" quando condição volta ao normal
+  - Cada alerta tem `runbook_url` apontando pra `docs/runbooks/<nome>.md`
+- **Dependências**: Tasks 6.2, 6.4, 6.5
+- **Notas técnicas**: Discord webhooks aceitam embed rico. Grafana tem `Contact Point` nativo pra Discord (community plugin) ou via webhook genérico. Throttling crucial — alert fatigue mata atenção. Alertas devem ser **acionáveis** (não "info, latência subiu 5%") — se ninguém pode fazer nada, não é alerta, é métrica.
+
+**Subtasks**:
+- [ ] **6.6.1** — Decidir canal: Discord, Telegram, ou ambos (recomendação: Discord)
+- [ ] **6.6.2** — Criar webhook no canal `#alerts`
+- [ ] **6.6.3** — Configurar 5 alertas no dashboard escolhido
+- [ ] **6.6.4** — Adicionar `runbook_url` em cada alerta
+- [ ] **6.6.5** — Testar cada alerta forçando condição (ex.: matar backend manualmente)
+- [ ] **6.6.6** — Throttling + resolved notifications
+
+---
+
+#### Task 6.7 — Status page interna + histórico de incidentes
+
+- **Objetivo**: página de status mostrando saúde dos componentes em tempo real e timeline de incidentes passados. Interna nesta fase (não pública ainda).
+- **Critério de aceite**:
+  - `/admin/status` no frontend (ADMIN only) com:
+    - Cards de cada componente (Backend, Database, Shopee API, Email Transport, Cache) — verde/amarelo/vermelho
+    - Timeline últimos 7 dias com markers de incidentes (de uma nova tabela `Incident`)
+    - Lista de incidentes com: título, status (`investigating`/`identified`/`resolved`), descrição, timestamps
+  - Tabela `Incident` em Prisma: `id`, `title`, `description`, `severity`, `status`, `affectedComponents Json`, `startedAt`, `resolvedAt?`
+  - Endpoint `POST /api/admin/incidents` pra criar manualmente (ou automaticamente quando alerta dispara)
+  - Endpoint `GET /api/admin/status` retorna estado atual (consume health-checks da Task 6.3)
+- **Dependências**: Tasks 6.3, 6.6
+- **Notas técnicas**: status page pública (statuspage.io style) fica pra Fase futura — exige mais polimento de UX e considerações de comunicação. Versão interna já dá valor enorme pra time. Auto-criar incident quando alerta dispara via webhook bidirecional é "fase avançada"; começar manual.
+
+**Subtasks**:
+- [ ] **6.7.1** — Adicionar modelo `Incident` em Prisma + migration
+- [ ] **6.7.2** — Endpoint `GET /api/admin/status` agregando health-checks + cache stats
+- [ ] **6.7.3** — Endpoints CRUD de `Incident` (admin-only)
+- [ ] **6.7.4** — Página Angular `/admin/status` com cards + timeline
+- [ ] **6.7.5** — Botão "Reportar incidente" pra criar manualmente
+
+---
+
+#### Task 6.8 — Runbooks pra cenários comuns
+
+- **Objetivo**: docs operacionais curtas e práticas. Quando algo quebra às 3h da manhã, ninguém quer ler manual de 30 páginas — quer comandos pra rodar.
+- **Critério de aceite**:
+  - Pasta `docs/runbooks/` com 5 docs cobrindo:
+    - `shopee-api-down.md` — sintomas, como confirmar, como mitigar (mock mode?), quando escalar
+    - `db-lento.md` — queries lentas, índices faltando, análise via `pg_stat_statements`
+    - `erro-500-em-pico.md` — investigação via Sentry + logs, mitigação
+    - `email-nao-envia.md` — debug do provider, fallback, validação de config
+    - `cache-lotado.md` — investigação, restart, ajuste de TTL
+  - Cada runbook tem:
+    - **Sintomas** — o que o usuário ou alerta reporta
+    - **Confirmação** — comando/query pra confirmar diagnóstico
+    - **Mitigação imediata** — passo a passo pra restaurar serviço
+    - **Root cause analysis** — onde investigar pra evitar recorrência
+    - **Comunicação** — modelo de mensagem pra clientes/canal status
+  - Linkados de cada alerta (Task 6.6)
+- **Dependências**: Tasks 6.2, 6.5, 6.6
+- **Notas técnicas**: runbook bom é curto. 1-2 páginas max. Atualizar após cada incidente real — pós-mortem alimenta runbook.
+
+**Subtasks**:
+- [ ] **6.8.1** — Criar template `docs/runbooks/_template.md`
+- [ ] **6.8.2** — Escrever 5 runbooks listados
+- [ ] **6.8.3** — Linkar de cada alerta (Task 6.6.4)
+- [ ] **6.8.4** — Adicionar seção "Pós-mortem" em `docs/runbooks/` como template pra incidentes futuros
+
+---
+
+### Resumo da Fase 6 em uma página
+
+**O que ganha**:
+- Logs estruturados JSON → indexáveis, pesquisáveis, com contexto
+- Erros em prod chegam no Sentry com stack trace + contexto antes do cliente reclamar
+- Métricas Prometheus expondo saúde do sistema
+- Dashboard único respondendo "está tudo bem?" em < 30s
+- 5 alertas críticos no Discord acionando time quando algo quebra
+- Status page interna pra coordenação durante incidentes
+- 5 runbooks pra restauração rápida
+
+**Stack adicionada**: pino, Sentry, prom-client, OpenObserve (ou Grafana+Prometheus), webhook Discord, lefthook (já da Fase 5).
+
+**Riscos / armadilhas**:
+- Alert fatigue → manter só 5 alertas críticos, throttle agressivo, evoluir devagar
+- PII em logs/Sentry → redaction agressivo desde dia 1
+- Custo Sentry crescer → vigia consumo, considera GlitchTip self-hosted se passar 5k events/mês
+- Dashboard "tudo verde" vira ruído → escolher métricas que mudam de cor com problemas reais
+
+**Ordem recomendada**:
+1. Task 6.1 (pino) — fundação
+2. Task 6.2 (Sentry) — captura erro rapidamente
+3. Tasks 6.3 + 6.4 — health + métricas
+4. Task 6.5 (dashboard) — visualização
+5. Task 6.6 (alerting) — notificação
+6. Task 6.7 (status page) — coordenação
+7. Task 6.8 (runbooks) — preparação pra incidentes
+
+---
+
+### Fase 7 — Billing, gestão de assinaturas e enforce de planos
+
+**Objetivo da fase**: transformar Come Pouco em **negócio com receita**. A Fase 4 (landing) promete 3 tiers públicos (Free/Pro/Enterprise). Esta fase entrega cobrança real, enforcement de limites por plano server-side, área de gestão de assinatura pelo cliente, faturas, cobrança de inadimplentes (dunning) e administração de assinaturas pelo ADMIN. Sem isso, ou o pricing vira mentira ou não há monetização.
+
+**Critério de "pronta"**:
+- Gateway de pagamento integrado (decisão macro abaixo) processando cobranças reais
+- 3 planos cadastrados no banco com limites: `maxUsers`, `maxAffiliateLinks/month`, `maxConversions/month`, `alliCustomization`, `apiAccess`, etc.
+- Limites enforced **server-side** em todos os endpoints relevantes (não confiar no frontend)
+- Trial de 14 dias no Pro (sem cartão); upgrade para pago via checkout
+- Área `/my-company/billing` mostra plano atual, próxima cobrança, histórico de faturas, botão upgrade/downgrade, botão cancelar
+- Webhooks do gateway processados com idempotência (eventos `subscription.created`, `invoice.paid`, `invoice.failed`, `subscription.canceled`)
+- Dunning automático: 3 tentativas de cobrança, depois suspende empresa (read-only + email)
+- Notificações por email: confirmação de assinatura, próxima cobrança em 3d, falha de pagamento, cancelamento
+- Cupons de desconto suportados (admin cria)
+- Admin Page `/admin/billing` mostra todas as assinaturas, MRR, churn, upgrades/downgrades, suspensões
+- Testes E2E cobrindo: checkout free→pro, falha de pagamento → dunning → suspensão, cancelamento
+
+**Decisões macro tomadas**:
+- **Gateway**: **Stripe** (decisão lockada com usuário). Stripe Brasil cobre BRL nativo, cartão de crédito é o principal meio; PIX/Boleto disponíveis em alguns planos Stripe BR — ativar quando aprovado. SDK maturo, webhooks excelentes, Customer Portal e Checkout hosted reduzem responsabilidade PCI a zero. Pagar.me/Stone não está no escopo.
+- **Modelo de cobrança**: assinatura recorrente mensal **e** anual (anual com 20% desconto = "2 meses grátis", mencionado na Fase 4.9)
+- **Trial**: 14 dias no Pro, sem cartão exigido (reduz fricção; cobra trial-end via email avisando 3d antes)
+- **Suspensão (não exclusão)**: ao falhar pagamento, empresa fica `SUSPENDED` (read-only, sem geração de novos links, módulo Alli desativado), mas dados preservados. Reativa imediatamente se cartão volta a funcionar.
+- **Limites do Free**: 1 empresa, 1 usuário (OWNER), até 100 links/mês, módulo Alli básico (sem customização visual além do default)
+- **Limites do Pro**: até 5 usuários, links ilimitados, Alli com customização total, audit log
+- **Enterprise**: tudo do Pro + usuários ilimitados, SLA, API access (Fase 9), suporte dedicado — preço sob consulta
+
+**Decisões fechadas** (defaults adotados; usuário pode override em qualquer momento):
+- **Modelo de preço Pro**: flat até 5 usuários (R$ Y/mês), +R$ X/usuário adicional. Anual com 20% off (2 meses grátis), conforme Fase 4.9.
+- **Free e módulo Alli**: Free permite Alli **com badge "Powered by Come Pouco" não-removível**. Remoção do badge é feature paga (Pro+).
+- **Métodos de pagamento**: cartão de crédito desde o dia 1; PIX/Boleto via Stripe BR quando aprovado (não bloqueia lançamento).
+
+**Decisões que dependem do usuário** (valores comerciais, só você define):
+- Valor mensal e anual exatos de Pro (R$ ? / R$ ?)
+- Custo de usuário adicional no Pro (R$ ? por seat)
+- Enterprise: "Fale conosco" puro, ou "a partir de R$ X" como âncora?
+
+**Não-escopo desta fase**:
+- Pagamento por uso (usage-based billing) — começa com assinatura simples
+- Upgrades pró-rata complexos (Stripe faz por padrão, configurar mas não otimizar)
+- Self-service de cupons (admin cria, cliente aplica)
+- Reseller / parceiros — Fase futura
+- Marketplaces (Stripe Connect) — só faz sentido se houver split de receita
+
+---
+
+#### Task 7.1 — Modelagem de dados de billing
+
+- **Objetivo**: criar fundação de dados: planos, assinaturas, faturas, eventos de billing, mapeamento com IDs externos (Stripe). Sem isso, nada se persiste.
+- **Critério de aceite**:
+  - Modelos Prisma novos:
+    - `Plan`: `id`, `slug` (`free`, `pro`, `enterprise`), `name`, `description`, `priceMonthlyCents Int`, `priceYearlyCents Int`, `limits Json` (`{maxUsers, maxAffiliateLinksPerMonth, ...}`), `stripeProductId?`, `stripePriceMonthlyId?`, `stripePriceYearlyId?`, `isActive Boolean`
+    - `Subscription`: `id`, `companyId @unique`, `planId`, `status` (`TRIALING|ACTIVE|PAST_DUE|CANCELED|SUSPENDED`), `billingCycle` (`MONTHLY|YEARLY`), `currentPeriodStart`, `currentPeriodEnd`, `trialEndsAt?`, `canceledAt?`, `stripeSubscriptionId?`, `stripeCustomerId?`
+    - `Invoice`: `id`, `companyId`, `subscriptionId`, `amountCents`, `currency`, `status` (`DRAFT|OPEN|PAID|VOID|UNCOLLECTIBLE`), `dueDate`, `paidAt?`, `stripeInvoiceId?`, `hostedInvoiceUrl?`, `pdfUrl?`, `createdAt`
+    - `BillingEvent`: `id`, `companyId`, `eventType`, `stripeEventId @unique`, `payload Json`, `processedAt?`, `processingError?`, `createdAt` (pra idempotência de webhooks)
+    - `Coupon`: `id`, `code @unique`, `discountPercent?`, `discountAmountCents?`, `validUntil?`, `maxRedemptions?`, `redemptionsCount`, `stripeCouponId?`
+  - Coluna `Company.suspendedAt?` adicionada (read-only mode trigger)
+  - Migration completa + seed dos 3 planos Free/Pro/Enterprise
+  - Índices: `subscriptions(status)`, `invoices(companyId, createdAt DESC)`, `billing_events(stripe_event_id)` (already unique mas índice ajuda lookup), `coupons(code)`
+- **Dependências**: nenhuma (mas casa bem com Fase 1 — UI de billing depende design system)
+- **Notas técnicas**: `BillingEvent` é fundamental pra idempotência — Stripe pode reentregar mesmo webhook. Antes de processar, checar se `stripeEventId` já existe. `limits Json` flexível permite adicionar novos limites sem migration. Cuidado com valores em centavos (não float) — padrão da indústria.
+
+**Subtasks**:
+- [ ] **7.1.1** — Adicionar 5 modelos novos em `schema.prisma`
+- [ ] **7.1.2** — Adicionar `suspendedAt?` em `Company`
+- [ ] **7.1.3** — Migration `npx prisma migrate dev --name add-billing`
+- [ ] **7.1.4** — Seed dos 3 planos (sem `stripeProductId` ainda — preenchido na Task 7.2)
+- [ ] **7.1.5** — Documentar schema em `docs/billing-schema.md`
+
+---
+
+#### Task 7.2 — Integração Stripe (produtos, preços, customers)
+
+- **Objetivo**: criar produtos e preços no Stripe que espelham o `Plan` local, e gerenciar `Customer` (1 por empresa). Fundação pra todas as operações de billing.
+- **Critério de aceite**:
+  - Conta Stripe criada (test mode pra desenvolvimento)
+  - `@stripe/stripe-node` (oficial) instalado
+  - Service `src/services/billing/stripe.service.ts` expõe:
+    - `getOrCreateCustomer(company)`: idempotente, retorna `stripeCustomerId`
+    - `createCheckoutSession({company, planSlug, billingCycle, couponCode?})`: cria checkout Stripe-hosted, retorna URL
+    - `createPortalSession(company)`: cria sessão pro Stripe Customer Portal (cancelar, atualizar cartão)
+    - `cancelSubscription(subscription, atPeriodEnd: boolean)`
+    - `applyCoupon(subscription, couponCode)`
+  - Script `npm run billing:sync-products` que cria/atualiza produtos+preços no Stripe conforme `Plan` table
+  - Configuração via env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BILLING_PORTAL_RETURN_URL`
+- **Dependências**: Task 7.1
+- **Notas técnicas**: usar Stripe Checkout (hosted) em vez de Elements custom — reduz responsabilidade PCI compliance, UX excelente, multi-payment-method (cartão, Apple Pay, PIX em BR). Customer Portal idem — Stripe hosta a UI de cancelar/atualizar cartão. Webhooks são o coração da integração (Task 7.4).
+
+**Subtasks**:
+- [ ] **7.2.1** — Criar conta Stripe + ativar modo Brasil (BRL) se aplicável
+- [ ] **7.2.2** — Instalar `stripe` package no backend
+- [ ] **7.2.3** — Criar `stripe.service.ts` com cliente singleton
+- [ ] **7.2.4** — Implementar `getOrCreateCustomer`
+- [ ] **7.2.5** — Implementar `createCheckoutSession` com line items dinâmicos
+- [ ] **7.2.6** — Implementar `createPortalSession`
+- [ ] **7.2.7** — Script `billing:sync-products` (Node script idempotente que cria/atualiza Products + Prices)
+- [ ] **7.2.8** — Documentar setup em `docs/billing-setup.md`
+
+---
+
+#### Task 7.3 — Enforce de limites de plano server-side
+
+- **Objetivo**: limites não podem viver só no frontend. Toda criação que consome cota deve verificar o plano da empresa **antes de executar**. Se cota estouro, retorna 402 (Payment Required) ou 403 (Forbidden) com mensagem clara.
+- **Critério de aceite**:
+  - Service `src/services/billing/plan-enforcement.service.ts` expõe:
+    - `assertCanCreateUser(companyId)` — checa `maxUsers`
+    - `assertCanGenerateAffiliateLink(companyId)` — checa `maxAffiliateLinksPerMonth` (conta `AffiliateLink` no mês corrente)
+    - `assertCanUseAlliCustomization(companyId)` — checa flag `alliCustomization`
+    - `assertCanAccessApi(companyId)` — checa flag `apiAccess` (Fase 9)
+    - `assertCompanyNotSuspended(companyId)` — bloqueia tudo se `Company.suspendedAt` set
+  - Cada assert dispara `HttpError(402, 'Limite do plano atingido. Faça upgrade.', 'PLAN_LIMIT_EXCEEDED', { limit, used, planSlug })` se exceder
+  - Middlewares ou chamadas explícitas em controllers:
+    - `POST /users` chama `assertCanCreateUser`
+    - `POST /integrations/shopee/generate-shortlinks` chama `assertCanGenerateAffiliateLink` (multiplicar pela qtd de URLs)
+    - `PUT /companies/:id/landing-config` chama `assertCanUseAlliCustomization` quando muda campos premium
+    - Todos os endpoints autenticados passam por `assertCompanyNotSuspended` no auth middleware
+  - Free tier funciona sem subscription (mock plan no startup se company sem subscription)
+  - Frontend captura `PLAN_LIMIT_EXCEEDED` e exibe modal "Faça upgrade" com CTA pro billing
+- **Dependências**: Task 7.1
+- **Notas técnicas**: contagem de "links no mês" deve ser query rápida — índice `affiliate_links(company_id, created_at)` ajuda. Cache de plano por empresa (TTL 30s, igual cache de user da Fase 2.6) evita query repetida. Cuidado pra não duplicar enforcement (middleware + service) — escolher uma camada.
+
+**Subtasks**:
+- [ ] **7.3.1** — Criar `plan-enforcement.service.ts` com os assertions
+- [ ] **7.3.2** — Cache de plano por empresa (Map + TTL, invalidação por webhook)
+- [ ] **7.3.3** — Plug em `POST /users` (controller)
+- [ ] **7.3.4** — Plug em `POST /integrations/shopee/generate-shortlinks` (controller)
+- [ ] **7.3.5** — Plug em endpoints de `LandingConfig` (Fase 3.8) com flag `alliCustomization`
+- [ ] **7.3.6** — Plug em auth middleware: `assertCompanyNotSuspended` em todo request autenticado
+- [ ] **7.3.7** — Frontend: interceptor captura `PLAN_LIMIT_EXCEEDED` → modal de upgrade
+- [ ] **7.3.8** — Testes unit cobrindo cada assertion (Fase 5.2)
+
+---
+
+#### Task 7.4 — Webhooks Stripe com idempotência
+
+- **Objetivo**: receber eventos do Stripe e atualizar estado local (subscription, invoice, payment). Idempotente — mesmo evento processado 2× não causa efeito duplicado.
+- **Critério de aceite**:
+  - Endpoint `POST /api/billing/webhooks/stripe` recebe POST do Stripe (público, sem auth — autenticado via signature)
+  - Verificação de signature com `stripe.webhooks.constructEvent(rawBody, signature, secret)`
+  - Idempotência: antes de processar, checa `BillingEvent` com `stripeEventId` — se já existe, retorna 200 sem reprocessar
+  - Eventos tratados:
+    - `checkout.session.completed` → cria `Subscription`, cria `Customer` se ainda não tem
+    - `customer.subscription.updated` → atualiza `Subscription.status`, `currentPeriodEnd`, `planId`
+    - `customer.subscription.deleted` → marca `Subscription.canceledAt`, agenda transição pra `SUSPENDED` no fim do período
+    - `invoice.paid` → cria/atualiza `Invoice.status = PAID`
+    - `invoice.payment_failed` → marca `Subscription.status = PAST_DUE`, dispara fluxo de dunning (Task 7.7)
+    - `invoice.finalized` → cria `Invoice` em estado `OPEN`
+  - Response 200 sempre em < 5s (Stripe re-entrega se demorar — processamento longo deve ir pra job assíncrono)
+  - Todo evento registrado em `BillingEvent` com `processedAt` ou `processingError`
+- **Dependências**: Tasks 7.1, 7.2
+- **Notas técnicas**: webhook precisa receber **raw body** pra validação de signature — configurar Express com `express.raw({ type: 'application/json' })` antes desse middleware, mas só nesse path. Stripe CLI (`stripe listen --forward-to localhost:3000/...`) é essencial pra dev local. Webhook secret diferente em dev (CLI) e prod (dashboard Stripe).
+
+**Subtasks**:
+- [ ] **7.4.1** — Criar `src/routes/billing-webhook.routes.ts` montado fora do `authMiddleware`
+- [ ] **7.4.2** — Configurar raw body parser **apenas** nesse path
+- [ ] **7.4.3** — Validar signature Stripe + retornar 400 se inválida
+- [ ] **7.4.4** — Implementar idempotência via `BillingEvent`
+- [ ] **7.4.5** — Handler `checkout.session.completed` → cria Subscription
+- [ ] **7.4.6** — Handler `customer.subscription.updated` → sync status/period
+- [ ] **7.4.7** — Handler `customer.subscription.deleted` → mark canceled
+- [ ] **7.4.8** — Handler `invoice.paid` → mark Invoice paid
+- [ ] **7.4.9** — Handler `invoice.payment_failed` → trigger dunning
+- [ ] **7.4.10** — Testar com `stripe listen` + simular eventos via `stripe trigger`
+
+---
+
+#### Task 7.5 — Trial de 14 dias + checkout flow
+
+- **Objetivo**: novo signup começa em Free; pode iniciar Trial Pro de 14 dias sem cartão; ao fim do trial, é cobrado (ou volta a Free se não tiver cartão). Reduz fricção de teste.
+- **Critério de aceite**:
+  - Endpoint `POST /api/billing/start-trial` (OWNER only): muda plano da empresa pra Pro com `trialEndsAt = now + 14d`, sem chamar Stripe
+  - Endpoint `POST /api/billing/create-checkout` (OWNER only): recebe `planSlug`, `billingCycle`, `couponCode?` → cria Checkout Session no Stripe → retorna URL pra frontend redirecionar
+  - Endpoint `POST /api/billing/create-portal` (OWNER only): retorna URL do Customer Portal Stripe
+  - Job diário (`trial-expiry.job.ts`) que:
+    - 3 dias antes do trial acabar: envia email "Seu trial termina em 3 dias"
+    - No dia do término: se empresa não tem `stripeSubscriptionId`, downgrade pra Free + envia email
+  - Frontend:
+    - Banner no app: "Você está em trial. Restam X dias" com botão "Adicionar cartão"
+    - Banner ao expirar: "Trial expirou. Volte ao Pro" com botão upgrade
+- **Dependências**: Tasks 7.2, 7.4
+- **Notas técnicas**: trial sem cartão é decisão de produto — mais conversão upstream, mais churn no fim do trial. Acompanhar métricas. Stripe permite trial direto na subscription, mas começar com trial local (sem subscription Stripe ainda) é mais simples — só vira subscription real quando user adiciona cartão.
+
+**Subtasks**:
+- [ ] **7.5.1** — Endpoints `start-trial`, `create-checkout`, `create-portal`
+- [ ] **7.5.2** — Job `trial-expiry.job.ts` (estende cron pattern do `history-cleanup.job.ts`)
+- [ ] **7.5.3** — Emails: trial-ending-soon (3d antes), trial-expired (no dia)
+- [ ] **7.5.4** — Frontend: banner de trial + CTA upgrade no `app-layout`
+- [ ] **7.5.5** — Testar fluxo completo: signup → start trial → expirar sem cartão → downgrade
+
+---
+
+#### Task 7.6 — Área "Minha assinatura" no app
+
+- **Objetivo**: cliente OWNER vê plano atual, próxima cobrança, histórico de faturas e gerencia (upgrade, downgrade, cancelar) numa página dedicada.
+- **Critério de aceite**:
+  - Página `/my-company/billing` (OWNER only):
+    - Card "Plano atual": nome, valor mensal/anual, ciclo, próxima cobrança em DD/MM, status
+    - Tabela "Faturas" últimas 12: data, valor, status, botão "Baixar PDF"
+    - Botão "Mudar plano" → modal/page com tabela comparativa + checkout
+    - Botão "Gerenciar pagamento" → redireciona pro Stripe Customer Portal
+    - Botão "Cancelar assinatura" → confirmação + executa cancel at-period-end
+    - Aplicar cupom (input + botão)
+  - Após retorno do Customer Portal ou Checkout, callback URL `/my-company/billing?stripe=success`
+  - Estados visuais: TRIALING (banner amarelo), PAST_DUE (banner vermelho), SUSPENDED (banner crítico read-only)
+- **Dependências**: Tasks 7.4, 7.5
+- **Notas técnicas**: PDFs vêm direto do Stripe (`invoice.invoice_pdf` URL temporária, regerar). Customer Portal já cobre 80% dos casos de gestão de pagamento — não duplicar UI. Estado SUSPENDED bloqueia rotas críticas no Angular (guard).
+
+**Subtasks**:
+- [ ] **7.6.1** — Service Angular `BillingService` com endpoints
+- [ ] **7.6.2** — Componente `BillingPageComponent` em `/my-company/billing`
+- [ ] **7.6.3** — Card "Plano atual" + tabela "Faturas"
+- [ ] **7.6.4** — Modal de upgrade/downgrade com tabela comparativa
+- [ ] **7.6.5** — Botão "Gerenciar pagamento" → redireciona Customer Portal
+- [ ] **7.6.6** — Input de cupom com validação
+- [ ] **7.6.7** — Banners de estado (TRIALING / PAST_DUE / SUSPENDED) em `app-layout`
+- [ ] **7.6.8** — Guard que bloqueia rotas críticas se `SUSPENDED`
+
+---
+
+#### Task 7.7 — Dunning automático (cobrança de inadimplentes)
+
+- **Objetivo**: quando pagamento falha, Stripe re-tenta automaticamente (configurável); paralelamente, app envia comunicação progressiva e eventualmente suspende empresa se nada resolve.
+- **Critério de aceite**:
+  - Configuração Stripe Smart Retries: 3 tentativas em 7 dias com smart timing
+  - Quando `invoice.payment_failed` recebido (Task 7.4):
+    - 1ª falha: email "Não conseguimos processar seu pagamento. Atualize o cartão"
+    - 2ª falha: email "Última tentativa em X dias. Atualize agora ou sua conta será suspensa"
+    - 3ª falha: muda `Subscription.status = SUSPENDED`, `Company.suspendedAt = now()`, envia email "Conta suspensa. Reative atualizando o cartão"
+  - Empresa SUSPENDED:
+    - `assertCompanyNotSuspended` bloqueia geração de links, criação de users, módulo Alli público fica off (LandingConfig `isActive=false` automaticamente)
+    - Login funciona, mas com banner crítico
+    - Cliente pode atualizar cartão via Customer Portal — webhook reativa automaticamente
+  - Job diário verifica empresas SUSPENDED há > 60 dias → email "Conta será excluída em 30 dias" → 90 dias → soft delete
+- **Dependências**: Tasks 7.4, 7.6
+- **Notas técnicas**: dunning é equilíbrio entre cobrar e não irritar. Smart Retries do Stripe é boa default. Reativação deve ser automática — cliente atualiza cartão, Stripe re-cobra, webhook `invoice.paid` → app limpa `suspendedAt`. Soft delete em 90 dias é seguro (data preservada ~3 meses pra recuperação).
+
+**Subtasks**:
+- [ ] **7.7.1** — Configurar Smart Retries no Stripe Dashboard
+- [ ] **7.7.2** — Handler `invoice.payment_failed` envia emails progressivos (contagem em `Subscription` ou em `BillingEvent`)
+- [ ] **7.7.3** — Após 3ª falha, mark `SUSPENDED` + suspender Alli
+- [ ] **7.7.4** — Webhook `invoice.paid` reativa: limpa `suspendedAt`, restaura Alli
+- [ ] **7.7.5** — Job `account-purge.job.ts`: suspensas > 60d alerta, > 90d soft delete
+- [ ] **7.7.6** — Emails templates: payment-failed-1, payment-failed-2, account-suspended, account-reactivated
+
+---
+
+#### Task 7.8 — Cupons e descontos
+
+- **Objetivo**: admin cria cupons promocionais (% ou valor fixo, com validade, com limite de uso). Cliente aplica no checkout ou na área de billing.
+- **Critério de aceite**:
+  - CRUD de cupons em `/admin/coupons` (ADMIN only):
+    - Code, tipo (% ou valor), valor, validade, max redemptions, contador
+  - Cupons espelhados no Stripe via API (criar via `stripe.coupons.create`)
+  - Aplicação:
+    - No checkout: campo "Cupom" antes de submit; valida via `POST /api/billing/validate-coupon`
+    - Na área de billing existente: `POST /api/billing/apply-coupon` aplica em subscription ativa
+  - Validações: cupom existe, não expirou, não atingiu max redemptions
+- **Dependências**: Tasks 7.1, 7.2, 7.6
+- **Notas técnicas**: usar Stripe `Coupon` como fonte de verdade (criação espelhada) — Stripe gerencia aplicação no faturamento. App apenas valida + comunica.
+
+**Subtasks**:
+- [ ] **7.8.1** — CRUD de cupons (admin)
+- [ ] **7.8.2** — Espelhar cupons no Stripe na criação/atualização
+- [ ] **7.8.3** — Endpoint `validate-coupon` e `apply-coupon`
+- [ ] **7.8.4** — Frontend: input de cupom no checkout + billing
+
+---
+
+#### Task 7.9 — Painel admin de billing + métricas SaaS
+
+- **Objetivo**: ADMIN vê saúde financeira do negócio. MRR, ARR, churn, top empresas pagantes, distribuição por plano, conversão trial→paid.
+- **Critério de aceite**:
+  - Página `/admin/billing` com:
+    - Cards: MRR, ARR, ativos pagantes, em trial, em PAST_DUE, suspensas
+    - Gráfico evolução MRR últimos 12 meses
+    - Tabela de assinaturas paginada com filtros (status, plano, search por empresa)
+    - Botão "Forçar refresh do Stripe" (re-sincronizar uma subscription específica)
+    - Botão "Conceder crédito" (ADMIN aplica desconto manual numa empresa)
+  - Endpoint `GET /api/admin/billing/metrics` retorna agregados
+  - Endpoint `GET /api/admin/billing/subscriptions` paginado com filtros
+- **Dependências**: Tasks 7.1-7.7
+- **Notas técnicas**: MRR = soma de `priceMonthlyCents` (ou `priceYearlyCents/12`) de subscriptions ACTIVE. Manter histórico de MRR via snapshot diário (`BillingMetric` table opcional) ou calcular on-the-fly se base for pequena.
+
+**Subtasks**:
+- [ ] **7.9.1** — Endpoints de métricas (MRR, ARR, churn)
+- [ ] **7.9.2** — Endpoint listagem de subscriptions paginada
+- [ ] **7.9.3** — Página Angular `/admin/billing` com cards + gráfico (ng2-charts da Fase 3.12)
+- [ ] **7.9.4** — Tabela de assinaturas com filtros
+- [ ] **7.9.5** — Ação "Re-sincronizar" + "Conceder crédito"
+
+---
+
+#### Task 7.10 — Notificações de billing (emails transacionais)
+
+- **Objetivo**: cliente entende o que está acontecendo. Emails claros em momentos-chave: trial-end soon, payment success, payment failed, subscription canceled, subscription reactivated.
+- **Critério de aceite**:
+  - 8 templates de email criados (reusam `email.service` da app):
+    - `trial-started`
+    - `trial-ending-soon` (3d antes)
+    - `trial-expired-downgraded`
+    - `subscription-confirmed`
+    - `payment-receipt` (após cada `invoice.paid`)
+    - `payment-failed-1`, `payment-failed-2`
+    - `subscription-canceled`
+    - `subscription-reactivated`
+    - `account-suspended`, `account-purge-warning`
+  - Templates em `come-pouco-backend/src/email-templates/billing/` (HTML simples, mobile-friendly)
+  - Reusam config do `SystemEmailConfig` (não introduzir novo provider)
+  - Toggle por empresa "Receber emails de billing": default `true`, exceto `account-suspended` que ignora toggle (crítico)
+- **Dependências**: Tasks 7.4, 7.5, 7.7
+- **Notas técnicas**: emails curtos, com CTA único (atualizar cartão, ver fatura, voltar pro Pro). Subject lines testadas. Receipt pode anexar PDF ou só linkar `hostedInvoiceUrl`. Manter design consistente com landing (Fase 4) e app (Fase 1).
+
+**Subtasks**:
+- [ ] **7.10.1** — Criar template base HTML responsivo (header logo, footer com unsubscribe-billing)
+- [ ] **7.10.2** — Escrever 10 templates listados
+- [ ] **7.10.3** — Service `billing-email.service.ts` com `send(template, company, vars)`
+- [ ] **7.10.4** — Wire-up nos handlers de webhook + jobs
+- [ ] **7.10.5** — Toggle "Receber emails de billing" em `/my-company/notifications` (preference)
+- [ ] **7.10.6** — Testar todos os emails com Mailpit (Fase 5.5)
+
+---
+
+#### Task 7.11 — Testes E2E de billing
+
+- **Objetivo**: fluxos de billing são onde mais coisa pode dar errado em produção (dinheiro!). Cobertura E2E garante regressão zero nos caminhos críticos.
+- **Critério de aceite**:
+  - Specs Playwright (estende Fase 5.5):
+    - `billing-trial-to-paid.spec.ts` — start trial → adicionar cartão Stripe test → confirmar subscription ACTIVE
+    - `billing-upgrade-downgrade.spec.ts` — Pro → Enterprise via Customer Portal mock
+    - `billing-payment-failure.spec.ts` — simular falha via Stripe CLI → confirmar email + PAST_DUE
+    - `billing-suspension-reactivation.spec.ts` — 3 falhas → SUSPENDED → fix cartão → ACTIVE
+    - `billing-coupon.spec.ts` — aplicar cupom no checkout, validar desconto
+  - Cartões de teste Stripe documentados em `docs/testing-billing.md`:
+    - `4242 4242 4242 4242` — sucesso
+    - `4000 0000 0000 0341` — falha após autorização
+    - `4000 0025 0000 3155` — exige 3D Secure
+- **Dependências**: Tasks 7.1-7.10
+- **Notas técnicas**: usar `stripe trigger` no Playwright pra simular webhooks em tempo real. Test isolation crítico — cada spec cria customer próprio. Limpeza ao final via Stripe API.
+
+**Subtasks**:
+- [ ] **7.11.1** — Helpers `e2e/helpers/billing.ts` (criar customer test, gerar checkout, simular webhooks)
+- [ ] **7.11.2** — Spec trial→paid
+- [ ] **7.11.3** — Spec upgrade/downgrade
+- [ ] **7.11.4** — Spec payment failure
+- [ ] **7.11.5** — Spec suspension/reactivation
+- [ ] **7.11.6** — Spec coupon
+
+---
+
+#### Task 7.12 — Documentação + launch checklist de billing
+
+- **Objetivo**: docs completas pro time + checklist de lançamento. Billing em produção sem checklist = risco fiscal e de receita.
+- **Critério de aceite**:
+  - `docs/billing.md`:
+    - Visão geral da arquitetura
+    - Diagrama de fluxos (signup → trial → conversion → renewal → churn)
+    - Como adicionar novo plano
+    - Como criar cupom
+    - Troubleshooting de webhooks (sync issues, idempotência, replay)
+  - `docs/billing-launch-checklist.md`:
+    - Stripe modo produção ativado (não test mode)
+    - Chaves de prod nas envs
+    - Webhook endpoint configurado no Stripe Dashboard apontando prod
+    - Webhook secret correto
+    - 3 produtos+preços sincronizados (`billing:sync-products`)
+    - Emails testados em prod-like
+    - LGPD: política atualizada mencionando processamento via Stripe
+    - Termos de uso revisados (cancelamento, reembolso, propriedade dos dados em caso de churn)
+    - Suporte preparado (FAQ atualizado com perguntas de billing)
+- **Dependências**: Tasks 7.1-7.11
+- **Notas técnicas**: termos de uso e política de privacidade revisados antes de cobrar do primeiro cliente — risco legal real. Considerar consultoria jurídica rápida.
+
+**Subtasks**:
+- [ ] **7.12.1** — Escrever `docs/billing.md`
+- [ ] **7.12.2** — Escrever `docs/billing-launch-checklist.md`
+- [ ] **7.12.3** — Atualizar termos e política (placeholder; revisão jurídica fora desta fase)
+- [ ] **7.12.4** — Atualizar FAQ da landing (Fase 4.10) com perguntas de billing
+- [ ] **7.12.5** — Dry-run em homologação: assinar Pro com cartão test, confirmar 100% do fluxo
+
+---
+
+### Resumo da Fase 7 em uma página
+
+**O que ganha**:
+- Receita real entrando via Stripe (assinatura mensal/anual + cupons)
+- Trial Pro de 14 dias sem cartão (reduz fricção, aumenta upstream)
+- Enforce de limites server-side (Free não vira buraco de recurso)
+- Customer Portal Stripe gerencia cartão/cancelamento (zero responsabilidade PCI)
+- Dunning automático recupera ~30% de pagamentos falhos (média da indústria)
+- Suspensão automática protege margens, mas reativação imediata se cartão volta
+- Admin vê MRR/ARR/churn em tempo real
+- Emails transacionais cobrem todas as transições
+
+**Stack adicionada**: `stripe` SDK, Stripe Checkout, Stripe Customer Portal, Stripe Smart Retries, templates HTML de email.
+
+**Riscos / armadilhas**:
+- Webhook não idempotente → cobranças duplicadas → litígio. **Idempotência via `BillingEvent` é não-negociável.**
+- Limites mal enforced → cliente Free consome cota infinita. Testar exaustivamente.
+- Suspensão imprópria → cliente bom suspenso por bug. Testar paths de reativação.
+- Emails de billing parando no spam → SPF/DKIM/DMARC bem configurados; idealmente provider transacional dedicado (Resend/SES — pode ser o mesmo da Fase 0, mas com domínio dedicado de envio).
+- Termos de uso e política frouxos → risco fiscal e de PROCON. Revisão jurídica antes do primeiro pagamento real.
+- Câmbio (se cobrar em BRL com Stripe BR vs USD com Stripe global) — decidir cedo.
+
+**Ordem recomendada**:
+1. Task 7.1 (modelagem) — fundação
+2. Task 7.2 (Stripe products) — integração base
+3. Task 7.3 (enforce) — pode rodar em paralelo com Task 7.4
+4. Task 7.4 (webhooks) — coração da integração
+5. Task 7.5 (trial) — fluxo de onboarding
+6. Task 7.6 (área billing) — UI cliente
+7. Task 7.7 (dunning) — proteção de receita
+8. Task 7.8 (cupons) — promoções
+9. Task 7.9 (admin) — visibilidade
+10. Task 7.10 (emails) — comunicação
+11. Tasks 7.11 + 7.12 — testes + docs + launch
+
+---
+
+### Dica para quando chegar nas Fases 8, 9 e 10
+
+Quando você for elaborar essas fases comigo, traga os pontos abaixo na conversa — eles **influenciam decisões macro logo no começo** e evitam refatoração mais tarde.
+
+**Fase 8 — Onboarding, lifecycle e comunicação**
+- **Decisão antes**: vai usar uma ferramenta de marketing automation (Customer.io, Loops, Resend Audiences) ou tudo in-house dentro do próprio backend?
+  - In-house: mais controle, menos custo, mais código pra manter
+  - SaaS dedicado: mais rápido, segmentação rica, custo recorrente
+- **Cuidados a alinhar**:
+  - Anti-spam e LGPD: opt-in granular por categoria (transacional vs marketing), unsubscribe one-click
+  - Frequência: digest semanal pode virar spam; idealmente cliente escolhe (semanal/mensal/nunca)
+  - Templates de email reaproveitam o sistema da Fase 7.10 (não duplicar)
+- **Dependência crítica**: precisa Fase 1 (design system) pra templates não parecerem amadores; precisa Fase 6 (observabilidade) pra medir abertura, cliques, conversão das mensagens
+- **Métricas de sucesso da fase**: ativação (D7, D30), retenção (cohort), conversão trial→paid (já tocada na Fase 7)
+
+**Fase 9 — API pública & webhooks**
+- **Decisão antes**: REST + chaves de API por empresa **ou** OAuth 2.0 + apps de terceiros (mais complexo, melhor pra marketplace)?
+  - Recomendação: começar com REST + API keys; OAuth quando aparecer integração 3rd party formal
+- **Cuidados a alinhar**:
+  - Versionamento da API (`/api/v1/...`) **desde o dia 1** — breaking changes em SaaS API custam caro
+  - Rate limit por chave + por empresa (não só por IP)
+  - OpenAPI/Swagger autogerado (idealmente via `zod-to-openapi` aproveitando schemas da Fase 2.2)
+  - Documentação interativa pública em `developers.come-pouco.com.br`
+  - Webhooks com retry exponencial + dead-letter queue, signature HMAC pra cliente validar
+- **Dependência crítica**: precisa Fase 2 (validação zod) pra OpenAPI honesto; precisa Fase 5 (CI/CD) pra publicar SDK gerado; precisa Fase 7 (billing) pra gate `apiAccess` em planos pagos
+- **Integrações primeiras**: Zapier ou n8n (mais open) — sketcha um app simples como vitrine
+
+**Fase 10 — Help Center, docs e suporte**
+- **Decisão antes**: tudo no monorepo (Astro/MDX como a landing) ou SaaS dedicado (Intercom Articles, HelpScout, Crisp)?
+  - Recomendação: Astro/MDX no início (custo zero, controle total, mesma stack da Fase 4); migrar pra SaaS quando time de suporte crescer
+- **Cuidados a alinhar**:
+  - Estrutura: guias por persona (admin / owner / employee) + por feature
+  - Vídeos curtos (Loom): cada feature complexa ganha 1 vídeo de < 90s
+  - Widget de suporte no app: começar com link "Ajuda" no menu → docs; evoluir pra chat (Crisp/Tawk) na fase
+  - Search dentro do help center (Algolia DocSearch gratuito pra docs open source — vale aplicar)
+- **Dependência crítica**: precisa Fases 1, 3, 4, 7 todas estarem estáveis — escrever docs antes do produto estar finalizado é jogar fora
+- **Métrica de sucesso**: redução de tickets repetidos; tempo até primeira resposta
+
+**Princípio geral pra Fases 8-10**: depois de Fase 7, você passa do **"construir produto"** pro **"crescer e operar"**. As fases anteriores são feature-driven; as próximas são metric-driven. Antes de cada uma, definir 1-2 métricas que vão indicar sucesso (ex.: D30 retention +10%, NPS > 40, ticket volume -30%) e instrumentar via Fase 6 (observabilidade). Sem métricas, você não sabe se a fase deu retorno.
+
+---
+
