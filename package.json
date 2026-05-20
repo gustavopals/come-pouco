@@ -4,12 +4,22 @@
   "private": true,
   "description": "Monorepo do projeto Come Pouco",
   "scripts": {
+    "postinstall": "concurrently -n backend,frontend -c blue,green --kill-others-on-fail \"npm:install:backend\" \"npm:install:frontend\"",
+    "install:backend": "npm --prefix come-pouco-backend install",
+    "install:frontend": "npm --prefix come-pouco-frontend install",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
+    "dev": "concurrently -n backend,frontend -c blue,green --kill-others-on-fail \"npm:dev:backend\" \"npm:dev:frontend\"",
     "dev:backend": "npm --prefix come-pouco-backend run dev",
     "dev:frontend": "npm --prefix come-pouco-frontend start",
+    "build": "concurrently -n backend,frontend -c blue,green --kill-others-on-fail \"npm:build:backend\" \"npm:build:frontend\" && npm run prisma:deploy",
+    "build:backend": "npm --prefix come-pouco-backend run build",
     "build:frontend": "npm --prefix come-pouco-frontend run build",
+    "prisma:deploy": "npm --prefix come-pouco-backend run prisma:deploy",
     "check:backend": "npm --prefix come-pouco-backend run check",
     "smoke:postdeploy": "npm --prefix come-pouco-backend run smoke:postdeploy"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
