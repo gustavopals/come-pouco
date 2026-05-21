@@ -48,13 +48,13 @@ export class BreadcrumbsComponent {
 
     while (currentRoute?.firstChild) {
       currentRoute = currentRoute.firstChild;
-      const routeUrl = currentRoute.snapshot.url.map((segment) => segment.path).join('/');
+      const routeUrl = currentRoute.snapshot?.url?.map((segment) => segment.path).join('/') ?? '';
 
       if (routeUrl) {
         url += `/${routeUrl}`;
       }
 
-      const breadcrumb = currentRoute.snapshot.data['breadcrumb'];
+      const breadcrumb = currentRoute.snapshot?.data?.['breadcrumb'];
 
       if (typeof breadcrumb === 'string' && breadcrumb.trim().length) {
         crumbs.push({ label: breadcrumb, url: url || '/' });
