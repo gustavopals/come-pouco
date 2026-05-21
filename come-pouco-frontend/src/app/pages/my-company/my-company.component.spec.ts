@@ -20,7 +20,7 @@ const makeAuthUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
   companyRole: 'OWNER',
   company: {
     id: 10,
-    name: 'Come Pouco',
+    name: 'auralinks',
     shopeeMode: 'TEST',
     isShopeeConfiguredForMode: true,
   },
@@ -34,15 +34,15 @@ const makeLandingResponse = (
 ): LandingConfigResponse => ({
   company: {
     id: 10,
-    name: 'Come Pouco',
-    publicSlug: 'come-pouco',
-    fallbackAffiliateUrl: 'https://shopee.com.br/come-pouco',
+    name: 'auralinks',
+    publicSlug: 'auralinks',
+    fallbackAffiliateUrl: 'https://shopee.com.br/auralinks',
   },
   landingConfig: {
     id: 5,
     companyId: 10,
     bannerText: 'Ofertas selecionadas',
-    bannerEmoji: 'CP',
+    bannerEmoji: 'AL',
     heroTitle: 'Compre melhor',
     heroSubtitle: 'Links afiliados em um so lugar',
     howItWorksSteps: ['Escolha uma oferta', 'Compre pela Shopee'],
@@ -127,8 +127,8 @@ describe('MyCompanyComponent', () => {
 
   it('carrega configuracao da landing da empresa atual', () => {
     expect(landingConfigService.get).toHaveBeenCalledWith(10);
-    expect(component.landingCompanyName).toBe('Come Pouco');
-    expect(component.landingForm.controls.publicSlug.value).toBe('come-pouco');
+    expect(component.landingCompanyName).toBe('auralinks');
+    expect(component.landingForm.controls.publicSlug.value).toBe('auralinks');
     expect(component.howItWorksSteps.length).toBe(2);
     expect(component.slugAvailability$.getValue()).toBe('current');
   });
@@ -195,7 +195,7 @@ describe('MyCompanyComponent', () => {
     const updated = makeLandingResponse({
       company: {
         id: 10,
-        name: 'Come Pouco',
+        name: 'auralinks',
         publicSlug: 'nova-loja',
         fallbackAffiliateUrl: 'https://shopee.com.br/nova-loja',
       },

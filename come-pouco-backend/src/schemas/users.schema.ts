@@ -39,14 +39,6 @@ const createUserBodySchema = z
     }
   });
 
-const createEmployeeBodySchema = z.object({
-  fullName: requiredTrimmedString('Nome', 120),
-  username: usernameSchema,
-  email: nullableEmailSchema,
-  password: strongPasswordSchema,
-  publicSlug: nullableString('Slug publico', 80)
-});
-
 const updateUserBodySchema = z.object({
   fullName: requiredTrimmedString('Nome', 120).optional(),
   username: usernameSchema.optional(),
@@ -64,16 +56,9 @@ const userQuerySchema = z.object({
 });
 
 type CreateUserBody = z.infer<typeof createUserBodySchema>;
-type CreateEmployeeBody = z.infer<typeof createEmployeeBodySchema>;
 type UpdateUserBody = z.infer<typeof updateUserBodySchema>;
 type UserParams = z.infer<typeof userParamsSchema>;
 type UserQuery = z.infer<typeof userQuerySchema>;
 
-export {
-  createEmployeeBodySchema,
-  createUserBodySchema,
-  updateUserBodySchema,
-  userParamsSchema,
-  userQuerySchema
-};
-export type { CreateEmployeeBody, CreateUserBody, UpdateUserBody, UserParams, UserQuery };
+export { createUserBodySchema, updateUserBodySchema, userParamsSchema, userQuerySchema };
+export type { CreateUserBody, UpdateUserBody, UserParams, UserQuery };

@@ -608,17 +608,20 @@ const printSummaryAndExit = (success, error) => {
       );
     });
 
-    await runCheck('owner_create_employee', async () => {
+    await runCheck('admin_create_employee', async () => {
       const employeeUsername = `smoke_employee_${Date.now()}`;
       const response = await apiRequest({
         method: 'POST',
-        path: '/users/employees',
-        token: ownerToken,
+        path: '/users',
+        token: adminToken,
         body: {
           fullName: 'Smoke Employee',
           username: employeeUsername,
           email: `${employeeUsername}@smoke.local`,
-          password: EMPLOYEE_PASSWORD
+          password: EMPLOYEE_PASSWORD,
+          role: 'USER',
+          companyId: company.id,
+          companyRole: 'EMPLOYEE'
         }
       });
 

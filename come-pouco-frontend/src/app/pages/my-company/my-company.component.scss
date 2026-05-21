@@ -18,7 +18,7 @@
 .my-company-layout {
   display: grid;
   gap: var(--panel-grid-gap);
-  grid-template-columns: minmax(var(--panel-form-col-min), var(--panel-form-col-max)) 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .grid-header {

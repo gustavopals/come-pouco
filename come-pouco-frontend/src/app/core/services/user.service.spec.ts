@@ -101,18 +101,6 @@ describe('UserService', () => {
     expect(req.request.body.username).toBe('bia');
     req.flush({ user: makeUser({ id: 2, username: 'bia' }) });
 
-    service
-      .createEmployee({ fullName: 'Caio Lima', username: 'caio', password: 'StrongPass123!' })
-      .subscribe();
-    req = http.expectOne(`${environment.apiUrl}/users/employees`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({
-      fullName: 'Caio Lima',
-      username: 'caio',
-      password: 'StrongPass123!',
-    });
-    req.flush({ user: makeUser({ id: 3, username: 'caio' }) });
-
     service.updateUser(2, { fullName: 'Bia Atualizada' }).subscribe();
     req = http.expectOne(`${environment.apiUrl}/users/2`);
     expect(req.request.method).toBe('PUT');

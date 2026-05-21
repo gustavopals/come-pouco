@@ -36,7 +36,7 @@ export class TopbarComponent {
 
   protected initials(): string {
     const user = this.user();
-    const source = user?.fullName || user?.username || 'CP';
+    const source = user?.fullName || user?.username || 'AL';
     const parts = source
       .split(/\s+/)
       .map((part) => part.trim())

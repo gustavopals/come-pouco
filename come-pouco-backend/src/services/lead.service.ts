@@ -8,7 +8,7 @@ interface CreateLeadInput extends LeadCreateInput {
   userAgent?: string;
 }
 
-const NOTIFY_TO = process.env.LEAD_NOTIFY_EMAIL?.trim() || 'contato@come-pouco.com.br';
+const NOTIFY_TO = process.env.LEAD_NOTIFY_EMAIL?.trim() || 'contato@auralinks.com.br';
 const leadLogger = logger.child({ scope: 'lead' });
 
 const renderHtml = (lead: CreateLeadInput): string => `
@@ -48,7 +48,7 @@ const createLead = async (input: CreateLeadInput): Promise<{ id: number }> => {
     try {
       await sendEmail({
         to: NOTIFY_TO,
-        subject: `[Come Pouco] Novo lead: ${input.name}`,
+        subject: `[auralinks] Novo lead: ${input.name}`,
         html: renderHtml(input),
         text: `Novo lead\nNome: ${input.name}\nEmail: ${input.email}\nVolume: ${input.volume ?? '—'}\nMensagem: ${input.message ?? '—'}`
       });

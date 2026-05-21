@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 
 import env from '../config/env';
 
-const REALM = 'Come Pouco Metrics';
+const REALM = 'auralinks Metrics';
 
 const safeEqual = (left: string, right: string): boolean => {
   const leftBuffer = Buffer.from(left);

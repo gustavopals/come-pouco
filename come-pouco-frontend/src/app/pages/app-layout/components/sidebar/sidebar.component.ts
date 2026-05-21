@@ -126,7 +126,7 @@ export class SidebarComponent {
   }
 
   protected companyLabel(): string {
-    return this.authService.currentUser()?.company?.name || 'Come Pouco';
+    return this.authService.currentUser()?.company?.name || 'auralinks';
   }
 
   protected onNavigate(): void {

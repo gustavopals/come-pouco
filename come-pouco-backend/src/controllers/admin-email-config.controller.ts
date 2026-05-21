@@ -94,7 +94,7 @@ const testSystemEmailConfig = async (
 
     await sendEmail({
       to: admin.email,
-      subject: 'Teste de e-mail - ComePouco',
+      subject: 'Teste de e-mail - auralinks',
       text: 'Este e-mail confirma que a configuracao de envio esta funcionando.',
       html: `<p>Ola ${admin.fullName || 'admin'}, este e-mail confirma que a configuracao de envio esta funcionando.</p>`
     });

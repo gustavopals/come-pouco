@@ -6,8 +6,8 @@ export interface Props {
 
 const { type = 'WebSite', data = {} } = Astro.props;
 
-const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? 'https://come-pouco.com.br';
-const orgName = 'Come Pouco';
+const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? 'https://auralinks.com.br';
+const orgName = 'auralinks';
 
 const organization = {
   '@context': 'https://schema.org',
@@ -16,14 +16,14 @@ const organization = {
   url: siteUrl,
   logo: `${siteUrl}/favicon.svg`,
   sameAs: [
-    'https://www.linkedin.com/company/come-pouco',
-    'https://www.instagram.com/comepouco',
-    'https://github.com/come-pouco'
+    'https://www.linkedin.com/company/auralinks',
+    'https://www.instagram.com/auralinks',
+    'https://github.com/auralinks'
   ],
   contactPoint: {
     '@type': 'ContactPoint',
     contactType: 'customer support',
-    email: 'contato@come-pouco.com.br',
+    email: 'contato@auralinks.com.br',
     availableLanguage: ['Portuguese']
   }
 };
@@ -40,7 +40,7 @@ const website = {
 const product = {
   '@context': 'https://schema.org',
   '@type': 'Product',
-  name: 'Come Pouco — Gestão de afiliados Shopee',
+  name: 'auralinks — Gestão de afiliados Shopee',
   description:
     'Plataforma multi-tenant para gerar e gerenciar links de afiliado Shopee com módulo público Alli, dashboard, multi-time e segurança.',
   brand: { '@type': 'Brand', name: orgName },

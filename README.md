@@ -180,8 +180,7 @@ Cobertura principal do smoke:
 - `GET /api/auth/trusted-devices`
 - `DELETE /api/auth/trusted-devices/:id`
 - `POST /api/admin/users/:id/reset-2fa` (ADMIN)
-- `GET/POST/PUT/DELETE /api/users`
-- `POST /api/users/employees` (OWNER cria funcionario da propria empresa)
+- `GET/POST/PUT/DELETE /api/users` (criacao somente ADMIN)
 - `GET/POST/PUT /api/companies` (ADMIN)
 - `GET/POST/PUT/DELETE /api/affiliate-links`
 - `GET/POST/PUT/DELETE /api/purchase-platforms`
@@ -214,10 +213,10 @@ Observacao: `platformId` continua opcional para ADMIN (override manual). Para OW
    - ligue `Modo Sandbox (Mock)` para testes sem credenciais reais.
    - crie a empresa `Empresa A` em `Empresas`.
    - vincule a `Plataforma Shopee` na empresa.
-   - crie um usuario OWNER da `Empresa A` em `Usuarios`.
+   - crie um usuario OWNER e 2 funcionarios EMPLOYEE da `Empresa A` em `Usuarios`.
 5. Faca login como OWNER:
    - abra `Minha Empresa`.
-   - crie 2 funcionarios (EMPLOYEE).
+   - verifique a equipe e configure os slugs publicos, se necessario.
 6. Faca login como EMPLOYEE1:
    - gere links (ate 10) em `Affiliate Links`.
 7. Faca login como EMPLOYEE2:

@@ -1,12 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 
 import { AUDIT_EVENTS } from '../constants/audit-events';
-import type {
-  CreateEmployeeBody,
-  CreateUserBody,
-  UpdateUserBody,
-  UserQuery
-} from '../schemas/users.schema';
+import type { CreateUserBody, UpdateUserBody, UserQuery } from '../schemas/users.schema';
 import { logEventFromRequest } from '../services/audit.service';
 import * as userService from '../services/user.service';
 import HttpError from '../utils/httpError';
@@ -81,44 +76,6 @@ const createUser = async (
         companyId: user.companyId,
         companyRole: user.companyRole
       }
-    });
-
-    res.status(201).json({ user });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const createEmployee = async (
-  req: Request<Record<string, never>, unknown, CreateEmployeeBody>,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    ensureAuthContext(req);
-
-    if (req.userRole === 'ADMIN') {
-      throw new HttpError(
-        400,
-        'Use /users para criar funcionario como ADMIN informando a empresa.'
-      );
-    }
-
-    if (req.userRole !== 'USER' || req.companyRole !== 'OWNER' || !req.companyId) {
-      throw new HttpError(403, 'Acesso negado para criar funcionario.');
-    }
-
-    const { fullName, username, email, password, publicSlug } = req.body;
-
-    const user = await userService.createUser({
-      fullName,
-      username,
-      email,
-      password,
-      role: 'USER',
-      companyId: req.companyId,
-      companyRole: 'EMPLOYEE',
-      publicSlug
     });
 
     res.status(201).json({ user });
@@ -238,4 +195,4 @@ const deleteUser = async (
   }
 };
 
-export { createEmployee, createUser, deleteUser, listUsers, updateUser };
+export { createUser, deleteUser, listUsers, updateUser };

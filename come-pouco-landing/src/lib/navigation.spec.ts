@@ -29,6 +29,6 @@ describe('landing navigation', () => {
   });
 
   it('builds app URLs from the configured public app base', () => {
-    expect(getAppUrl('/register')).toBe('https://app.come-pouco.com.br/register');
+    expect(getAppUrl('/register')).toBe('https://app.auralinks.com.br/register');
   });
 });

@@ -12,7 +12,7 @@ export interface Plan {
   features: string[];
 }
 
-const APP = import.meta.env.PUBLIC_APP_URL ?? 'https://app.come-pouco.com.br';
+const APP = import.meta.env.PUBLIC_APP_URL ?? 'https://app.auralinks.com.br';
 
 export const yearlyDiscountPct = 20;
 
@@ -28,6 +28,7 @@ export const plans: Plan[] = [
     ctaHref: `${APP}/register?plan=free`,
     ctaEvent: 'cta_click_pricing_free',
     features: [
+      'Grátis por 1 mês',
       '1 empresa',
       '1 usuário',
       'Até 100 links/mês',

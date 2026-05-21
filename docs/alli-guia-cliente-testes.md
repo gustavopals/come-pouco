@@ -4,7 +4,7 @@ Data: 21/05/2026
 
 Este documento explica como o modulo publico Alli foi implementado no Come Pouco, como configurar a funcionalidade e quais fluxos o cliente deve testar.
 
-O Alli permite que cada empresa tenha uma pagina publica, sem login, onde qualquer visitante cola um link da Shopee e e redirecionado para a Shopee com o rastreamento de afiliado da empresa aplicado.
+O Alli permite que cada empresa tenha uma pagina publica, sem login, onde qualquer visitante cola um link da Shopee e abre a Shopee em uma nova aba com o rastreamento de afiliado da empresa aplicado.
 
 ## 1. Enderecos de acesso
 
@@ -158,7 +158,7 @@ Como OWNER:
 
 1. Abra `Minha Empresa`.
 2. Entre na aba `Equipe`.
-3. Crie funcionarios, se necessario.
+3. Se algum colaborador ainda nao existir, peça para um ADMIN cria-lo em `Usuarios`.
 4. Na tabela `Usuarios da empresa`, use a coluna `Slug publico`.
 5. Clique em `Definir slug` ou no slug existente.
 6. Salve.
@@ -187,9 +187,9 @@ Conversoes feitas por esse link aparecem atribuidas ao colaborador no dashboard.
 6. O backend prepara o link afiliado.
 7. A tela mostra:
    - `Cupom aplicado!` quando houve sucesso direto.
-   - `Direcionando voce pra Shopee...` quando entrou no fallback.
-8. Em cerca de 2 segundos, o visitante e redirecionado automaticamente.
-9. O botao `Ir para Shopee agora` fica disponivel durante a contagem.
+   - `Abrindo a Shopee em nova aba...` quando entrou no fallback.
+8. Em cerca de 2 segundos, a Shopee abre automaticamente em uma nova aba.
+9. O visitante permanece na landing publica, e o botao `Abrir Shopee em nova aba` fica disponivel durante a contagem caso o navegador bloqueie a abertura automatica.
 
 Se o link informado nao for da Shopee, a tela mostra a validacao `Use um link valido da Shopee`.
 
@@ -398,8 +398,9 @@ O IP bruto nao e salvo no banco. O documento tecnico de LGPD esta em `docs/lgpd-
 - Clicar em `Preparar meu link`.
 - Confirmar loading `Buscando melhores cupons...`.
 - Confirmar tela de sucesso.
-- Confirmar que o botao `Ir para Shopee agora` aparece.
-- Confirmar redirecionamento automatico para a Shopee ou link mock, conforme modo do ambiente.
+- Confirmar que o botao `Abrir Shopee em nova aba` aparece.
+- Confirmar abertura automatica em uma nova aba para a Shopee ou link mock, conforme modo do ambiente.
+- Confirmar que a landing publica permanece aberta na aba original.
 - Voltar ao painel e confirmar que a conversao apareceu no dashboard.
 
 ### 9.5. Teste de shortlink
@@ -430,7 +431,7 @@ Opcoes:
 
 Resultado esperado:
 
-- O visitante ve fluxo de redirecionamento normal.
+- O visitante ve fluxo normal, com abertura da Shopee em nova aba.
 - A conversao aparece no dashboard como fallback.
 - O link final usa a `URL de fallback Shopee` da empresa.
 

@@ -6,7 +6,6 @@ import { guestGuard } from './core/guards/guest.guard';
 import { noPublicRegisterGuard } from './core/guards/no-public-register.guard';
 import { ownerGuard } from './core/guards/owner.guard';
 import { ownerOrAdminGuard } from './core/guards/owner-or-admin.guard';
-import { usersCreateGuard } from './core/guards/users-create.guard';
 import { AppLayoutComponent } from './pages/app-layout/app-layout.component';
 import { AdminEmailSettingsComponent } from './pages/admin-email-settings/admin-email-settings.component';
 import { AdminStatusComponent } from './pages/admin-status/admin-status.component';
@@ -48,7 +47,7 @@ export const routes: Routes = [
       {
         path: 'users/new',
         component: UsersComponent,
-        canActivate: [usersCreateGuard],
+        canActivate: [adminGuard],
         data: { breadcrumb: 'Novo usuario' },
       },
       {

@@ -7,7 +7,6 @@ import {
   updateUserPublicSlugBodySchema
 } from '../schemas/landing-config.schema';
 import {
-  createEmployeeBodySchema,
   createUserBodySchema,
   updateUserBodySchema,
   userParamsSchema,
@@ -19,11 +18,6 @@ const userRouter = Router();
 
 userRouter.get('/', validate({ query: userQuerySchema }), userController.listUsers);
 userRouter.post('/', validate({ body: createUserBodySchema }), userController.createUser);
-userRouter.post(
-  '/employees',
-  validate({ body: createEmployeeBodySchema }),
-  userController.createEmployee
-);
 userRouter.put(
   '/:id/public-slug',
   validate({ params: landingConfigParamsSchema, body: updateUserPublicSlugBodySchema }),

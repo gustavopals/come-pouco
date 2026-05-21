@@ -233,13 +233,13 @@ export class SecurityComponent {
       return;
     }
 
-    const fileContent = ['Come Pouco - codigos de backup 2FA', '', ...this.backupCodes].join('\n');
+    const fileContent = ['auralinks - codigos de backup 2FA', '', ...this.backupCodes].join('\n');
     const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
 
     anchor.href = url;
-    anchor.download = 'come-pouco-codigos-backup-2fa.txt';
+    anchor.download = 'auralinks-codigos-backup-2fa.txt';
     anchor.rel = 'noreferrer';
     document.body.appendChild(anchor);
     anchor.click();
@@ -263,7 +263,7 @@ export class SecurityComponent {
 
       const rawLabel = decodeURIComponent(parsed.pathname.replace(/^\//, ''));
       const labelParts = rawLabel.split(':');
-      const issuer = (parsed.searchParams.get('issuer') || labelParts[0] || 'Come Pouco').trim();
+      const issuer = (parsed.searchParams.get('issuer') || labelParts[0] || 'auralinks').trim();
       const account = (labelParts.slice(1).join(':') || rawLabel).trim();
 
       return {

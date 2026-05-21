@@ -44,10 +44,6 @@ import {
   SkeletonLoaderComponent,
   StatusChipComponent,
 } from '../../shared/components';
-import {
-  getStrongPasswordErrorMessage,
-  strongPasswordValidator,
-} from '../../shared/validators/strong-password.validator';
 
 type SlugAvailabilityState =
   | 'idle'
@@ -110,18 +106,10 @@ export class MyCompanyComponent implements OnInit {
   protected readonly slugAvailability$ = new BehaviorSubject<SlugAvailabilityState>('idle');
   protected landingCompanyName = '';
   protected landingUpdatedAt: string | null = null;
-  protected isSubmitting = false;
   protected isLandingSaving = false;
   protected editingEmployeeSlugId: number | null = null;
   protected employeeSlugDraft = '';
   protected employeeSlugSavingId: number | null = null;
-  protected readonly employeeForm = this.formBuilder.group({
-    fullName: ['', [Validators.required, Validators.minLength(3)]],
-    username: ['', [Validators.required, Validators.pattern(/^[a-zA-Z0-9_-]+$/)]],
-    email: ['', [Validators.email]],
-    password: ['', [Validators.required, strongPasswordValidator]],
-    confirmPassword: ['', [Validators.required]],
-  });
   protected readonly landingForm = this.formBuilder.group({
     publicSlug: [
       '',
@@ -197,56 +185,6 @@ export class MyCompanyComponent implements OnInit {
         error: (error) => {
           this.landingErrorMessage$.next(
             error?.error?.message || 'Nao foi possivel carregar a landing publica.',
-          );
-        },
-      });
-  }
-
-  protected createEmployee(): void {
-    if (this.employeeForm.invalid || this.isSubmitting) {
-      this.employeeForm.markAllAsTouched();
-      return;
-    }
-
-    const { fullName, username, email, password, confirmPassword } =
-      this.employeeForm.getRawValue();
-
-    if (password !== confirmPassword) {
-      this.formSuccessMessage$.next(null);
-      this.formErrorMessage$.next('As senhas nao conferem.');
-      return;
-    }
-
-    this.isSubmitting = true;
-    this.formSuccessMessage$.next(null);
-    this.formErrorMessage$.next(null);
-
-    this.userService
-      .createEmployee({
-        fullName: fullName!,
-        username: username!,
-        email: (email || '').trim().toLowerCase() || undefined,
-        password: password!,
-      })
-      .subscribe({
-        next: ({ user }) => {
-          this.isSubmitting = false;
-          this.employeeForm.reset({
-            fullName: '',
-            username: '',
-            email: '',
-            password: '',
-            confirmPassword: '',
-          });
-          this.formErrorMessage$.next(null);
-          this.formSuccessMessage$.next(`Funcionario ${user.fullName} criado com sucesso.`);
-          this.refresh$.next();
-        },
-        error: (error) => {
-          this.isSubmitting = false;
-          this.formSuccessMessage$.next(null);
-          this.formErrorMessage$.next(
-            error?.error?.message || 'Nao foi possivel criar funcionario.',
           );
         },
       });
@@ -399,10 +337,6 @@ export class MyCompanyComponent implements OnInit {
       default:
         return 'Digite um slug publico.';
     }
-  }
-
-  protected passwordErrorMessage(): string {
-    return getStrongPasswordErrorMessage(this.employeeForm.controls.password);
   }
 
   protected companyRoleLabel(user: User): string {

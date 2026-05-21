@@ -7,7 +7,7 @@ import Icon from '@components/ui/Icon.astro';
 
 const endpoint =
   import.meta.env.PUBLIC_LEAD_API_URL ??
-  (import.meta.env.PUBLIC_APP_URL ?? 'https://app.come-pouco.com.br') + '/api/public/leads';
+  (import.meta.env.PUBLIC_APP_URL ?? 'https://app.auralinks.com.br') + '/api/public/leads';
 ---
 
 <Section id="lead" tone="muted" spacing="sm" ariaLabelledby="lead-title">
@@ -28,7 +28,7 @@ const endpoint =
         <p
           class="text-[length:var(--cp-text-body-lg-size)] leading-[var(--cp-text-body-lg-line-height)] text-[var(--cp-color-muted-foreground)]"
         >
-          Volume alto, integração customizada, white-label ou só quer entender se Come Pouco serve
+          Volume alto, integração customizada, white-label ou só quer entender se auralinks serve
           pro seu caso — deixe seus dados que retornamos em 1 dia útil.
         </p>
         <ul class="mt-2 flex flex-col gap-2 text-[14px] text-[var(--cp-color-muted-foreground)]">
@@ -39,6 +39,10 @@ const endpoint =
           <li class="flex items-center gap-2">
             <Icon name="Check" size={16} strokeWidth={2.5} class="text-[var(--cp-color-primary)]" />
             Retorno em 1 dia útil
+          </li>
+          <li class="flex items-center gap-2">
+            <Icon name="Check" size={16} strokeWidth={2.5} class="text-[var(--cp-color-primary)]" />
+            Free por 1 mês para validar a operação
           </li>
         </ul>
       </div>

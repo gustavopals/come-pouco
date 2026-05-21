@@ -20,7 +20,7 @@ const makeUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
   companyRole: 'OWNER',
   company: {
     id: 10,
-    name: 'Come Pouco',
+    name: 'auralinks',
     shopeeMode: 'TEST',
     isShopeeConfiguredForMode: true,
   },

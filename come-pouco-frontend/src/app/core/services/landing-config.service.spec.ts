@@ -9,15 +9,15 @@ import { LandingConfigService } from './landing-config.service';
 const makeResponse = (): LandingConfigResponse => ({
   company: {
     id: 10,
-    name: 'Come Pouco',
-    publicSlug: 'come-pouco',
-    fallbackAffiliateUrl: 'https://shopee.com.br/come-pouco',
+    name: 'auralinks',
+    publicSlug: 'auralinks',
+    fallbackAffiliateUrl: 'https://shopee.com.br/auralinks',
   },
   landingConfig: {
     id: 5,
     companyId: 10,
     bannerText: 'Ofertas',
-    bannerEmoji: 'CP',
+    bannerEmoji: 'AL',
     heroTitle: 'Achados',
     heroSubtitle: 'Curadoria',
     howItWorksSteps: ['Cole', 'Compre'],
@@ -82,11 +82,11 @@ describe('LandingConfigService', () => {
   it('interpreta HEAD de slug publico como indisponivel quando existe', () => {
     let available: boolean | undefined;
 
-    service.isPublicSlugAvailable('come-pouco').subscribe((value) => {
+    service.isPublicSlugAvailable('auralinks').subscribe((value) => {
       available = value;
     });
 
-    const req = http.expectOne(`${environment.apiUrl}/public/landing/come-pouco`);
+    const req = http.expectOne(`${environment.apiUrl}/public/landing/auralinks`);
     expect(req.request.method).toBe('HEAD');
     req.flush(null);
 

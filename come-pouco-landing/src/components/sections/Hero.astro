@@ -6,6 +6,7 @@ import Badge from '@components/ui/Badge.astro';
 import GradientBlob from '@components/ui/GradientBlob.astro';
 import BrowserFrame from '@components/ui/BrowserFrame.astro';
 import { getAppUrl } from '@lib/navigation';
+import auraIcon from '../../../../img/icon-auralinks-512.png';
 ---
 
 <Section id="hero" spacing="hero" ariaLabelledby="hero-title">
@@ -53,7 +54,7 @@ import { getAppUrl } from '@lib/navigation';
         class="max-w-[58ch] text-[length:var(--cp-text-body-lg-size)] leading-[var(--cp-text-body-lg-line-height)] text-[var(--cp-color-muted-foreground)]"
       >
         Plataforma multi-tenant pra times de afiliados e criadores de conteúdo. Dashboard,
-        multi-time, segurança bancária — e uma URL pública onde sua audiência converte sozinha.
+        multi-time, segurança — e uma URL pública onde sua audiência converte sozinha.
       </p>
 
       <div class="flex flex-wrap items-center gap-3">
@@ -144,14 +145,24 @@ import { getAppUrl } from '@lib/navigation';
 
     <div data-cp-reveal class="relative">
       <BrowserFrame
-        url="app.come-pouco.com.br/dashboard"
+        url="app.auralinks.com.br/dashboard"
         class="origin-top-right lg:rotate-[1.2deg]"
       >
         <div class="absolute inset-0 flex flex-col gap-3 bg-[var(--cp-color-background)] p-5">
           <div class="flex items-center justify-between">
-            <span class="text-[13px] font-semibold text-[var(--cp-color-foreground)]"
-              >Painel da empresa</span
-            >
+            <div class="flex min-w-0 items-center gap-2">
+              <img
+                src={auraIcon.src}
+                width="32"
+                height="32"
+                alt="Ícone auralinks"
+                class="h-8 w-8 rounded-[10px] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] object-cover shadow-sm"
+                decoding="async"
+              />
+              <span class="text-[13px] font-semibold text-[var(--cp-color-foreground)]"
+                >Painel da empresa</span
+              >
+            </div>
             <span
               class="rounded-full bg-[var(--cp-color-primary-soft)] px-2 py-1 text-[11px] font-medium text-[var(--cp-color-primary)]"
               >PROD</span

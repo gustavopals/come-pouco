@@ -54,7 +54,6 @@ export class PublicHomeComponent {
 
   private readonly redirectDelaySeconds = 2;
   private redirectCountdownSubscription?: Subscription;
-  private redirectStarted = false;
 
   protected readonly convertForm = this.formBuilder.nonNullable.group({
     url: ['', [Validators.required, shopeeUrlValidator]],
@@ -98,14 +97,14 @@ export class PublicHomeComponent {
         return {
           eyebrow: 'Cupom aplicado',
           title: 'Cupom aplicado!',
-          message: `Redirecionando para a Shopee em ${countdownSeconds}s.`,
+          message: `Abrindo a Shopee em uma nova aba em ${countdownSeconds}s.`,
           mark: 'OK',
         };
       case 'fallback':
         return {
           eyebrow: 'Link pronto',
-          title: 'Direcionando voce pra Shopee...',
-          message: `A melhor rota disponivel esta pronta. Redirecionando em ${countdownSeconds}s.`,
+          title: 'Abrindo a Shopee em nova aba...',
+          message: `A melhor rota disponivel esta pronta. Abrindo em ${countdownSeconds}s.`,
           mark: 'OK',
         };
       case 'error':
@@ -144,7 +143,6 @@ export class PublicHomeComponent {
     this.statusMessage.set(null);
     this.redirectUrl.set(null);
     this.activeConversionId.set(null);
-    this.redirectStarted = false;
 
     if (this.convertForm.controls.website.value.trim()) {
       return;
@@ -215,7 +213,6 @@ export class PublicHomeComponent {
     this.statusMessage.set(null);
     this.redirectUrl.set(null);
     this.activeConversionId.set(null);
-    this.redirectStarted = false;
     this.convertForm.reset({ url: '', website: '' });
     this.convertForm.markAsPristine();
     this.convertForm.markAsUntouched();
@@ -251,10 +248,10 @@ export class PublicHomeComponent {
       this.statusMessage.set(
         response.status === 'fallback'
           ? 'Link alternativo pronto para continuar na Shopee.'
-          : 'Link Shopee pronto para abrir.',
+          : 'Link Shopee pronto para abrir em nova aba.',
       );
       this.trackConversionView(response.status, response.conversionId);
-      this.startRedirectCountdown(response.affiliateUrl);
+      this.startRedirectCountdown();
       return;
     }
 
@@ -271,11 +268,9 @@ export class PublicHomeComponent {
     this.trackConversionView('error', conversionId, errorCode);
   }
 
-  private startRedirectCountdown(url: string): void {
+  private startRedirectCountdown(): void {
     this.cancelRedirectCountdown();
-    this.redirectStarted = false;
     this.countdownSeconds.set(this.redirectDelaySeconds);
-    this.publicRedirectService.setMetaRefresh(url, this.redirectDelaySeconds);
 
     this.redirectCountdownSubscription = interval(1000)
       .pipe(take(this.redirectDelaySeconds), takeUntilDestroyed(this.destroyRef))
@@ -294,11 +289,10 @@ export class PublicHomeComponent {
     const status = this.conversionState();
     const landing = this.landing();
 
-    if (!url || this.redirectStarted || (status !== 'success' && status !== 'fallback')) {
+    if (!url || (status !== 'success' && status !== 'fallback')) {
       return;
     }
 
-    this.redirectStarted = true;
     this.cancelRedirectCountdown();
 
     if (landing) {
@@ -311,13 +305,12 @@ export class PublicHomeComponent {
       });
     }
 
-    this.publicRedirectService.assign(url);
+    this.publicRedirectService.openInNewTab(url);
   }
 
   private cancelRedirectCountdown(): void {
     this.redirectCountdownSubscription?.unsubscribe();
     this.redirectCountdownSubscription = undefined;
-    this.publicRedirectService.clearMetaRefresh();
   }
 
   private trackConversionView(

@@ -12,8 +12,8 @@ export interface Props {
 
 const { title, description, ogImage, canonical, ogType = 'website', noindex = false } = Astro.props;
 
-const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? 'https://come-pouco.com.br';
-const fullTitle = title.includes('Come Pouco') ? title : `${title} | Come Pouco`;
+const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? 'https://auralinks.com.br';
+const fullTitle = title.includes('auralinks') ? title : `${title} | auralinks`;
 const canonicalUrl = canonical
   ? new URL(canonical, siteUrl).toString()
   : new URL(Astro.url.pathname, siteUrl).toString();
@@ -41,14 +41,14 @@ const ogImageUrl = ogImage
 
 <meta property="og:type" content={ogType} />
 <meta property="og:locale" content="pt_BR" />
-<meta property="og:site_name" content="Come Pouco" />
+<meta property="og:site_name" content="auralinks" />
 <meta property="og:title" content={fullTitle} />
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonicalUrl} />
 <meta property="og:image" content={ogImageUrl} />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:image:alt" content={`Come Pouco — ${description}`} />
+<meta property="og:image:alt" content={`auralinks — ${description}`} />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={fullTitle} />

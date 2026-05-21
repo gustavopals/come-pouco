@@ -8,7 +8,6 @@ import { guestGuard } from './guest.guard';
 import { noPublicRegisterGuard } from './no-public-register.guard';
 import { ownerGuard } from './owner.guard';
 import { ownerOrAdminGuard } from './owner-or-admin.guard';
-import { usersCreateGuard } from './users-create.guard';
 import { AuthService } from '../services/auth.service';
 
 describe('auth guards', () => {
@@ -97,17 +96,6 @@ describe('auth guards', () => {
     authService.isOwner.mockReturnValue(false);
     authService.isAdmin.mockReturnValue(true);
     expect(runGuard(ownerOrAdminGuard)).toBe(true);
-  });
-
-  it('usersCreateGuard separa admin, owner e funcionario', () => {
-    authService.isAuthenticated.mockReturnValue(true);
-    expectRedirect(runGuard(usersCreateGuard), '/users');
-
-    authService.isOwner.mockReturnValue(true);
-    expectRedirect(runGuard(usersCreateGuard), '/my-company');
-
-    authService.isAdmin.mockReturnValue(true);
-    expect(runGuard(usersCreateGuard)).toBe(true);
   });
 
   it('noPublicRegisterGuard libera admin e redireciona usuarios comuns', () => {

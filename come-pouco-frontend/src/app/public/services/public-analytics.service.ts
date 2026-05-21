@@ -43,7 +43,7 @@ export class PublicAnalyticsService {
     }
 
     view.dispatchEvent(
-      new view.CustomEvent(`come-pouco:${name}`, {
+      new view.CustomEvent(`auralinks:${name}`, {
         detail: {
           ...detail,
           occurredAt: new Date().toISOString(),

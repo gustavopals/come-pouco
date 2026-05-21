@@ -16,7 +16,7 @@ export class AuthShellComponent {
   readonly eyebrow = input('Acesso seguro');
   readonly title = input.required<string>();
   readonly description = input.required<string>();
-  readonly featureTitle = input('Painel Come Pouco');
+  readonly featureTitle = input('Painel auralinks');
   readonly featureDescription = input(
     'Controle links, equipes e integrações com autenticação reforçada.',
   );

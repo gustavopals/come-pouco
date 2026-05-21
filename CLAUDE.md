@@ -129,7 +129,7 @@ docker compose down -v && docker compose up -d
 - `/auth/*` — public: `login`, `login/2fa` (also aliased as `2fa/verify`), `forgot-password`, `reset-password`. Authenticated: `register` (ADMIN only), `me`, `2fa/setup`, `2fa/confirm` (also `2fa/enable`), `2fa/disable`, `trusted-devices` (GET/DELETE). Rate limits: `login` 5/15min/IP, `login/2fa` and `2fa/verify` 10/15min/IP, `forgot-password` 3/h/IP.
 - `/public/*` — public Alli module: `GET /healthz`, `GET /landing/:slug`, `POST /convert`, and `POST /leads`. Public landing is limited to 60/min/IP; public conversion is limited to 30/min/IP plus 200/day/IP with IPv6 `/64` grouping. Public request metadata is sanitized before persistence, IPs are stored as HMAC hashes (`PUBLIC_IP_HASH_SALT`), and conversion logs use `[public-convert]` with `requestId`, slugs, status, and response time.
 - `/dashboard/production-summary` — authenticated
-- `/users` — list/create/update/delete; `POST /users/employees` lets an OWNER create an EMPLOYEE within their own company
+- `/users` — list/create/update/delete; user creation is ADMIN-only, while OWNER access remains scoped to existing users in their own company
 - `/users/:id/public-slug` — ADMIN can update user public slugs; OWNER can update EMPLOYEE slugs inside their own company
 - `/companies` — ADMIN-only CRUD plus OWNER/ADMIN public landing management: `GET|PUT /:id/landing-config`, `PUT /:id/public-slug`, `PUT /:id/fallback-url`
 - `/affiliate-links` — list/create/update/delete; visibility is scoped server-side (EMPLOYEE sees own, OWNER sees company-wide, ADMIN sees all)
@@ -151,7 +151,7 @@ docker compose down -v && docker compose up -d
 
 - **ADMIN** (`UserRole`) — global, sees/manages everything
 - **USER** (`UserRole`) — scoped to a company via `companyId` + `companyRole`
-  - **OWNER** (`CompanyRole`) — manages their company's EMPLOYEES; can configure company-level settings (`my-company` page)
+  - **OWNER** (`CompanyRole`) — sees company-wide data, manages public slugs for existing EMPLOYEES, and can configure company-level settings (`my-company` page). Creating users/employees is ADMIN-only.
   - **EMPLOYEE** (`CompanyRole`) — generates affiliate links; only sees their own
 
 ### Shopee integration model
@@ -187,7 +187,7 @@ docker compose down -v && docker compose up -d
 
 - `core/services/` — `AuthService` (Angular signals for `currentUser`), `ThemeService` (signals for light/dark/system theme), plus services for company, user, affiliate-link, purchase-platform, dashboard, admin email config. List services accept `{ page, limit }` and share `pagination-params.ts`.
 - `core/interceptors/auth.interceptor.ts` — attaches `Authorization: Bearer <token>` to `/api` requests, `withCredentials: true`. Auto-logout only on `AUTH_TOKEN_INVALID` / `AUTH_TOKEN_EXPIRED` (and not while on auth/2FA endpoints, to avoid logging out mid-login)
-- `core/guards/` — `authGuard`, `guestGuard`, `adminGuard`, `ownerGuard`, `usersCreateGuard`, `noPublicRegisterGuard`
+- `core/guards/` — `authGuard`, `guestGuard`, `adminGuard`, `ownerGuard`, `ownerOrAdminGuard`, `noPublicRegisterGuard`
 - `core/models/` — DTOs mirroring backend responses (auth, company, user, purchase-platform, affiliate-link, email-config)
 - `pages/` — `login`, `register`, `forgot-password`, `reset-password`, `home`, `app-layout` (shell), `affiliate-links`, `users`, `companies`, `my-company`, `purchase-platforms`, `admin-email-settings`, `security` (2FA + trusted devices)
 - `pages/app-layout/components/` — authenticated app shell pieces: `SidebarComponent` (grouped role-aware nav, desktop rail mode), `TopbarComponent` (breadcrumbs slot, theme toggle, user menu), and `BreadcrumbsComponent` (derived from `route.data.breadcrumb`). Sidebar collapsed state persists in `localStorage` as `come_pouco_sidebar_state`.

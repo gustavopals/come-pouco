@@ -51,8 +51,8 @@ const encryptedSecretKeySet = new Set<string>(ENCRYPTED_SECRET_KEYS);
 const DEFAULT_CONFIG: Prisma.SystemEmailConfigUncheckedCreateInput = {
   id: 1,
   provider: 'smtp',
-  fromEmail: 'no-reply@comepouco.local',
-  fromName: 'ComePouco',
+  fromEmail: 'no-reply@auralinks.local',
+  fromName: 'auralinks',
   enabled: false
 };
 

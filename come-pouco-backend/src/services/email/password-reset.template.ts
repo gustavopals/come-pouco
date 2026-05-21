@@ -1,8 +1,8 @@
-const PASSWORD_RESET_SUBJECT = 'Redefinicao de senha - ComePouco';
+const PASSWORD_RESET_SUBJECT = 'Redefinicao de senha - auralinks';
 
 const buildPasswordResetTemplate = (resetLink: string) => {
   const text = [
-    'Recebemos uma solicitacao para redefinir sua senha no ComePouco.',
+    'Recebemos uma solicitacao para redefinir sua senha no auralinks.',
     `Use este link (valido por 15 minutos): ${resetLink}`,
     'Se voce nao solicitou esta alteracao, ignore este e-mail.'
   ].join('\n');
@@ -10,7 +10,7 @@ const buildPasswordResetTemplate = (resetLink: string) => {
   const html = `
     <div style="font-family: Arial, sans-serif; line-height:1.5; color:#1e293b;">
       <h2 style="margin-bottom:8px;">Redefinicao de senha</h2>
-      <p>Recebemos uma solicitacao para redefinir sua senha no ComePouco.</p>
+      <p>Recebemos uma solicitacao para redefinir sua senha no auralinks.</p>
       <p>
         <a href="${resetLink}" style="display:inline-block; background:#0ea5a4; color:#fff; padding:10px 16px; border-radius:8px; text-decoration:none;">
           Redefinir senha

@@ -43,22 +43,22 @@ export const footerSections: Array<{ heading: string; items: NavItem[] }> = [
 export const socialLinks: NavItem[] = [
   {
     label: 'Instagram',
-    href: 'https://instagram.com/comepouco',
+    href: 'https://instagram.com/auralinks',
     external: true
   },
   {
     label: 'LinkedIn',
-    href: 'https://linkedin.com/company/come-pouco',
+    href: 'https://linkedin.com/company/auralinks',
     external: true
   },
   {
     label: 'GitHub',
-    href: 'https://github.com/come-pouco',
+    href: 'https://github.com/auralinks',
     external: true
   }
 ];
 
 export function getAppUrl(path = '/login'): string {
-  const base = import.meta.env.PUBLIC_APP_URL ?? 'https://app.come-pouco.com.br';
+  const base = import.meta.env.PUBLIC_APP_URL ?? 'https://app.auralinks.com.br';
   return `${base}${path}`;
 }

@@ -32,7 +32,7 @@ Sem uma plataforma, isso normalmente vira planilha + scripts + credenciais espal
 2. **Persistência de afiliados gerados** — cada link salvo guarda imagem do produto, frase de chamada, quem gerou e quando.
 3. **Modo Sandbox/Mock** — gera shortlinks fake (com hash determinístico) para testes sem consumir cota real da API.
 4. **Alternância TEST ↔ PROD** — a mesma empresa pode ter duas credenciais Shopee distintas e trocar com um clique na UI.
-5. **Gestão de equipe por empresa** — o `OWNER` da empresa cria seus `EMPLOYEE`s sem precisar do admin global.
+5. **Gestão de equipe por empresa** — o `ADMIN` cria `OWNER`s e `EMPLOYEE`s; o `OWNER` acompanha a equipe da própria empresa e gerencia slugs públicos dos colaboradores.
 6. **Painel admin** — `ADMIN` acompanha consumo agregado da API (chamadas mock vs reais, por empresa), gerencia o servidor de e-mail e cadastra novas empresas/plataformas.
 7. **Recuperação de senha por e-mail** — fluxo completo de "esqueci minha senha" com token único expirável.
 8. **Autenticação 2FA (TOTP)** — opcional por usuário, com QR Code, códigos de backup e dispositivos confiáveis (lembrar este dispositivo por N dias).
@@ -140,7 +140,7 @@ Existem **dois níveis** de papel, ortogonais:
 
 ### Nível empresa — `CompanyRole` (só se aplica quando `UserRole = USER`)
 
-- **`OWNER`** — dono da operação dentro da empresa. Cria/edita seus `EMPLOYEE`s, configura o modo Shopee (TEST/PROD) da empresa, vê os links de toda a equipe.
+- **`OWNER`** — dono da operação dentro da empresa. Configura o modo Shopee (TEST/PROD) da empresa, vê os links de toda a equipe e gerencia slugs públicos dos seus `EMPLOYEE`s existentes. Não cria usuários; criação de `OWNER`/`EMPLOYEE` é exclusiva do `ADMIN`.
 - **`EMPLOYEE`** — afiliado de campo. Gera links e só enxerga **os próprios links** gerados.
 
 A visibilidade dos `AffiliateLink`s é decidida no service (`affiliate-link.service.ts`) com base nesses dois campos.
@@ -307,7 +307,7 @@ Base: `http://localhost:3000/api`
 | POST         | `/auth/2fa/setup` `/confirm` `/disable`        | autenticado                     |
 | GET/DEL      | `/auth/trusted-devices(/:id)`                  | autenticado                     |
 | GET          | `/dashboard/production-summary`                | autenticado                     |
-| CRUD         | `/users` + `POST /users/employees`             | autenticado (RBAC)              |
+| CRUD         | `/users`                                       | autenticado (criação só ADMIN)  |
 | CRUD         | `/companies`                                   | ADMIN                           |
 | CRUD         | `/affiliate-links`                             | autenticado (escopo)            |
 | CRUD         | `/purchase-platforms` + `/:id/companies`       | autenticado (ADMIN p/ mutações) |
@@ -330,7 +330,7 @@ Todas as rotas (exceto `login`, `register`, `forgot-password`, `reset-password`)
 | `/register`             | RegisterComponent           | `noPublicRegisterGuard`           |
 | `/home`                 | HomeComponent               | `authGuard`                       |
 | `/affiliate-links`      | AffiliateLinksComponent     | `authGuard`                       |
-| `/users` `/users/new`   | UsersComponent              | `adminGuard` / `usersCreateGuard` |
+| `/users` `/users/new`   | UsersComponent              | `adminGuard`                    |
 | `/companies`            | CompaniesComponent          | `adminGuard`                      |
 | `/my-company`           | MyCompanyComponent          | `ownerGuard`                      |
 | `/purchase-platforms`   | PurchasePlatformsComponent  | `adminGuard`                      |

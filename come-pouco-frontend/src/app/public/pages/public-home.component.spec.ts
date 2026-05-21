@@ -45,9 +45,7 @@ describe('PublicHomeComponent', () => {
     trackRedirectClick: ReturnType<typeof vi.fn>;
   };
   let publicRedirectService: {
-    assign: ReturnType<typeof vi.fn>;
-    setMetaRefresh: ReturnType<typeof vi.fn>;
-    clearMetaRefresh: ReturnType<typeof vi.fn>;
+    openInNewTab: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -57,9 +55,7 @@ describe('PublicHomeComponent', () => {
       trackRedirectClick: vi.fn(),
     };
     publicRedirectService = {
-      assign: vi.fn(),
-      setMetaRefresh: vi.fn(),
-      clearMetaRefresh: vi.fn(),
+      openInNewTab: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -105,7 +101,7 @@ describe('PublicHomeComponent', () => {
     vi.useRealTimers();
   });
 
-  it('inicia countdown e redireciona automaticamente em sucesso', () => {
+  it('inicia countdown e abre automaticamente em nova aba em sucesso', () => {
     vi.useFakeTimers();
     const affiliateUrl = 'https://s.shopee.com.br/success';
     publicConvertService.convert.mockReturnValue(
@@ -117,7 +113,6 @@ describe('PublicHomeComponent', () => {
 
     expect(component.conversionState()).toBe('success');
     expect(component.countdownSeconds()).toBe(2);
-    expect(publicRedirectService.setMetaRefresh).toHaveBeenCalledWith(affiliateUrl, 2);
     expect(publicAnalyticsService.trackConversionView).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'success',
@@ -140,11 +135,11 @@ describe('PublicHomeComponent', () => {
         employeeSlug: 'ana',
       }),
     );
-    expect(publicRedirectService.assign).toHaveBeenCalledWith(affiliateUrl);
+    expect(publicRedirectService.openInNewTab).toHaveBeenCalledWith(affiliateUrl);
     vi.useRealTimers();
   });
 
-  it('permite abrir fallback manualmente durante countdown', () => {
+  it('permite abrir fallback manualmente em nova aba durante countdown', () => {
     const affiliateUrl = 'https://s.shopee.com.br/fallback';
     publicConvertService.convert.mockReturnValue(
       of({ status: 'fallback', affiliateUrl, conversionId: 'conversion-2' }),
@@ -161,7 +156,7 @@ describe('PublicHomeComponent', () => {
     expect(publicAnalyticsService.trackRedirectClick).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'fallback', source: 'manual' }),
     );
-    expect(publicRedirectService.assign).toHaveBeenCalledWith(affiliateUrl);
+    expect(publicRedirectService.openInNewTab).toHaveBeenCalledWith(affiliateUrl);
   });
 
   it('mostra erro e reseta o formulario ao tentar novamente', () => {
@@ -177,7 +172,7 @@ describe('PublicHomeComponent', () => {
         companySlug: 'acme',
       }),
     );
-    expect(publicRedirectService.assign).not.toHaveBeenCalled();
+    expect(publicRedirectService.openInNewTab).not.toHaveBeenCalled();
 
     component.retryConversion();
 

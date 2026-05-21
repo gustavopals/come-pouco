@@ -6,11 +6,11 @@ export interface FaqItem {
 export const faq: FaqItem[] = [
   {
     q: 'Preciso ter conta na Shopee Afiliados?',
-    a: 'Sim. A Come Pouco se conecta à sua conta oficial da Shopee Afiliados via API. Suportamos credenciais separadas de TEST (sandbox) e PROD para você homologar sem queimar quota real.'
+    a: 'Sim. A auralinks se conecta à sua conta oficial da Shopee Afiliados via API. Suportamos credenciais separadas de TEST (sandbox) e PROD para você homologar sem queimar quota real.'
   },
   {
     q: 'Como funciona o módulo Alli?',
-    a: 'Cada empresa recebe uma URL pública no formato come-pouco.com.br/p/sua-loja. Seus seguidores colam qualquer link Shopee na página e são redirecionados de volta pra Shopee já com o seu link de afiliado aplicado — você ganha a comissão sem precisar gerar nada manualmente.'
+    a: 'Cada empresa recebe uma URL pública no formato auralinks.com.br/p/sua-loja. Seus seguidores colam qualquer link Shopee na página e são redirecionados de volta pra Shopee já com o seu link de afiliado aplicado — você ganha a comissão sem precisar gerar nada manualmente.'
   },
   {
     q: 'Quantos links posso gerar?',
@@ -29,8 +29,8 @@ export const faq: FaqItem[] = [
     a: 'Sim. Sem fidelidade, sem multa. Cancela direto pelo painel e seus dados ficam disponíveis pra exportação por 30 dias.'
   },
   {
-    q: 'Tem teste grátis do Pro?',
-    a: 'O plano Free é grátis para sempre. Quando precisar de mais usuários ou recursos, você pode subir para o Pro e cancela quando quiser.'
+    q: 'Quanto tempo dura o Free?',
+    a: 'O plano Free é gratuito por 1 mês para validar a operação. Depois, você pode migrar para o Pro quando precisar de mais usuários ou recursos.'
   },
   {
     q: 'Como integro com Instagram e TikTok?',

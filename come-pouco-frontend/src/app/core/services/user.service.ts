@@ -33,15 +33,6 @@ export class UserService {
     return this.http.post<{ user: User }>(`${environment.apiUrl}/users`, payload);
   }
 
-  createEmployee(payload: {
-    fullName: string;
-    username: string;
-    email?: string | null;
-    password: string;
-  }): Observable<{ user: User }> {
-    return this.http.post<{ user: User }>(`${environment.apiUrl}/users/employees`, payload);
-  }
-
   updateUser(userId: number, payload: UpdateUserPayload): Observable<{ user: User }> {
     return this.http.put<{ user: User }>(`${environment.apiUrl}/users/${userId}`, payload);
   }

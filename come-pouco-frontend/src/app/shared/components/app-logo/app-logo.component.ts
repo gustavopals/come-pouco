@@ -9,5 +9,5 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 })
 export class AppLogoComponent {
   readonly compact = input(false);
-  readonly label = input('Come Pouco');
+  readonly label = input('auralinks');
 }

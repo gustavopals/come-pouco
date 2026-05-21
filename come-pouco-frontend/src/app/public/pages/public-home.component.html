@@ -98,17 +98,18 @@
 
         <div class="redirect-progress" *ngIf="isRedirectState()">
           <mat-progress-spinner mode="indeterminate" diameter="24" />
-          <span>Aplicando cupom e abrindo a Shopee.</span>
+          <span>Aplicando cupom e abrindo a Shopee em nova aba.</span>
         </div>
 
         <a
           class="result-cta"
           *ngIf="redirectUrl() as url"
           [href]="url"
-          rel="noopener"
+          target="_blank"
+          rel="noopener noreferrer"
           (click)="goToShopeeNow($event)"
         >
-          Ir para Shopee agora
+          Abrir Shopee em nova aba
         </a>
 
         <button
