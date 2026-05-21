@@ -6,6 +6,9 @@ node_modules/
 dist/
 **/dist/
 coverage/
+coverage-artifacts/
+playwright-report/
+test-results/
 
 # Environment files
 .env

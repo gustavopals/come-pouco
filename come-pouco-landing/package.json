@@ -1,0 +1,38 @@
+{
+  "name": "come-pouco-landing",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Landing institucional Come Pouco (Astro 6 + Tailwind v4)",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "check": "astro check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "lint": "cd .. && ./node_modules/.bin/eslint come-pouco-landing --cache --cache-location node_modules/.cache/eslint-landing",
+    "lint:fix": "cd .. && ./node_modules/.bin/eslint come-pouco-landing --fix --cache --cache-location node_modules/.cache/eslint-landing"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^5.0.6",
+    "@astrojs/sitemap": "^3.7.2",
+    "@fontsource-variable/manrope": "^5.1.1",
+    "@sentry/astro": "^10.53.1",
+    "astro": "^6.3.6",
+    "lucide-astro": "^0.469.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "astro-eslint-parser": "^1.4.0",
+    "eslint-plugin-astro": "^1.7.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.7"
+  }
+}

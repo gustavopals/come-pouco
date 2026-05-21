@@ -1,0 +1,48 @@
+---
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import Button from '@components/ui/Button.astro';
+import GradientBlob from '@components/ui/GradientBlob.astro';
+import Icon from '@components/ui/Icon.astro';
+import { getAppUrl } from '@lib/navigation';
+---
+
+<Section id="cta" tone="default" spacing="sm" ariaLabelledby="cta-title">
+  <Container size="page">
+    <div
+      class="relative overflow-hidden rounded-[var(--cp-radius-xl)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] px-6 py-14 text-center md:px-12 md:py-20"
+    >
+      <GradientBlob position="top-right" color="primary" size={420} blur={120} opacity={0.32} />
+      <GradientBlob position="bottom-left" color="accent" size={360} blur={120} opacity={0.18} />
+
+      <div
+        data-cp-reveal
+        class="relative mx-auto flex max-w-[var(--cp-mkt-prose-max)] flex-col items-center gap-6"
+      >
+        <h2
+          id="cta-title"
+          class="text-[length:var(--cp-text-h2-size)] font-bold leading-tight tracking-[-0.02em] text-[var(--cp-color-foreground)]"
+        >
+          Pronto pra parar de fazer link <span class="cp-grad-text">na mão</span>?
+        </h2>
+        <p
+          class="text-[length:var(--cp-text-body-lg-size)] leading-[var(--cp-text-body-lg-line-height)] text-[var(--cp-color-muted-foreground)]"
+        >
+          Crie sua conta gratuita em menos de um minuto. Não precisa cartão.
+        </p>
+        <div class="flex flex-wrap justify-center gap-3">
+          <Button
+            href={getAppUrl('/register')}
+            variant="primary"
+            size="lg"
+            dataEvent="cta_click_final"
+          >
+            Começar grátis
+            <Icon name="ArrowRight" size={18} strokeWidth={2.2} />
+          </Button>
+          <Button href="#lead" variant="secondary" size="lg"> Agendar demo </Button>
+        </div>
+      </div>
+    </div>
+  </Container>
+</Section>

@@ -1,128 +1,294 @@
 <section class="page-shell">
-  <main class="page-main security-grid">
-    <mat-card appearance="outlined" class="twofa-card">
-      <mat-card-header>
-        <mat-card-title>Autenticacao em duas etapas (2FA)</mat-card-title>
-        <mat-card-subtitle>Proteja sua conta com app autenticador e codigos de backup.</mat-card-subtitle>
-      </mat-card-header>
+  <main class="page-main security-page">
+    <app-page-header
+      eyebrow="Seguranca da conta"
+      title="Autenticacao em duas etapas"
+      description="Configure app autenticador, salve codigos de backup e gerencie navegadores confiaveis."
+    >
+      <app-status-chip
+        pageHeaderActions
+        [label]="currentUser()?.twoFactorEnabled ? '2FA ativo' : '2FA pendente'"
+        [variant]="currentUser()?.twoFactorEnabled ? 'success' : 'warning'"
+        [icon]="currentUser()?.twoFactorEnabled ? 'shield-check' : 'circle-alert'"
+      />
+    </app-page-header>
 
-      <mat-card-content>
-        <div class="section-actions">
-          <button
-            mat-flat-button
-            color="primary"
-            type="button"
-            (click)="startSetup()"
-            [disabled]="isLoading || (setupLoading$ | async) || !!(setup2fa$ | async)"
+    <p class="security-alert security-alert-error" role="alert" *ngIf="errorMessage">
+      <app-icon name="circle-alert" [size]="18"></app-icon>
+      <span>{{ errorMessage }}</span>
+    </p>
+    <p
+      class="security-alert security-alert-success"
+      role="status"
+      aria-live="polite"
+      *ngIf="successMessage"
+    >
+      <app-icon name="circle-check" [size]="18"></app-icon>
+      <span>{{ successMessage }}</span>
+    </p>
+
+    <section class="security-grid">
+      <mat-card appearance="outlined" class="security-card twofa-card">
+        <mat-card-header>
+          <span mat-card-avatar class="card-avatar">
+            <app-icon name="qr-code" [size]="21"></app-icon>
+          </span>
+          <mat-card-title>Ativar 2FA</mat-card-title>
+          <mat-card-subtitle
+            >Escaneie o QR no app autenticador e confirme o primeiro codigo.</mat-card-subtitle
           >
-            Iniciar setup 2FA
-          </button>
-        </div>
+        </mat-card-header>
 
-        <p class="status-block setup-loading" *ngIf="(setupLoading$ | async)">Gerando dados de setup...</p>
-        <p class="status-block status-error" *ngIf="(setupError$ | async) as setupError">{{ setupError }}</p>
-
-        <section class="setup-block" *ngIf="(setup2fa$ | async) as setupData">
-          <ng-container *ngIf="parseOtpAuthMetadata(setupData.otpauthUrl) as setup; else invalidSetupPayload">
-            <p class="setup-notice">Setup local: sem envio de chave para servicos externos de QR code.</p>
-            <div class="setup-meta">
-              <p><strong>Aplicativo:</strong> {{ setup.issuer }}</p>
-              <p><strong>Conta:</strong> {{ setup.account }}</p>
-            </div>
-            <div class="setup-qr-wrap">
-              <img class="setup-qr-image" [src]="setupData.qrCodeDataUrl" alt="QR Code 2FA" />
-            </div>
-            <p class="setup-secret-label"><strong>Ou digite a chave manualmente:</strong></p>
-            <div class="codes-grid">
-              <code>{{ setupData.secretMasked }}</code>
-            </div>
-            <div class="section-actions">
-              <button mat-stroked-button type="button" (click)="copyManualValue(getSecretForCopy(setupData), 'Chave secreta copiada.')">
-                Copiar chave
-              </button>
-              <button mat-stroked-button type="button" (click)="copyManualValue(setupData.otpauthUrl, 'Link otpauth copiado.')">
-                Copiar link otpauth
-              </button>
-            </div>
-          </ng-container>
-          <ng-template #invalidSetupPayload>
-            <p class="status-block status-error">Nao foi possivel montar os dados do setup 2FA.</p>
-          </ng-template>
-
-          <form [formGroup]="confirmForm" (ngSubmit)="confirmSetup()" class="stack-form">
-            <mat-form-field appearance="outline">
-              <mat-label>Codigo do autenticador</mat-label>
-              <input matInput type="text" formControlName="code" placeholder="000000" />
-            </mat-form-field>
-
-            <button mat-flat-button color="primary" type="submit" [disabled]="isLoading">Confirmar e ativar</button>
-          </form>
-        </section>
-
-        <section class="backup-block" *ngIf="backupCodes.length">
-          <p class="backup-notice"><strong>Mostrado apenas uma vez:</strong> salve estes codigos de backup em local seguro.</p>
-          <div class="codes-grid">
-            <code *ngFor="let backupCode of backupCodes">{{ backupCode }}</code>
-          </div>
-        </section>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card appearance="outlined" class="disable-card">
-      <mat-card-header>
-        <mat-card-title>Desativar 2FA</mat-card-title>
-        <mat-card-subtitle>Informe senha e codigo TOTP ou backup para desativar.</mat-card-subtitle>
-      </mat-card-header>
-
-      <mat-card-content>
-        <form [formGroup]="disableForm" (ngSubmit)="disableTwoFactor()" class="stack-form">
-          <mat-form-field appearance="outline">
-            <mat-label>Senha</mat-label>
-            <input matInput type="password" formControlName="password" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Codigo TOTP ou backup</mat-label>
-            <input matInput type="text" formControlName="code" />
-          </mat-form-field>
-
-          <button mat-flat-button color="warn" type="submit" [disabled]="isLoading">Desativar 2FA</button>
-        </form>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card appearance="outlined" class="devices-card">
-      <mat-card-header>
-        <mat-card-title>Dispositivos confiaveis</mat-card-title>
-        <mat-card-subtitle>Dispositivos confiaveis: {{ devicesCount$ | async }}</mat-card-subtitle>
-      </mat-card-header>
-
-      <mat-card-content>
-        <div class="section-actions">
-          <button mat-stroked-button type="button" (click)="refreshDevices()">Atualizar</button>
-        </div>
-
-        <p *ngIf="(isLoading$ | async)">Carregando dispositivos...</p>
-        <p class="status-block status-error" *ngIf="(error$ | async) as devicesError">{{ devicesError }}</p>
-
-        <ng-container *ngIf="(devices$ | async) as trustedDevices">
-          <p *ngIf="!(isLoading$ | async) && !trustedDevices.length">Nenhum dispositivo confiavel ativo.</p>
-
-          <div class="device-item" *ngFor="let device of trustedDevices">
-            <div class="device-details">
-              <strong class="device-title">{{ device.userAgent || 'Navegador sem identificacao' }}</strong>
-              <p class="device-line">Expira: {{ device.expiresAt | date: 'dd/MM/yyyy HH:mm' }}</p>
-              <p class="device-line">Ultimo uso: {{ (device.lastUsedAt || device.createdAt) | date: 'dd/MM/yyyy HH:mm' }}</p>
-            </div>
-            <button mat-stroked-button color="warn" type="button" class="device-revoke-btn" (click)="revokeDevice(device.id)">
-              Revogar
+        <mat-card-content>
+          <div class="setup-start" *ngIf="!(setup2fa$ | async)">
+            <p>Use Google Authenticator, 1Password, Authy ou outro app TOTP compativel.</p>
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="startSetup()"
+              [disabled]="isLoading || (setupLoading$ | async)"
+            >
+              <app-icon *ngIf="!(setupLoading$ | async)" name="shield-check" [size]="18"></app-icon>
+              <app-icon *ngIf="setupLoading$ | async" name="loader-circle" [size]="18"></app-icon>
+              {{ (setupLoading$ | async) ? 'Gerando...' : 'Iniciar setup 2FA' }}
             </button>
           </div>
-        </ng-container>
-      </mat-card-content>
-    </mat-card>
 
-    <p class="status-block status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
-    <p class="status-block status-success" *ngIf="successMessage">{{ successMessage }}</p>
+          <p class="security-alert security-alert-error" *ngIf="setupError$ | async as setupError">
+            <app-icon name="circle-alert" [size]="18"></app-icon>
+            <span>{{ setupError }}</span>
+          </p>
+
+          <section class="setup-flow" *ngIf="setup2fa$ | async as setupData">
+            <ng-container
+              *ngIf="parseOtpAuthMetadata(setupData.otpauthUrl) as setup; else invalidSetupPayload"
+            >
+              <div class="setup-step">
+                <span class="step-number">1</span>
+                <div>
+                  <h2>Escaneie o QR Code</h2>
+                  <p>{{ setup.issuer }} - {{ setup.account }}</p>
+                </div>
+              </div>
+
+              <div class="setup-qr-wrap">
+                <img class="setup-qr-image" [src]="setupData.qrCodeDataUrl" alt="QR Code 2FA" />
+              </div>
+
+              <div class="manual-key-block">
+                <div>
+                  <strong>Chave manual</strong>
+                  <span>Use se nao conseguir escanear o QR.</span>
+                </div>
+                <code>{{ setupData.secretMasked }}</code>
+                <div class="manual-key-actions">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="copyManualValue(getSecretForCopy(setupData), 'Chave secreta copiada.')"
+                  >
+                    <app-icon name="copy" [size]="17"></app-icon>
+                    Copiar chave
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="copyManualValue(setupData.otpauthUrl, 'Link otpauth copiado.')"
+                  >
+                    <app-icon name="link" [size]="17"></app-icon>
+                    Copiar link
+                  </button>
+                </div>
+              </div>
+            </ng-container>
+
+            <ng-template #invalidSetupPayload>
+              <p class="security-alert security-alert-error">
+                <app-icon name="circle-alert" [size]="18"></app-icon>
+                <span>Nao foi possivel montar os dados do setup 2FA.</span>
+              </p>
+            </ng-template>
+
+            <form [formGroup]="confirmForm" (ngSubmit)="confirmSetup()" class="setup-confirm-form">
+              <div class="setup-step">
+                <span class="step-number">2</span>
+                <div>
+                  <h2>Confirme o codigo</h2>
+                  <p>Digite o codigo de seis digitos gerado pelo app.</p>
+                </div>
+              </div>
+
+              <app-otp-input formControlName="code" label="Codigo do autenticador"></app-otp-input>
+              <p
+                class="field-error"
+                *ngIf="confirmForm.controls.code.touched && confirmForm.controls.code.invalid"
+              >
+                Informe o codigo do autenticador.
+              </p>
+
+              <div class="setup-actions">
+                <button mat-flat-button color="primary" type="submit" [disabled]="isLoading">
+                  <app-icon *ngIf="!isLoading" name="check" [size]="18"></app-icon>
+                  <app-icon *ngIf="isLoading" name="loader-circle" [size]="18"></app-icon>
+                  {{ isLoading ? 'Confirmando...' : 'Confirmar e ativar' }}
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="isLoading"
+                  (click)="cancelSetup()"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section class="backup-block" *ngIf="backupCodes.length">
+            <div class="backup-heading">
+              <span class="success-icon">
+                <app-icon name="key-round" [size]="20"></app-icon>
+              </span>
+              <div>
+                <h2>Codigos de backup</h2>
+                <p>Mostrados apenas uma vez. Salve antes de sair desta pagina.</p>
+              </div>
+            </div>
+
+            <div class="codes-grid">
+              <code *ngFor="let backupCode of backupCodes">{{ backupCode }}</code>
+            </div>
+
+            <div class="backup-actions">
+              <button mat-stroked-button type="button" (click)="copyBackupCodes()">
+                <app-icon name="copy" [size]="17"></app-icon>
+                Copiar
+              </button>
+              <button mat-flat-button color="primary" type="button" (click)="downloadBackupCodes()">
+                <app-icon name="download" [size]="17"></app-icon>
+                Baixar .txt
+              </button>
+            </div>
+          </section>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" class="security-card disable-card">
+        <mat-card-header>
+          <span mat-card-avatar class="card-avatar card-avatar-warning">
+            <app-icon name="lock-keyhole" [size]="21"></app-icon>
+          </span>
+          <mat-card-title>Desativar 2FA</mat-card-title>
+          <mat-card-subtitle>Exige senha e codigo TOTP ou backup.</mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <form [formGroup]="disableForm" (ngSubmit)="disableTwoFactor()" class="stack-form">
+            <mat-form-field appearance="outline">
+              <mat-label>Senha</mat-label>
+              <input
+                matInput
+                [type]="hideDisablePassword() ? 'password' : 'text'"
+                formControlName="password"
+                autocomplete="current-password"
+              />
+              <button
+                mat-icon-button
+                matSuffix
+                type="button"
+                class="password-toggle"
+                [attr.aria-label]="hideDisablePassword() ? 'Mostrar senha' : 'Ocultar senha'"
+                (click)="toggleDisablePasswordVisibility()"
+              >
+                <app-icon [name]="hideDisablePassword() ? 'eye' : 'eye-off'" [size]="18"></app-icon>
+              </button>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Codigo TOTP ou backup</mat-label>
+              <input matInput type="text" formControlName="code" autocomplete="one-time-code" />
+            </mat-form-field>
+
+            <button mat-flat-button color="warn" type="submit" [disabled]="isLoading">
+              <app-icon name="shield-x" [size]="18"></app-icon>
+              Desativar 2FA
+            </button>
+          </form>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" class="security-card devices-card">
+        <mat-card-header>
+          <span mat-card-avatar class="card-avatar">
+            <app-icon name="monitor" [size]="21"></app-icon>
+          </span>
+          <mat-card-title>Dispositivos confiaveis</mat-card-title>
+          <mat-card-subtitle
+            >{{ devicesCount$ | async }} navegadores autorizados.</mat-card-subtitle
+          >
+        </mat-card-header>
+
+        <mat-card-content>
+          <div class="devices-toolbar">
+            <p>Revogue navegadores que nao devem pular o desafio 2FA.</p>
+            <button mat-stroked-button type="button" (click)="refreshDevices()">
+              <app-icon name="refresh-cw" [size]="17"></app-icon>
+              Atualizar
+            </button>
+          </div>
+
+          <p class="security-alert security-alert-info" *ngIf="isLoading$ | async">
+            <app-icon name="loader-circle" [size]="18"></app-icon>
+            <span>Carregando dispositivos...</span>
+          </p>
+          <div class="devices-loading" *ngIf="isLoading$ | async">
+            <app-skeleton-loader variant="card" label="Carregando dispositivos confiaveis" />
+          </div>
+          <p class="security-alert security-alert-error" *ngIf="error$ | async as devicesError">
+            <app-icon name="circle-alert" [size]="18"></app-icon>
+            <span>{{ devicesError }}</span>
+          </p>
+
+          <ng-container *ngIf="devices$ | async as trustedDevices">
+            <app-empty-state
+              *ngIf="!(isLoading$ | async) && !trustedDevices.length"
+              icon="monitor-off"
+              title="Nenhum dispositivo confiavel"
+              description="Quando um navegador for marcado como confiavel no login 2FA, ele aparecera aqui."
+            />
+
+            <div class="device-list" *ngIf="trustedDevices.length">
+              <article class="device-item" *ngFor="let device of trustedDevices">
+                <div class="device-icon">
+                  <app-icon name="monitor" [size]="18"></app-icon>
+                </div>
+                <div class="device-details">
+                  <strong class="device-title">{{
+                    device.userAgent || 'Navegador sem identificacao'
+                  }}</strong>
+                  <p class="device-line">
+                    Expira: {{ device.expiresAt | date: 'dd/MM/yyyy HH:mm' }}
+                  </p>
+                  <p class="device-line">
+                    Ultimo uso:
+                    {{ device.lastUsedAt || device.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+                  </p>
+                </div>
+                <button
+                  mat-stroked-button
+                  color="warn"
+                  type="button"
+                  class="device-revoke-btn"
+                  (click)="revokeDevice(device.id)"
+                >
+                  Revogar
+                </button>
+              </article>
+            </div>
+          </ng-container>
+        </mat-card-content>
+      </mat-card>
+    </section>
   </main>
 </section>

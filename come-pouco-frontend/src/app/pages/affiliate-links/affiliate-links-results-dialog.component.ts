@@ -1,11 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
+import {
+  IconComponent,
+  StatusChipComponent,
+  type StatusChipVariant,
+} from '../../shared/components';
 import type { LinkProcessResult } from './affiliate-links.component';
 
 interface AffiliateLinksResultsDialogData {
@@ -15,13 +19,21 @@ interface AffiliateLinksResultsDialogData {
 @Component({
   selector: 'app-affiliate-links-results-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatTooltipModule, MatTableModule],
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatTooltipModule,
+    MatTableModule,
+    IconComponent,
+    StatusChipComponent,
+  ],
   templateUrl: './affiliate-links-results-dialog.component.html',
-  styleUrl: './affiliate-links-results-dialog.component.scss'
+  styleUrl: './affiliate-links-results-dialog.component.scss',
 })
 export class AffiliateLinksResultsDialogComponent {
   protected copiedMessage = '';
-  protected readonly displayedColumns = ['originUrl', 'shortLink', 'actions'];
+  protected readonly displayedColumns = ['status', 'originUrl', 'shortLink', 'actions'];
 
   constructor(@Inject(MAT_DIALOG_DATA) protected readonly data: AffiliateLinksResultsDialogData) {}
 
@@ -47,6 +59,14 @@ export class AffiliateLinksResultsDialogComponent {
 
   protected openLink(url: string): void {
     window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  protected statusLabel(item: LinkProcessResult): string {
+    return item.status === 'saved' ? 'Salvo' : 'Erro';
+  }
+
+  protected statusVariant(item: LinkProcessResult): StatusChipVariant {
+    return item.status === 'saved' ? 'success' : 'danger';
   }
 
   private async copyToClipboard(text: string): Promise<boolean> {

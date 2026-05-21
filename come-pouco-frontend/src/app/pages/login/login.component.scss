@@ -2,84 +2,188 @@
   display: block;
 }
 
-.auth-shell {
-  display: grid;
-  place-items: center;
-  position: relative;
-}
-
-.auth-shell::before {
-  content: '';
-  position: absolute;
-  inset: 8% auto auto 6%;
-  width: 240px;
-  height: 240px;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(14, 165, 164, 0.2), transparent 70%);
-  pointer-events: none;
-}
-
-.auth-card {
-  width: min(460px, 100%);
-  border-radius: 22px;
-  background: linear-gradient(180deg, #f8fffe 0%, #ffffff 18%);
-  border-top: 4px solid #0ea5a4;
-}
-
-.auth-card mat-card-title {
-  color: #0f2942;
-}
-
 .auth-form {
   display: grid;
-  gap: 0.65rem;
-  margin-top: 0.75rem;
+  gap: var(--cp-space-4);
 }
 
-.auth-form button {
-  margin-top: 0.35rem;
-  min-height: 44px;
+.auth-form-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: calc(var(--cp-space-2) * -1);
+}
+
+.auth-form-meta a {
+  color: var(--cp-color-primary);
+  font-size: var(--cp-text-body-sm-size);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-form-meta a:hover {
+  text-decoration: underline;
+}
+
+.password-toggle {
+  color: var(--cp-color-muted-foreground);
+}
+
+.auth-submit {
+  width: 100%;
+  min-height: 48px;
+  border-radius: var(--cp-radius-md);
+}
+
+.auth-submit app-icon {
+  margin-right: var(--cp-space-2);
+  animation: auth-spin 840ms linear infinite;
 }
 
 .login-help {
-  margin-top: 0.8rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--cp-space-4);
+  margin-top: var(--cp-space-4);
+  padding-top: var(--cp-space-4);
+  border-top: 1px solid var(--cp-color-border);
 }
 
-.login-help-text {
-  color: #475569;
-  font-size: 0.92rem;
-  line-height: 1.35;
+.login-help div {
+  display: grid;
+  gap: var(--cp-space-1);
+}
+
+.login-help strong {
+  color: var(--cp-color-foreground);
+  font-size: var(--cp-text-body-sm-size);
+}
+
+.login-help span {
+  color: var(--cp-color-muted-foreground);
+  font-size: var(--cp-text-body-sm-size);
+  line-height: var(--cp-text-body-sm-line-height);
 }
 
 .login-whatsapp-btn {
+  flex: 0 0 auto;
   min-height: 44px;
 }
 
-.credentials-hint {
-  margin-top: 1rem;
-  padding: 0.9rem;
-  border-radius: 12px;
-  background: linear-gradient(120deg, #e6fcf8, #ecf9ff);
-  border: 1px solid rgba(14, 165, 164, 0.22);
-  color: #334155;
+.login-whatsapp-btn app-icon {
+  margin-right: var(--cp-space-2);
 }
 
-mat-card-actions {
-  padding: 0 1rem 1rem;
+.two-factor-form {
+  gap: var(--cp-space-5, 20px);
 }
 
-@media (max-width: 600px) {
-  .login-help {
-    flex-direction: column;
-    align-items: stretch;
+.challenge-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--cp-space-1);
+  padding: var(--cp-space-1);
+  border: 1px solid var(--cp-color-border);
+  border-radius: var(--cp-radius-md);
+  background: var(--cp-color-muted);
+}
+
+.challenge-switch button {
+  min-width: 0;
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--cp-radius-sm);
+  background: transparent;
+  color: var(--cp-color-muted-foreground);
+  cursor: pointer;
+  font-size: var(--cp-text-body-sm-size);
+  font-weight: 750;
+  letter-spacing: 0;
+  transition:
+    background var(--cp-duration-short) var(--cp-ease-standard),
+    color var(--cp-duration-short) var(--cp-ease-standard),
+    box-shadow var(--cp-duration-short) var(--cp-ease-standard);
+}
+
+.challenge-switch button.challenge-switch-active {
+  background: var(--cp-color-surface);
+  color: var(--cp-color-foreground);
+  box-shadow: var(--cp-shadow-sm);
+}
+
+.otp-wrap {
+  display: grid;
+  gap: var(--cp-space-2);
+}
+
+.otp-label {
+  margin: 0;
+  color: var(--cp-color-foreground);
+  font-size: var(--cp-text-label-size);
+  font-weight: var(--cp-text-label-weight);
+}
+
+.field-hint,
+.field-error {
+  margin: 0;
+  font-size: var(--cp-text-body-sm-size);
+  line-height: var(--cp-text-body-sm-line-height);
+}
+
+.field-hint {
+  color: var(--cp-color-muted-foreground);
+}
+
+.field-error {
+  color: var(--cp-color-danger);
+  font-weight: 700;
+}
+
+.auth-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cp-space-2);
+  margin: 0;
+  padding: var(--cp-space-3);
+  border-radius: var(--cp-radius-md);
+  font-size: var(--cp-text-body-sm-size);
+  line-height: var(--cp-text-body-sm-line-height);
+}
+
+.auth-alert-error {
+  border: 1px solid color-mix(in srgb, var(--cp-color-danger) 24%, transparent);
+  background: color-mix(in srgb, var(--cp-color-danger) 10%, var(--cp-color-surface));
+  color: var(--cp-color-danger);
+}
+
+.auth-actions-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--cp-space-3);
+}
+
+.auth-actions-row .mat-mdc-button-base {
+  min-height: 48px;
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 520px) {
+  .login-help,
+  .auth-actions-row {
+    grid-template-columns: 1fr;
   }
 
-  .login-whatsapp-btn {
+  .login-help {
+    display: grid;
+  }
+
+  .login-whatsapp-btn,
+  .auth-actions-row .mat-mdc-button-base {
     width: 100%;
-    justify-content: center;
   }
 }

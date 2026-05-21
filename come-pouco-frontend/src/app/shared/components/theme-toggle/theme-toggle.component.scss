@@ -1,0 +1,19 @@
+:host {
+  display: inline-flex;
+}
+
+.theme-toggle-trigger {
+  color: var(--cp-color-muted-foreground);
+  transition:
+    color var(--cp-duration-short) var(--cp-ease-standard),
+    background-color var(--cp-duration-short) var(--cp-ease-standard);
+}
+
+.theme-toggle-trigger:hover {
+  color: var(--cp-color-primary);
+  background: var(--cp-color-primary-soft);
+}
+
+::ng-deep .theme-toggle-menu .mat-mdc-menu-item {
+  gap: var(--cp-space-2);
+}

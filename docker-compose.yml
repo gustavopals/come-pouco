@@ -8,10 +8,21 @@ services:
       POSTGRES_USER: come_pouco_user
       POSTGRES_PASSWORD: come_pouco_pass
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: come-pouco-mailpit
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: '1'
+      MP_SMTP_AUTH_ALLOW_INSECURE: '1'
+    ports:
+      - '1025:1025'
+      - '8025:8025'
 
 volumes:
   postgres_data:

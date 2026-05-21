@@ -1,0 +1,27 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+import Container from '@components/ui/Container.astro';
+import Button from '@components/ui/Button.astro';
+---
+
+<BaseLayout
+  title="Página não encontrada"
+  description="Esta página não existe. Volte para a Come Pouco."
+>
+  <Container
+    size="narrow"
+    class="flex min-h-[60vh] flex-col items-center justify-center gap-6 py-24 text-center"
+  >
+    <span class="text-[120px] font-bold leading-none cp-grad-text">404</span>
+    <h1
+      class="text-[length:var(--cp-text-h2-size)] font-bold tracking-tight text-[var(--cp-color-foreground)]"
+    >
+      Página não encontrada
+    </h1>
+    <p class="max-w-[40ch] text-[var(--cp-color-muted-foreground)]">
+      O link que você abriu pode ter mudado de endereço ou nunca existiu. Tente voltar pra página
+      inicial.
+    </p>
+    <Button href="/" variant="primary" size="lg">Voltar pra home</Button>
+  </Container>
+</BaseLayout>

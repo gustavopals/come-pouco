@@ -1,0 +1,22 @@
+<button
+  mat-icon-button
+  type="button"
+  class="theme-toggle-trigger"
+  [matMenuTriggerFor]="themeMenu"
+  [matTooltip]="triggerLabel()"
+  [attr.aria-label]="triggerLabel()"
+>
+  <app-icon [name]="triggerIcon()" [size]="18"></app-icon>
+</button>
+
+<mat-menu #themeMenu="matMenu" class="theme-toggle-menu">
+  @for (option of options; track option.value) {
+    <button mat-menu-item type="button" (click)="setTheme(option.value)">
+      <app-icon
+        [name]="themeService.currentTheme() === option.value ? 'check' : option.icon"
+        [size]="17"
+      ></app-icon>
+      <span>{{ option.label }}</span>
+    </button>
+  }
+</mat-menu>

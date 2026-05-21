@@ -1,14 +1,26 @@
 const crypto = require('crypto');
 
-const BASE_URL = (process.env.POST_DEPLOY_SMOKE_BASE_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
-const REQUEST_TIMEOUT_MS = Math.max(1000, Number(process.env.POST_DEPLOY_SMOKE_TIMEOUT_MS || 15000) || 15000);
+const BASE_URL = (process.env.POST_DEPLOY_SMOKE_BASE_URL || 'http://localhost:3000/api').replace(
+  /\/+$/,
+  ''
+);
+const REQUEST_TIMEOUT_MS = Math.max(
+  1000,
+  Number(process.env.POST_DEPLOY_SMOKE_TIMEOUT_MS || 15000) || 15000
+);
 const ADMIN_IDENTIFIER = process.env.POST_DEPLOY_SMOKE_ADMIN_IDENTIFIER || 'admin';
 const ADMIN_PASSWORD = process.env.POST_DEPLOY_SMOKE_ADMIN_PASSWORD || 'comepouco102030@';
 const ADMIN_2FA_CODE = process.env.POST_DEPLOY_SMOKE_ADMIN_2FA_CODE;
 const SMOKE_COMPANY_NAME = process.env.POST_DEPLOY_SMOKE_COMPANY_NAME || 'Smoke Test Company';
 const OWNER_PASSWORD = process.env.POST_DEPLOY_SMOKE_OWNER_PASSWORD || 'SmokeOwner123!';
 const EMPLOYEE_PASSWORD = process.env.POST_DEPLOY_SMOKE_EMPLOYEE_PASSWORD || 'SmokeEmployee123!';
-const KEEP_DATA = String(process.env.POST_DEPLOY_SMOKE_KEEP_DATA || 'false').toLowerCase() === 'true';
+const PUBLIC_FALLBACK_URL =
+  process.env.POST_DEPLOY_SMOKE_PUBLIC_FALLBACK_URL || 'https://shopee.com.br/product/90001/90002';
+const PUBLIC_CONVERSION_URL =
+  process.env.POST_DEPLOY_SMOKE_PUBLIC_CONVERSION_URL ||
+  'https://shopee.com.br/product/90001/90003';
+const KEEP_DATA =
+  String(process.env.POST_DEPLOY_SMOKE_KEEP_DATA || 'false').toLowerCase() === 'true';
 
 const checks = [];
 
@@ -17,7 +29,8 @@ const created = {
   companyId: null,
   ownerId: null,
   employeeId: null,
-  ownerUsername: null
+  ownerUsername: null,
+  publicSlug: null
 };
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -65,7 +78,11 @@ const generateTotp = (secret, now = Date.now(), step = 30, digits = 6) => {
 };
 
 const generateTotpCandidates = (secret, now = Date.now()) => {
-  const codes = [generateTotp(secret, now), generateTotp(secret, now - 30000), generateTotp(secret, now + 30000)];
+  const codes = [
+    generateTotp(secret, now),
+    generateTotp(secret, now - 30000),
+    generateTotp(secret, now + 30000)
+  ];
   return [...new Set(codes)];
 };
 
@@ -193,7 +210,10 @@ const login = async ({ identifier, password, twoFactorCode }) => {
     body: { identifier, password }
   });
 
-  assert(loginResponse.status === 200, `Falha no login (${identifier}). status=${loginResponse.status}`);
+  assert(
+    loginResponse.status === 200,
+    `Falha no login (${identifier}). status=${loginResponse.status}`
+  );
 
   if (loginResponse.data && loginResponse.data.token) {
     return {
@@ -207,7 +227,10 @@ const login = async ({ identifier, password, twoFactorCode }) => {
   assert(challenge, `Login de ${identifier} retornou payload inesperado.`);
 
   const code = typeof twoFactorCode === 'function' ? await twoFactorCode() : twoFactorCode;
-  assert(code && String(code).trim().length > 0, `Login de ${identifier} exige 2FA. Informe POST_DEPLOY_SMOKE_ADMIN_2FA_CODE.`);
+  assert(
+    code && String(code).trim().length > 0,
+    `Login de ${identifier} exige 2FA. Informe POST_DEPLOY_SMOKE_ADMIN_2FA_CODE.`
+  );
 
   const verifyResponse = await apiRequest({
     method: 'POST',
@@ -218,7 +241,10 @@ const login = async ({ identifier, password, twoFactorCode }) => {
     }
   });
 
-  assert(verifyResponse.status === 200, `Falha na validacao 2FA (${identifier}). status=${verifyResponse.status}`);
+  assert(
+    verifyResponse.status === 200,
+    `Falha na validacao 2FA (${identifier}). status=${verifyResponse.status}`
+  );
   assert(verifyResponse.data?.token, `Resposta de 2FA sem token (${identifier}).`);
 
   return {
@@ -238,7 +264,9 @@ const ensureMockPlatform = async (adminToken) => {
   assert(listResponse.status === 200, `Falha ao listar plataformas. status=${listResponse.status}`);
   const platforms = Array.isArray(listResponse.data?.platforms) ? listResponse.data.platforms : [];
 
-  const existing = platforms.find((platform) => platform.type === 'SHOPEE' && platform.isActive && platform.mockMode);
+  const existing = platforms.find(
+    (platform) => platform.type === 'SHOPEE' && platform.isActive && platform.mockMode
+  );
   if (existing) {
     return existing;
   }
@@ -263,7 +291,10 @@ const ensureMockPlatform = async (adminToken) => {
     }
   });
 
-  assert(createResponse.status === 201, `Falha ao criar plataforma mock. status=${createResponse.status}`);
+  assert(
+    createResponse.status === 201,
+    `Falha ao criar plataforma mock. status=${createResponse.status}`
+  );
   assert(createResponse.data?.platform?.id, 'Plataforma mock criada sem ID.');
 
   created.platformId = createResponse.data.platform.id;
@@ -293,7 +324,10 @@ const ensureCompany = async ({ adminToken, platformId }) => {
       }
     });
 
-    assert(updateResponse.status === 200, `Falha ao atualizar empresa de smoke. status=${updateResponse.status}`);
+    assert(
+      updateResponse.status === 200,
+      `Falha ao atualizar empresa de smoke. status=${updateResponse.status}`
+    );
     return updateResponse.data.company;
   }
 
@@ -309,11 +343,66 @@ const ensureCompany = async ({ adminToken, platformId }) => {
     }
   });
 
-  assert(createResponse.status === 201, `Falha ao criar empresa de smoke. status=${createResponse.status}`);
+  assert(
+    createResponse.status === 201,
+    `Falha ao criar empresa de smoke. status=${createResponse.status}`
+  );
   assert(createResponse.data?.company?.id, 'Empresa de smoke criada sem ID.');
 
   created.companyId = createResponse.data.company.id;
   return createResponse.data.company;
+};
+
+const configurePublicModule = async ({ ownerToken, companyId }) => {
+  const publicSlug = process.env.POST_DEPLOY_SMOKE_PUBLIC_SLUG || `smoke-${companyId}`;
+
+  const slugResponse = await apiRequest({
+    method: 'PUT',
+    path: `/companies/${companyId}/public-slug`,
+    token: ownerToken,
+    body: {
+      publicSlug
+    }
+  });
+  assert(
+    slugResponse.status === 200,
+    `Falha ao configurar slug publico. status=${slugResponse.status}`
+  );
+
+  const fallbackResponse = await apiRequest({
+    method: 'PUT',
+    path: `/companies/${companyId}/fallback-url`,
+    token: ownerToken,
+    body: {
+      fallbackAffiliateUrl: PUBLIC_FALLBACK_URL
+    }
+  });
+  assert(
+    fallbackResponse.status === 200,
+    `Falha ao configurar fallback publico. status=${fallbackResponse.status}`
+  );
+
+  const landingResponse = await apiRequest({
+    method: 'PUT',
+    path: `/companies/${companyId}/landing-config`,
+    token: ownerToken,
+    body: {
+      bannerText: 'Smoke Publico',
+      bannerEmoji: 'OK',
+      heroTitle: 'Smoke publico Come Pouco',
+      heroSubtitle: 'Landing publica validada automaticamente no pos-deploy.',
+      howItWorksSteps: ['Cole um link Shopee', 'Geramos o link', 'Abrimos a oferta'],
+      primaryColor: '#10b981',
+      isActive: true
+    }
+  });
+  assert(
+    landingResponse.status === 200,
+    `Falha ao ativar landing publica. status=${landingResponse.status}`
+  );
+
+  created.publicSlug = publicSlug;
+  return publicSlug;
 };
 
 const cleanupData = async (adminToken) => {
@@ -337,7 +426,15 @@ const cleanupData = async (adminToken) => {
     });
   }
 
-  if (created.platformId) {
+  if (created.companyId) {
+    await apiRequest({
+      method: 'DELETE',
+      path: `/companies/${created.companyId}`,
+      token: adminToken
+    });
+  }
+
+  if (created.platformId && created.companyId) {
     await apiRequest({
       method: 'DELETE',
       path: `/purchase-platforms/${created.platformId}`,
@@ -349,7 +446,9 @@ const cleanupData = async (adminToken) => {
 const printSummaryAndExit = (success, error) => {
   console.log('\n=== Smoke Summary ===');
   checks.forEach((check) => {
-    console.log(`${check.ok ? 'OK' : 'FAIL'} ${check.name}${check.message ? ` - ${check.message}` : ''}`);
+    console.log(
+      `${check.ok ? 'OK' : 'FAIL'} ${check.name}${check.message ? ` - ${check.message}` : ''}`
+    );
   });
 
   if (!KEEP_DATA) {
@@ -465,6 +564,50 @@ const printSummaryAndExit = (success, error) => {
       assert(response.data?.user?.companyId === company.id, 'owner nao esta na empresa esperada.');
     });
 
+    let publicSlug = '';
+    await runCheck('configure_public_module', async () => {
+      publicSlug = await configurePublicModule({
+        ownerToken,
+        companyId: company.id
+      });
+      assert(publicSlug, 'slug publico nao configurado.');
+    });
+
+    await runCheck('public_landing_available', async () => {
+      const response = await apiRequest({
+        method: 'GET',
+        path: `/public/landing/${encodeURIComponent(publicSlug)}`
+      });
+
+      assert(response.status === 200, `status inesperado: ${response.status}`);
+      assert(
+        response.data?.company?.publicSlug === publicSlug,
+        'landing publica retornou slug inesperado.'
+      );
+    });
+
+    await runCheck('public_mock_conversion', async () => {
+      const response = await apiRequest({
+        method: 'POST',
+        path: '/public/convert',
+        body: {
+          url: PUBLIC_CONVERSION_URL,
+          companySlug: publicSlug
+        }
+      });
+
+      assert(response.status === 200, `status inesperado: ${response.status}`);
+      assert(response.data?.status === 'success', 'conversao publica nao retornou sucesso.');
+      assert(
+        typeof response.data?.affiliateUrl === 'string' && response.data.affiliateUrl.length > 0,
+        'conversao publica sem affiliateUrl.'
+      );
+      assert(
+        typeof response.data?.conversionId === 'string',
+        'conversao publica sem conversionId.'
+      );
+    });
+
     await runCheck('owner_create_employee', async () => {
       const employeeUsername = `smoke_employee_${Date.now()}`;
       const response = await apiRequest({
@@ -501,7 +644,10 @@ const printSummaryAndExit = (success, error) => {
       assert(response.status === 200, `status inesperado: ${response.status}`);
       const firstResult = Array.isArray(response.data?.results) ? response.data.results[0] : null;
       assert(firstResult && firstResult.success === true, 'geracao de shortlink falhou.');
-      assert(typeof firstResult.shortLink === 'string' && firstResult.shortLink.length > 0, 'shortlink ausente.');
+      assert(
+        typeof firstResult.shortLink === 'string' && firstResult.shortLink.length > 0,
+        'shortlink ausente.'
+      );
       shortLink = firstResult.shortLink;
     });
 
@@ -517,7 +663,10 @@ const printSummaryAndExit = (success, error) => {
       });
 
       assert(response.status === 201, `status inesperado: ${response.status}`);
-      assert(Array.isArray(response.data?.links) && response.data.links.length > 0, 'link gerado nao foi salvo.');
+      assert(
+        Array.isArray(response.data?.links) && response.data.links.length > 0,
+        'link gerado nao foi salvo.'
+      );
     });
 
     await runCheck('owner_2fa_setup_confirm', async () => {
@@ -540,7 +689,8 @@ const printSummaryAndExit = (success, error) => {
       });
 
       assert(
-        Array.isArray(confirmResponse.data?.backupCodes) && confirmResponse.data.backupCodes.length > 0,
+        Array.isArray(confirmResponse.data?.backupCodes) &&
+          confirmResponse.data.backupCodes.length > 0,
         'confirmacao 2FA sem backup codes.'
       );
     });
@@ -555,7 +705,10 @@ const printSummaryAndExit = (success, error) => {
         }
       });
 
-      assert(challengeResponse.status === 200, `status inesperado no login com 2FA: ${challengeResponse.status}`);
+      assert(
+        challengeResponse.status === 200,
+        `status inesperado no login com 2FA: ${challengeResponse.status}`
+      );
       const tempToken = challengeResponse.data?.tempToken || challengeResponse.data?.challengeId;
       assert(tempToken, 'login nao retornou challenge 2FA.');
 

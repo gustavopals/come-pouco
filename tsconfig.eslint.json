@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "jsx": "preserve",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2022",
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "*.config.*",
+    "*.ts",
+    "e2e/**/*.ts",
+    "come-pouco-backend/**/*.ts",
+    "come-pouco-frontend/*.ts",
+    "come-pouco-frontend/src/**/*.ts",
+    "come-pouco-landing/**/*.astro",
+    "come-pouco-landing/**/*.mjs",
+    "come-pouco-landing/**/*.ts"
+  ],
+  "exclude": [
+    "**/coverage/**",
+    "**/dist/**",
+    "**/node_modules/**",
+    "come-pouco-backend/dist/**",
+    "come-pouco-frontend/src/environments/sentry.generated.ts",
+    "come-pouco-landing/.astro/**"
+  ]
+}

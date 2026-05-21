@@ -1,0 +1,207 @@
+---
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import Button from '@components/ui/Button.astro';
+import Badge from '@components/ui/Badge.astro';
+import GradientBlob from '@components/ui/GradientBlob.astro';
+import BrowserFrame from '@components/ui/BrowserFrame.astro';
+import { getAppUrl } from '@lib/navigation';
+---
+
+<Section id="hero" spacing="hero" ariaLabelledby="hero-title">
+  <GradientBlob
+    position="top-right"
+    color="primary"
+    size={520}
+    blur={120}
+    opacity={0.38}
+    animated
+  />
+  <GradientBlob position="bottom-left" color="accent" size={420} blur={140} opacity={0.22} />
+
+  <Container
+    size="page"
+    class="relative grid items-center gap-12 lg:grid-cols-[1.05fr_1fr] lg:gap-16"
+  >
+    <div data-cp-reveal class="flex flex-col gap-6">
+      <Badge variant="success" size="md" href="#alli">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m12 3 1.9 5.8H20l-5 3.6 1.9 5.8L12 14.6l-4.9 3.6L9 12.4 4 8.8h6.1L12 3z"></path>
+        </svg>
+        Novo: módulo Alli para conversão pública
+      </Badge>
+
+      <h1
+        id="hero-title"
+        class="text-[length:var(--cp-text-display-size)] font-[760] leading-[var(--cp-text-display-line-height)] tracking-[-0.03em] text-[var(--cp-color-foreground)]"
+      >
+        Gere links de afiliado <span class="cp-grad-text">Shopee no automático</span> e venda mais com
+        sua audiência.
+      </h1>
+
+      <p
+        class="max-w-[58ch] text-[length:var(--cp-text-body-lg-size)] leading-[var(--cp-text-body-lg-line-height)] text-[var(--cp-color-muted-foreground)]"
+      >
+        Plataforma multi-tenant pra times de afiliados e criadores de conteúdo. Dashboard,
+        multi-time, segurança bancária — e uma URL pública onde sua audiência converte sozinha.
+      </p>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <Button
+          href={getAppUrl('/register')}
+          variant="primary"
+          size="lg"
+          dataEvent="cta_click_hero_primary"
+        >
+          Começar grátis
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M5 12h14M13 6l6 6-6 6"></path>
+          </svg>
+        </Button>
+        <Button
+          href="#how-it-works"
+          variant="secondary"
+          size="lg"
+          dataEvent="cta_click_hero_secondary"
+        >
+          Ver como funciona
+        </Button>
+      </div>
+
+      <ul
+        class="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-[14px] text-[var(--cp-color-muted-foreground)]"
+      >
+        <li class="flex items-center gap-2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--cp-color-primary)"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5"></path>
+          </svg>
+          Sem cartão
+        </li>
+        <li class="flex items-center gap-2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--cp-color-primary)"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5"></path>
+          </svg>
+          Setup em 2 minutos
+        </li>
+        <li class="flex items-center gap-2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--cp-color-primary)"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5"></path>
+          </svg>
+          Cancele quando quiser
+        </li>
+      </ul>
+    </div>
+
+    <div data-cp-reveal class="relative">
+      <BrowserFrame
+        url="app.come-pouco.com.br/dashboard"
+        class="origin-top-right lg:rotate-[1.2deg]"
+      >
+        <div class="absolute inset-0 flex flex-col gap-3 bg-[var(--cp-color-background)] p-5">
+          <div class="flex items-center justify-between">
+            <span class="text-[13px] font-semibold text-[var(--cp-color-foreground)]"
+              >Painel da empresa</span
+            >
+            <span
+              class="rounded-full bg-[var(--cp-color-primary-soft)] px-2 py-1 text-[11px] font-medium text-[var(--cp-color-primary)]"
+              >PROD</span
+            >
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div
+              class="rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] p-3"
+            >
+              <p class="text-[11px] text-[var(--cp-color-muted-foreground)]">Links hoje</p>
+              <p class="mt-1 text-[18px] font-bold text-[var(--cp-color-foreground)]">412</p>
+            </div>
+            <div
+              class="rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] p-3"
+            >
+              <p class="text-[11px] text-[var(--cp-color-muted-foreground)]">Conversão</p>
+              <p class="mt-1 text-[18px] font-bold text-[var(--cp-color-primary)]">7,8%</p>
+            </div>
+            <div
+              class="rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] p-3"
+            >
+              <p class="text-[11px] text-[var(--cp-color-muted-foreground)]">Top funcionário</p>
+              <p class="mt-1 text-[14px] font-semibold text-[var(--cp-color-foreground)]">
+                Joana M.
+              </p>
+            </div>
+          </div>
+          <div
+            class="flex-1 rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] p-3"
+          >
+            <p class="text-[11px] text-[var(--cp-color-muted-foreground)]">Últimos 30 dias</p>
+            <svg viewBox="0 0 320 80" class="mt-2 h-[80%] w-full" aria-hidden="true">
+              <defs>
+                <linearGradient id="cp-spark-grad" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0" stop-color="var(--cp-color-primary)" stop-opacity="0.4"></stop>
+                  <stop offset="1" stop-color="var(--cp-color-primary)" stop-opacity="0"></stop>
+                </linearGradient>
+              </defs>
+              <path
+                d="M0,60 C30,55 50,40 80,42 C110,44 130,30 160,25 C190,20 220,28 250,18 C280,8 300,12 320,8 L320,80 L0,80 Z"
+                fill="url(#cp-spark-grad)"></path>
+              <path
+                d="M0,60 C30,55 50,40 80,42 C110,44 130,30 160,25 C190,20 220,28 250,18 C280,8 300,12 320,8"
+                stroke="var(--cp-color-primary)"
+                stroke-width="2"
+                fill="none"></path>
+            </svg>
+          </div>
+        </div>
+      </BrowserFrame>
+    </div>
+  </Container>
+</Section>

@@ -1,0 +1,17 @@
+{{ define "come-pouco.discord.title" -}}
+{{ if eq .Status "resolved" }}RESOLVIDO{{ else }}ALERTA{{ end }} [{{ .CommonLabels.severity }}] {{ .CommonLabels.alertname }}
+{{- end }}
+
+{{ define "come-pouco.discord.message" -}}
+{{ range .Alerts -}}
+**Status:** `{{ .Status }}`
+**Servico:** `{{ .Labels.service }}`
+**Resumo:** {{ .Annotations.summary }}
+**Descricao:** {{ .Annotations.description }}
+**Dashboard:** {{ .Annotations.dashboard_url }}
+**Runbook:** {{ .Annotations.runbook_url }}
+**Inicio:** {{ .StartsAt }}
+{{ if eq .Status "resolved" }}**Fim:** {{ .EndsAt }}{{ end }}
+
+{{ end -}}
+{{- end }}

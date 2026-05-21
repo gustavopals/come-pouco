@@ -1,4 +1,5 @@
 const { Client } = require('pg');
+require('dotenv').config({ quiet: true });
 
 const requiredColumns = [
   'username',
@@ -10,13 +11,17 @@ const requiredColumns = [
 ];
 
 (async () => {
-  const client = new Client({
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT) || 5432,
-    user: process.env.DB_USER || 'come_pouco_user',
-    password: process.env.DB_PASSWORD || 'come_pouco_pass',
-    database: process.env.DB_NAME || 'come_pouco_db'
-  });
+  const client = new Client(
+    process.env.DATABASE_URL
+      ? { connectionString: process.env.DATABASE_URL }
+      : {
+          host: process.env.DB_HOST || 'localhost',
+          port: Number(process.env.DB_PORT) || 5432,
+          user: process.env.DB_USER || 'come_pouco_user',
+          password: process.env.DB_PASSWORD || 'come_pouco_pass',
+          database: process.env.DB_NAME || 'come_pouco_db'
+        }
+  );
 
   await client.connect();
 
@@ -61,7 +66,9 @@ const requiredColumns = [
   }
 
   if (!hasPrismaMigrationTable) {
-    console.warn('[WARN] _prisma_migrations table not found. Run baseline procedure before deploy.');
+    console.warn(
+      '[WARN] _prisma_migrations table not found. Run baseline procedure before deploy.'
+    );
   }
 
   console.log('AUTH_HARDENING_CHECK_OK');

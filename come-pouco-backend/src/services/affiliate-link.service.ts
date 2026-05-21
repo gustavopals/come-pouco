@@ -4,6 +4,12 @@ import prisma from '../config/prisma';
 import type { CompanyRole } from '../types/company-role';
 import type { UserRole } from '../types/user-role';
 import HttpError from '../utils/httpError';
+import {
+  PaginationInput,
+  PaginatedResult,
+  normalizePagination,
+  toPaginatedResult
+} from '../utils/pagination';
 
 interface AffiliateLinkRecord {
   id: number;
@@ -50,6 +56,11 @@ interface RequestScope {
 
 interface ListScope extends RequestScope {
   companyIdFilter?: number | null;
+  createdByUserIdFilter?: number;
+  search?: string;
+  startDate?: Date;
+  endDate?: Date;
+  pagination?: PaginationInput;
 }
 
 interface CreateAffiliateLinksInput {
@@ -122,7 +133,10 @@ const linkSelect = {
   updatedAt: true
 } satisfies Prisma.AffiliateLinkSelect;
 
-const resolveCompanyIdForCreate = (scope: RequestScope, companyId: number | null | undefined): number | null => {
+const resolveCompanyIdForCreate = (
+  scope: RequestScope,
+  companyId: number | null | undefined
+): number | null => {
   if (scope.requesterRole === 'ADMIN') {
     return companyId ?? null;
   }
@@ -154,12 +168,72 @@ const buildWhereByScope = (scope: ListScope): Prisma.AffiliateLinkWhereInput => 
   return { companyId: scope.requesterCompanyId, createdByUserId: scope.requesterUserId };
 };
 
+const buildSearchFilter = (search: string): Prisma.AffiliateLinkWhereInput => {
+  const normalized = search.trim();
+  const searchId = Number(normalized);
+  const or: Prisma.AffiliateLinkWhereInput[] = [
+    { originalLink: { contains: normalized, mode: 'insensitive' } },
+    { affiliateLink: { contains: normalized, mode: 'insensitive' } },
+    { subId1: { contains: normalized, mode: 'insensitive' } },
+    {
+      createdByUser: {
+        is: {
+          OR: [
+            { fullName: { contains: normalized, mode: 'insensitive' } },
+            { email: { contains: normalized, mode: 'insensitive' } }
+          ]
+        }
+      }
+    }
+  ];
+
+  if (Number.isInteger(searchId) && searchId > 0) {
+    or.unshift({ id: searchId });
+  }
+
+  return { OR: or };
+};
+
+const buildListWhere = (scope: ListScope): Prisma.AffiliateLinkWhereInput => {
+  const filters: Prisma.AffiliateLinkWhereInput[] = [buildWhereByScope(scope)];
+
+  if (scope.search?.trim()) {
+    filters.push(buildSearchFilter(scope.search));
+  }
+
+  if (
+    scope.createdByUserIdFilter &&
+    (scope.requesterRole === 'ADMIN' || scope.requesterCompanyRole === 'OWNER')
+  ) {
+    filters.push({ createdByUserId: scope.createdByUserIdFilter });
+  }
+
+  if (scope.startDate || scope.endDate) {
+    const createdAt: Prisma.DateTimeFilter = {};
+
+    if (scope.startDate) {
+      createdAt.gte = scope.startDate;
+    }
+
+    if (scope.endDate) {
+      createdAt.lte = scope.endDate;
+    }
+
+    filters.push({ createdAt });
+  }
+
+  return filters.length === 1 ? filters[0] : { AND: filters };
+};
+
 const ensureLinkPermission = async (id: number, scope: RequestScope): Promise<void> => {
   if (scope.requesterRole === 'ADMIN') {
     return;
   }
 
-  const link = await prisma.affiliateLink.findUnique({ where: { id }, select: { companyId: true, createdByUserId: true } });
+  const link = await prisma.affiliateLink.findUnique({
+    where: { id },
+    select: { companyId: true, createdByUserId: true }
+  });
 
   if (!link) {
     throw new HttpError(404, 'Link de afiliado nao encontrado.');
@@ -178,14 +252,23 @@ const ensureLinkPermission = async (id: number, scope: RequestScope): Promise<vo
   }
 };
 
-const listAffiliateLinks = async (scope: ListScope): Promise<AffiliateLinkOutput[]> => {
-  const links = await prisma.affiliateLink.findMany({
-    where: buildWhereByScope(scope),
-    orderBy: { id: 'desc' },
-    select: linkSelect
-  });
+const listAffiliateLinks = async (
+  scope: ListScope
+): Promise<PaginatedResult<AffiliateLinkOutput>> => {
+  const pagination = normalizePagination(scope.pagination);
+  const where = buildListWhere(scope);
+  const [total, links] = await prisma.$transaction([
+    prisma.affiliateLink.count({ where }),
+    prisma.affiliateLink.findMany({
+      where,
+      orderBy: { id: 'desc' },
+      skip: pagination.skip,
+      take: pagination.take,
+      select: linkSelect
+    })
+  ]);
 
-  return links.map(toAffiliateLinkOutput);
+  return toPaginatedResult(links.map(toAffiliateLinkOutput), total, pagination);
 };
 
 const createAffiliateLinks = async (
@@ -227,7 +310,13 @@ const createAffiliateLinks = async (
 };
 
 const createAffiliateLinksFromGenerated = async (
-  { generatedLinks, subId1, productImage, catchyPhrase, companyId }: CreateAffiliateLinksFromGeneratedInput,
+  {
+    generatedLinks,
+    subId1,
+    productImage,
+    catchyPhrase,
+    companyId
+  }: CreateAffiliateLinksFromGeneratedInput,
   scope: RequestScope
 ): Promise<AffiliateLinkOutput[]> => {
   const normalizedSubId1 = subId1?.trim() || null;
@@ -259,7 +348,11 @@ const createAffiliateLinksFromGenerated = async (
   return links.map(toAffiliateLinkOutput);
 };
 
-const updateAffiliateLink = async (id: number, data: UpdateAffiliateLinkInput, scope: RequestScope): Promise<AffiliateLinkOutput> => {
+const updateAffiliateLink = async (
+  id: number,
+  data: UpdateAffiliateLinkInput,
+  scope: RequestScope
+): Promise<AffiliateLinkOutput> => {
   await ensureLinkPermission(id, scope);
 
   const updateData: Prisma.AffiliateLinkUpdateInput = {};
@@ -289,7 +382,11 @@ const updateAffiliateLink = async (id: number, data: UpdateAffiliateLinkInput, s
   }
 
   try {
-    const link = await prisma.affiliateLink.update({ where: { id }, data: updateData, select: linkSelect });
+    const link = await prisma.affiliateLink.update({
+      where: { id },
+      data: updateData,
+      select: linkSelect
+    });
     return toAffiliateLinkOutput(link);
   } catch (error) {
     return mapPrismaError(error);

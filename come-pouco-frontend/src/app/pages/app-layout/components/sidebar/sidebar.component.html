@@ -1,0 +1,56 @@
+<aside class="sidebar" [class.sidebar-collapsed]="collapsed()">
+  <header class="sidebar-header">
+    <a
+      routerLink="/home"
+      class="sidebar-logo-link"
+      (click)="onNavigate()"
+      aria-label="Ir para Home"
+    >
+      <app-logo [compact]="collapsed()"></app-logo>
+    </a>
+  </header>
+
+  <nav class="sidebar-nav" aria-label="Menu principal">
+    @for (group of visibleGroups(); track group.label) {
+      <section class="sidebar-group">
+        <span class="sidebar-group-label">{{ group.label }}</span>
+
+        <div class="sidebar-group-items">
+          @for (item of group.items; track item.route) {
+            <a
+              class="sidebar-link"
+              [routerLink]="item.route"
+              routerLinkActive="sidebar-link-active"
+              #active="routerLinkActive"
+              [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+              [matTooltip]="item.label"
+              [matTooltipDisabled]="!collapsed()"
+              matTooltipPosition="right"
+              [attr.aria-current]="active.isActive ? 'page' : null"
+              (click)="onNavigate()"
+            >
+              <span class="sidebar-link-indicator"></span>
+              <app-icon [name]="item.icon" [size]="18"></app-icon>
+              <span class="sidebar-link-label">{{ item.label }}</span>
+            </a>
+          }
+        </div>
+      </section>
+    }
+  </nav>
+
+  <footer class="sidebar-footer">
+    <div
+      class="tenant-chip"
+      [matTooltip]="companyLabel()"
+      [matTooltipDisabled]="!collapsed()"
+      matTooltipPosition="right"
+    >
+      <span class="tenant-dot"></span>
+      <div class="tenant-copy">
+        <strong>{{ companyLabel() }}</strong>
+        <span>{{ roleLabel() }}</span>
+      </div>
+    </div>
+  </footer>
+</aside>

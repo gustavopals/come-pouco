@@ -26,10 +26,17 @@ const decryptValue = (payload: string): string => {
     throw new Error('Encrypted payload format is invalid.');
   }
 
-  const decipher = crypto.createDecipheriv('aes-256-gcm', deriveKey(), Buffer.from(ivPart, 'base64url'));
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    deriveKey(),
+    Buffer.from(ivPart, 'base64url')
+  );
   decipher.setAuthTag(Buffer.from(tagPart, 'base64url'));
 
-  const decrypted = Buffer.concat([decipher.update(Buffer.from(cipherPart, 'base64url')), decipher.final()]);
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(cipherPart, 'base64url')),
+    decipher.final()
+  ]);
   return decrypted.toString('utf8');
 };
 
@@ -68,4 +75,13 @@ const verifySignedValue = (value: string, signature: string, secret: string): bo
   return safeEqual(expected, signature);
 };
 
-export { decryptValue, encryptValue, hashValue, randomNumericCode, randomToken, safeEqual, signValue, verifySignedValue };
+export {
+  decryptValue,
+  encryptValue,
+  hashValue,
+  randomNumericCode,
+  randomToken,
+  safeEqual,
+  signValue,
+  verifySignedValue
+};

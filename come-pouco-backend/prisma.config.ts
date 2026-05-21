@@ -9,7 +9,10 @@ if (!process.env.PRISMA_SCHEMA_ENGINE_BINARY) {
   if (fs.existsSync(enginesDir)) {
     const schemaEngineFile = fs
       .readdirSync(enginesDir)
-      .find((file) => file.startsWith('schema-engine') && !file.endsWith('.gz') && !file.endsWith('.sha256'));
+      .find(
+        (file) =>
+          file.startsWith('schema-engine') && !file.endsWith('.gz') && !file.endsWith('.sha256')
+      );
 
     if (schemaEngineFile) {
       process.env.PRISMA_SCHEMA_ENGINE_BINARY = path.join(enginesDir, schemaEngineFile);

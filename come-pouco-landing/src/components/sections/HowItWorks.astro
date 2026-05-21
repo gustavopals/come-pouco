@@ -1,0 +1,74 @@
+---
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import { howItWorksSteps } from '@lib/features';
+---
+
+<Section id="how-it-works" ariaLabelledby="how-title">
+  <Container size="page" class="flex flex-col gap-12">
+    <header class="max-w-[var(--cp-mkt-prose-max)] flex flex-col gap-4">
+      <span
+        class="text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--cp-color-primary)]"
+      >
+        Como funciona
+      </span>
+      <h2
+        id="how-title"
+        class="text-[length:var(--cp-text-h2-size)] font-bold leading-[var(--cp-text-h2-line-height)] tracking-[-0.02em]"
+      >
+        Comece em minutos.
+      </h2>
+      <p
+        class="text-[length:var(--cp-text-body-lg-size)] leading-[var(--cp-text-body-lg-line-height)] text-[var(--cp-color-muted-foreground)]"
+      >
+        Quatro passos do zero ao primeiro link. Sem documentação interminável.
+      </p>
+    </header>
+
+    <div class="relative">
+      <svg
+        class="absolute left-0 right-0 top-7 hidden h-1 w-full md:block"
+        viewBox="0 0 1000 4"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="cp-step-line" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0" stop-color="var(--cp-mkt-hero-grad-start)" stop-opacity="0.0"></stop>
+            <stop offset="0.15" stop-color="var(--cp-mkt-hero-grad-start)" stop-opacity="0.5"
+            ></stop>
+            <stop offset="0.5" stop-color="var(--cp-mkt-hero-grad-mid)" stop-opacity="0.6"></stop>
+            <stop offset="0.85" stop-color="var(--cp-mkt-hero-grad-end)" stop-opacity="0.5"></stop>
+            <stop offset="1" stop-color="var(--cp-mkt-hero-grad-end)" stop-opacity="0"></stop>
+          </linearGradient>
+        </defs>
+        <line
+          x1="0"
+          y1="2"
+          x2="1000"
+          y2="2"
+          stroke="url(#cp-step-line)"
+          stroke-width="2"
+          stroke-dasharray="6 8"></line>
+      </svg>
+
+      <ol data-cp-reveal class="relative grid grid-cols-1 gap-8 md:grid-cols-4 md:gap-6">
+        {
+          howItWorksSteps.map((step) => (
+            <li class="flex flex-col items-start gap-3">
+              <span class="relative z-10 inline-flex h-14 w-14 items-center justify-center rounded-full border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] font-mono text-[16px] font-bold text-[var(--cp-color-primary)] shadow-[var(--cp-shadow-sm)]">
+                {step.number}
+              </span>
+              <h3 class="text-[18px] font-semibold leading-tight tracking-tight text-[var(--cp-color-foreground)]">
+                {step.title}
+              </h3>
+              <p class="text-[14px] leading-relaxed text-[var(--cp-color-muted-foreground)]">
+                {step.description}
+              </p>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </Container>
+</Section>

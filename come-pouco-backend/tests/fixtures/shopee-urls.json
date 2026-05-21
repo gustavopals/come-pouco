@@ -1,0 +1,187 @@
+[
+  {
+    "description": "canonical desktop product",
+    "input": "https://shopee.com.br/product/123456789/987654321",
+    "kind": "product",
+    "shopId": "123456789",
+    "itemId": "987654321",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://shopee.com.br/product/123456789/987654321"
+  },
+  {
+    "description": "canonical www product with neutral query",
+    "input": "https://www.shopee.com.br/product/998877665/112233445?variationId=42",
+    "kind": "product",
+    "shopId": "998877665",
+    "itemId": "112233445",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://www.shopee.com.br/product/998877665/112233445?variationId=42"
+  },
+  {
+    "description": "canonical mobile product over http",
+    "input": "http://m.shopee.com.br/product/111222333/444555666?foo=bar",
+    "kind": "product",
+    "shopId": "111222333",
+    "itemId": "444555666",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "http://m.shopee.com.br/product/111222333/444555666?foo=bar"
+  },
+  {
+    "description": "slug product",
+    "input": "https://shopee.com.br/fone-bluetooth-sem-fio-i.123123123.456456456",
+    "kind": "product",
+    "shopId": "123123123",
+    "itemId": "456456456",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://shopee.com.br/fone-bluetooth-sem-fio-i.123123123.456456456"
+  },
+  {
+    "description": "slug product with trailing slash",
+    "input": "https://shopee.com.br/kit-cozinha-inox-i.222333444.555666777/",
+    "kind": "product",
+    "shopId": "222333444",
+    "itemId": "555666777",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://shopee.com.br/kit-cozinha-inox-i.222333444.555666777/"
+  },
+  {
+    "description": "mobile slug product",
+    "input": "https://m.shopee.com.br/cabo-usb-c-rapido-i.10101010.20202020?variant=preto",
+    "kind": "product",
+    "shopId": "10101010",
+    "itemId": "20202020",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://m.shopee.com.br/cabo-usb-c-rapido-i.10101010.20202020?variant=preto"
+  },
+  {
+    "description": "product with hash removed",
+    "input": "https://shopee.com.br/product/333444555/666777888?foo=bar#ratings",
+    "kind": "product",
+    "shopId": "333444555",
+    "itemId": "666777888",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://shopee.com.br/product/333444555/666777888?foo=bar"
+  },
+  {
+    "description": "product with sub_id removed",
+    "input": "https://shopee.com.br/product/444555666/777888999?sub_id=other-affiliate&foo=keep",
+    "kind": "product",
+    "shopId": "444555666",
+    "itemId": "777888999",
+    "hasAffiliateParams": true,
+    "removedAffiliateParams": ["sub_id"],
+    "normalizedUrl": "https://shopee.com.br/product/444555666/777888999?foo=keep"
+  },
+  {
+    "description": "product with shopee sub ids removed",
+    "input": "https://shopee.com.br/product/555666777/888999000?sub_id1=empresa&sub_id2=joao&sub_id3=abc&coupon=ok",
+    "kind": "product",
+    "shopId": "555666777",
+    "itemId": "888999000",
+    "hasAffiliateParams": true,
+    "removedAffiliateParams": ["sub_id1", "sub_id2", "sub_id3"],
+    "normalizedUrl": "https://shopee.com.br/product/555666777/888999000?coupon=ok"
+  },
+  {
+    "description": "product with camel-style subid removed case-insensitively",
+    "input": "https://shopee.com.br/product/12121212/34343434?SubId=abc&SubId2=def&color=blue",
+    "kind": "product",
+    "shopId": "12121212",
+    "itemId": "34343434",
+    "hasAffiliateParams": true,
+    "removedAffiliateParams": ["SubId", "SubId2"],
+    "normalizedUrl": "https://shopee.com.br/product/12121212/34343434?color=blue"
+  },
+  {
+    "description": "product with utm and shopee tracking removed",
+    "input": "https://shopee.com.br/fritadeira-air-fryer-i.90909090.80808080?utm_source=instagram&utm_campaign=sale&sp_atk=token&xptdk=track&foo=bar",
+    "kind": "product",
+    "shopId": "90909090",
+    "itemId": "80808080",
+    "hasAffiliateParams": true,
+    "removedAffiliateParams": ["utm_source", "utm_campaign", "sp_atk", "xptdk"],
+    "normalizedUrl": "https://shopee.com.br/fritadeira-air-fryer-i.90909090.80808080?foo=bar"
+  },
+  {
+    "description": "product with af tracking removed",
+    "input": "https://shopee.com.br/smartwatch-i.77777777.66666666?af_siteid=site&af_sub_siteid=sub&pid=partner&ref=keep",
+    "kind": "product",
+    "shopId": "77777777",
+    "itemId": "66666666",
+    "hasAffiliateParams": true,
+    "removedAffiliateParams": ["af_siteid", "af_sub_siteid", "pid"],
+    "normalizedUrl": "https://shopee.com.br/smartwatch-i.77777777.66666666?ref=keep"
+  },
+  {
+    "description": "shopee shortlink",
+    "input": "https://shope.ee/7fHABC123",
+    "kind": "short",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://shope.ee/7fHABC123"
+  },
+  {
+    "description": "shopee shortlink with trailing slash",
+    "input": "https://shope.ee/A1b2C3d4/",
+    "kind": "short",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://shope.ee/A1b2C3d4/"
+  },
+  {
+    "description": "s.shopee shortlink",
+    "input": "https://s.shopee.com.br/9A8b7C6d5E",
+    "kind": "short",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://s.shopee.com.br/9A8b7C6d5E"
+  },
+  {
+    "description": "shortlink with tracking removed",
+    "input": "https://s.shopee.com.br/1q2w3e4r?utm_medium=social&foo=bar",
+    "kind": "short",
+    "hasAffiliateParams": true,
+    "removedAffiliateParams": ["utm_medium"],
+    "normalizedUrl": "https://s.shopee.com.br/1q2w3e4r?foo=bar"
+  },
+  {
+    "description": "desktop search page",
+    "input": "https://shopee.com.br/search?keyword=fone%20bluetooth",
+    "kind": "non-product",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://shopee.com.br/search?keyword=fone%20bluetooth"
+  },
+  {
+    "description": "mobile search page",
+    "input": "https://m.shopee.com.br/search?keyword=tenis",
+    "kind": "non-product",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://m.shopee.com.br/search?keyword=tenis"
+  },
+  {
+    "description": "category page",
+    "input": "https://shopee.com.br/Eletronicos-cat.11059983",
+    "kind": "non-product",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://shopee.com.br/Eletronicos-cat.11059983"
+  },
+  {
+    "description": "shop page",
+    "input": "https://shopee.com.br/shop/123456/search?shopCollection=987",
+    "kind": "non-product",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://shopee.com.br/shop/123456/search?shopCollection=987"
+  },
+  {
+    "description": "cart page",
+    "input": "https://shopee.com.br/cart",
+    "kind": "non-product",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://shopee.com.br/cart"
+  },
+  {
+    "description": "shopee app universal link",
+    "input": "https://shopee.com.br/universal-link/product/123/456?deep_and_deferred=1&foo=bar",
+    "kind": "non-product",
+    "hasAffiliateParams": true,
+    "removedAffiliateParams": ["deep_and_deferred"],
+    "normalizedUrl": "https://shopee.com.br/universal-link/product/123/456?foo=bar"
+  }
+]

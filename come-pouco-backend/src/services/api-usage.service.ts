@@ -1,6 +1,12 @@
 import { Prisma } from '@prisma/client';
 
 import prisma from '../config/prisma';
+import {
+  PaginatedResult,
+  PaginationInput,
+  normalizePagination,
+  toPaginatedResult
+} from '../utils/pagination';
 
 type ApiUsageMode = 'MOCK' | 'REAL';
 
@@ -10,6 +16,7 @@ interface ApiUsageFilters {
   startDate?: Date;
   endDate?: Date;
   mode?: ApiUsageMode;
+  pagination?: PaginationInput;
 }
 
 interface DeleteMockFilters {
@@ -22,6 +29,21 @@ interface ApiUsageSummary {
   totalMock: number;
   totalReal: number;
   totalGeral: number;
+  logs: ApiUsageLogOutput[];
+  data: ApiUsageLogOutput[];
+  items: ApiUsageLogOutput[];
+  meta: PaginatedResult<ApiUsageLogOutput>['meta'];
+}
+
+interface ApiUsageLogOutput {
+  id: string;
+  companyId: number;
+  userId: number;
+  platformId: number;
+  mode: ApiUsageMode;
+  endpoint: string | null;
+  success: boolean;
+  createdAt: string;
 }
 
 const buildDateFilter = (startDate?: Date, endDate?: Date): Prisma.DateTimeFilter | undefined => {
@@ -42,7 +64,13 @@ const buildDateFilter = (startDate?: Date, endDate?: Date): Prisma.DateTimeFilte
   return createdAt;
 };
 
-const buildWhereFilter = ({ companyId, userId, startDate, endDate, mode }: ApiUsageFilters): Prisma.ApiRequestLogWhereInput => {
+const buildWhereFilter = ({
+  companyId,
+  userId,
+  startDate,
+  endDate,
+  mode
+}: ApiUsageFilters): Prisma.ApiRequestLogWhereInput => {
   const where: Prisma.ApiRequestLogWhereInput = {};
 
   if (companyId) {
@@ -65,9 +93,31 @@ const buildWhereFilter = ({ companyId, userId, startDate, endDate, mode }: ApiUs
   return where;
 };
 
+const toApiUsageLogOutput = (log: {
+  id: string;
+  companyId: number;
+  userId: number;
+  platformId: number;
+  mode: ApiUsageMode;
+  endpoint: string | null;
+  success: boolean;
+  createdAt: Date;
+}): ApiUsageLogOutput => ({
+  id: log.id,
+  companyId: log.companyId,
+  userId: log.userId,
+  platformId: log.platformId,
+  mode: log.mode,
+  endpoint: log.endpoint,
+  success: log.success,
+  createdAt: log.createdAt.toISOString()
+});
+
 const getApiUsageSummary = async (filters: ApiUsageFilters): Promise<ApiUsageSummary> => {
+  const pagination = normalizePagination(filters.pagination);
+  const where = buildWhereFilter(filters);
   const totalGeralPromise = prisma.apiRequestLog.count({
-    where: buildWhereFilter(filters)
+    where
   });
 
   const totalMockPromise =
@@ -84,16 +134,37 @@ const getApiUsageSummary = async (filters: ApiUsageFilters): Promise<ApiUsageSum
           where: buildWhereFilter({ ...filters, mode: 'REAL' })
         });
 
-  const [totalMock, totalReal, totalGeral] = await Promise.all([totalMockPromise, totalRealPromise, totalGeralPromise]);
+  const logsPromise = prisma.apiRequestLog.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    skip: pagination.skip,
+    take: pagination.take
+  });
+
+  const [totalMock, totalReal, totalGeral, logs] = await Promise.all([
+    totalMockPromise,
+    totalRealPromise,
+    totalGeralPromise,
+    logsPromise
+  ]);
+  const paginatedLogs = toPaginatedResult(logs.map(toApiUsageLogOutput), totalGeral, pagination);
 
   return {
     totalMock,
     totalReal,
-    totalGeral
+    totalGeral,
+    logs: paginatedLogs.items,
+    data: paginatedLogs.data,
+    items: paginatedLogs.items,
+    meta: paginatedLogs.meta
   };
 };
 
-const deleteMockUsage = async ({ companyId, startDate, endDate }: DeleteMockFilters): Promise<number> => {
+const deleteMockUsage = async ({
+  companyId,
+  startDate,
+  endDate
+}: DeleteMockFilters): Promise<number> => {
   const result = await prisma.apiRequestLog.deleteMany({
     where: buildWhereFilter({
       companyId,

@@ -1,0 +1,50 @@
+---
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import IconBox from '@components/ui/IconBox.astro';
+import Icon from '@components/ui/Icon.astro';
+import { securityBadges } from '@lib/features';
+---
+
+<Section id="security" tone="default" divided ariaLabelledby="security-title">
+  <Container size="page" class="flex flex-col gap-12">
+    <header class="max-w-[var(--cp-mkt-prose-max)] flex flex-col gap-4">
+      <span
+        class="text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--cp-color-primary)]"
+      >
+        Segurança
+      </span>
+      <h2
+        id="security-title"
+        class="text-[length:var(--cp-text-h2-size)] font-bold leading-[var(--cp-text-h2-line-height)] tracking-[-0.02em]"
+      >
+        Segurança é padrão, não opcional.
+      </h2>
+      <p
+        class="text-[length:var(--cp-text-body-lg-size)] leading-[var(--cp-text-body-lg-line-height)] text-[var(--cp-color-muted-foreground)]"
+      >
+        Pensamos como um banco e implementamos como uma startup que valoriza seu sono.
+      </p>
+    </header>
+
+    <ul data-cp-reveal class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        securityBadges.map((badge) => (
+          <li class="flex items-start gap-4 rounded-[var(--cp-radius-lg)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] p-5 shadow-[var(--cp-shadow-sm)] transition-shadow hover:shadow-[var(--cp-shadow-md)]">
+            <IconBox variant="primary" size="md">
+              <Icon name={badge.icon} />
+            </IconBox>
+            <div class="flex flex-col gap-1">
+              <h3 class="text-[16px] font-semibold leading-tight text-[var(--cp-color-foreground)]">
+                {badge.title}
+              </h3>
+              <p class="text-[13px] leading-relaxed text-[var(--cp-color-muted-foreground)]">
+                {badge.description}
+              </p>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </Container>
+</Section>

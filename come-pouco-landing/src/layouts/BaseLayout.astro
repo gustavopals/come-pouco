@@ -1,0 +1,64 @@
+---
+import '@styles/global.css';
+import Header from '@components/layout/Header.astro';
+import Footer from '@components/layout/Footer.astro';
+import SeoHead from '@components/seo/SeoHead.astro';
+import SchemaJsonLd from '@components/seo/SchemaJsonLd.astro';
+
+export interface Props {
+  title: string;
+  description: string;
+  /** Caminho da OG image (default: dinâmica gerada por página) */
+  ogImage?: string;
+  /** Path relativo para canonical (default: route atual) */
+  canonical?: string;
+  /** Esconder header/footer (ex.: páginas /dev/*) */
+  bare?: boolean;
+  /** Schema.org tipo principal da página */
+  schemaType?: 'WebSite' | 'Product' | 'FAQPage' | 'Organization';
+  /** Dados extras passados ao schema (perguntas do FAQ, etc.) */
+  schemaData?: Record<string, unknown>;
+}
+
+const {
+  title,
+  description,
+  ogImage,
+  canonical,
+  bare = false,
+  schemaType = 'WebSite',
+  schemaData
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="pt-BR" class="light">
+  <head>
+    <SeoHead title={title} description={description} ogImage={ogImage} canonical={canonical} />
+    <script is:inline>
+      (function () {
+        try {
+          var stored = localStorage.getItem('come_pouco_theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme =
+            stored === 'light' || stored === 'dark' ? stored : prefersDark ? 'dark' : 'light';
+          var root = document.documentElement;
+          root.classList.remove('light', 'dark');
+          root.classList.add(theme);
+          root.style.colorScheme = theme;
+        } catch {
+          /* noop */
+        }
+      })();
+    </script>
+    <SchemaJsonLd type={schemaType} data={schemaData} />
+  </head>
+  <body>
+    <a href="#main" class="skip-link">Pular para o conteúdo</a>
+    {!bare && <Header />}
+    <main id="main">
+      <slot />
+    </main>
+    {!bare && <Footer />}
+  </body>
+</html>

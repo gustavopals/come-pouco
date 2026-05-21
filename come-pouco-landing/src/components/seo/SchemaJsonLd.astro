@@ -1,0 +1,95 @@
+---
+export interface Props {
+  type?: 'WebSite' | 'Product' | 'FAQPage' | 'Organization';
+  data?: Record<string, unknown>;
+}
+
+const { type = 'WebSite', data = {} } = Astro.props;
+
+const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? 'https://come-pouco.com.br';
+const orgName = 'Come Pouco';
+
+const organization = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: orgName,
+  url: siteUrl,
+  logo: `${siteUrl}/favicon.svg`,
+  sameAs: [
+    'https://www.linkedin.com/company/come-pouco',
+    'https://www.instagram.com/comepouco',
+    'https://github.com/come-pouco'
+  ],
+  contactPoint: {
+    '@type': 'ContactPoint',
+    contactType: 'customer support',
+    email: 'contato@come-pouco.com.br',
+    availableLanguage: ['Portuguese']
+  }
+};
+
+const website = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: orgName,
+  url: siteUrl,
+  inLanguage: 'pt-BR',
+  publisher: { '@type': 'Organization', name: orgName }
+};
+
+const product = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: 'Come Pouco — Gestão de afiliados Shopee',
+  description:
+    'Plataforma multi-tenant para gerar e gerenciar links de afiliado Shopee com módulo público Alli, dashboard, multi-time e segurança.',
+  brand: { '@type': 'Brand', name: orgName },
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Free',
+      priceCurrency: 'BRL',
+      price: '0.00',
+      availability: 'https://schema.org/InStock',
+      url: `${siteUrl}/#pricing`
+    },
+    {
+      '@type': 'Offer',
+      name: 'Pro',
+      priceCurrency: 'BRL',
+      price: '0.00',
+      availability: 'https://schema.org/InStock',
+      url: `${siteUrl}/#pricing`
+    }
+  ],
+  ...data
+};
+
+const faqPage = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: Array.isArray((data as { items?: unknown[] }).items)
+    ? ((data as { items: Array<{ q: string; a: string }> }).items.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: { '@type': 'Answer', text: item.a }
+      })) as unknown[])
+    : []
+};
+
+const payload =
+  type === 'Organization'
+    ? organization
+    : type === 'Product'
+      ? product
+      : type === 'FAQPage'
+        ? faqPage
+        : website;
+---
+
+<script is:inline type="application/ld+json" set:html={JSON.stringify(payload)} />
+{
+  type !== 'Organization' && (
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(organization)} />
+  )
+}

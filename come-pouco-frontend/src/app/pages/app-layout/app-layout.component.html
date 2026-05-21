@@ -1,108 +1,52 @@
-<section class="page-shell app-shell">
-  <mat-toolbar color="primary" class="app-toolbar">
-    <button mat-icon-button type="button" class="mobile-menu-btn" (click)="toggleMobileMenu()" aria-label="Abrir menu">
-      <mat-icon>{{ isMobileMenuOpen ? 'close' : 'menu' }}</mat-icon>
-    </button>
+<a class="skip-link" href="#app-content">Pular para conteudo</a>
 
-    <strong class="toolbar-title">Painel</strong>
-    <span class="toolbar-spacer"></span>
+<section
+  class="app-layout"
+  [class.app-layout-collapsed]="isSidebarCollapsed()"
+  [class.app-layout-mobile]="isMobile()"
+  [class.app-layout-drawer-open]="isMobileDrawerOpen()"
+>
+  <button
+    type="button"
+    class="app-layout-backdrop"
+    *ngIf="isMobileDrawerOpen()"
+    aria-label="Fechar menu"
+    (click)="closeMobileDrawer()"
+  ></button>
 
-    <nav class="desktop-nav" aria-label="Menu principal">
-      <a
-        mat-button
-        routerLink="/home"
-        routerLinkActive="active-link"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        Home
-      </a>
-      <a mat-button routerLink="/my-company" routerLinkActive="active-link" *ngIf="authService.isOwner()">Minha Empresa</a>
-      <a mat-button routerLink="/affiliate-links" routerLinkActive="active-link">Links Afiliados</a>
-      <a mat-button routerLink="/security" routerLinkActive="active-link">Seguranca</a>
-      <a mat-button routerLink="/users" routerLinkActive="active-link" *ngIf="authService.isAdmin()">Usuarios</a>
-      <a mat-button routerLink="/companies" routerLinkActive="active-link" *ngIf="authService.isAdmin()">Empresas</a>
-      <a mat-button routerLink="/purchase-platforms" routerLinkActive="active-link" *ngIf="authService.isAdmin()">
-        Plataforma de Compras
-      </a>
-      <a mat-button routerLink="/admin/email-settings" routerLinkActive="active-link" *ngIf="authService.isAdmin()">
-        Email
-      </a>
-    </nav>
+  <app-sidebar
+    class="app-sidebar-panel"
+    [class.app-sidebar-panel-mobile]="isMobile()"
+    [class.app-sidebar-panel-open]="isMobileDrawerOpen()"
+    [collapsed]="!isMobile() && isSidebarCollapsed()"
+    [cdkTrapFocus]="isMobileDrawerOpen()"
+    [cdkTrapFocusAutoCapture]="isMobileDrawerOpen()"
+    [attr.role]="isMobile() ? 'dialog' : null"
+    [attr.aria-modal]="isMobile() && isMobileDrawerOpen() ? 'true' : null"
+    [attr.aria-label]="isMobile() ? 'Menu principal' : null"
+    (navigate)="closeMobileDrawer()"
+  ></app-sidebar>
 
-    <button mat-flat-button color="warn" type="button" class="desktop-logout-btn" (click)="logout()">Sair</button>
-  </mat-toolbar>
+  <div class="app-layout-main">
+    <app-topbar
+      [user]="authService.currentUser()"
+      [isMobile]="isMobile()"
+      [sidebarCollapsed]="isSidebarCollapsed()"
+      (openMobileMenu)="openMobileDrawer()"
+      (toggleSidebar)="toggleSidebar()"
+      (logoutRequested)="logout()"
+    >
+      <app-breadcrumbs topbar-breadcrumbs></app-breadcrumbs>
+    </app-topbar>
 
-  <button type="button" class="mobile-backdrop" *ngIf="isMobileMenuOpen" (click)="closeMobileMenu()" aria-label="Fechar menu"></button>
-
-  <nav class="mobile-nav" [class.mobile-nav-open]="isMobileMenuOpen" aria-label="Menu mobile">
-    <a
-      mat-button
-      class="mobile-nav-link"
-      routerLink="/home"
-      routerLinkActive="active-link"
-      [routerLinkActiveOptions]="{ exact: true }"
-      (click)="closeMobileMenu()"
+    <main
+      id="app-content"
+      class="app-layout-content"
+      tabindex="-1"
+      [@.disabled]="prefersReducedMotion()"
+      [@routeMotion]="routeAnimation(outlet)"
     >
-      Home
-    </a>
-    <a
-      mat-button
-      class="mobile-nav-link"
-      routerLink="/my-company"
-      routerLinkActive="active-link"
-      *ngIf="authService.isOwner()"
-      (click)="closeMobileMenu()"
-    >
-      Minha Empresa
-    </a>
-    <a mat-button class="mobile-nav-link" routerLink="/affiliate-links" routerLinkActive="active-link" (click)="closeMobileMenu()">
-      Links Afiliados
-    </a>
-    <a mat-button class="mobile-nav-link" routerLink="/security" routerLinkActive="active-link" (click)="closeMobileMenu()">
-      Seguranca
-    </a>
-    <a
-      mat-button
-      class="mobile-nav-link"
-      routerLink="/users"
-      routerLinkActive="active-link"
-      *ngIf="authService.isAdmin()"
-      (click)="closeMobileMenu()"
-    >
-      Usuarios
-    </a>
-    <a
-      mat-button
-      class="mobile-nav-link"
-      routerLink="/companies"
-      routerLinkActive="active-link"
-      *ngIf="authService.isAdmin()"
-      (click)="closeMobileMenu()"
-    >
-      Empresas
-    </a>
-    <a
-      mat-button
-      class="mobile-nav-link"
-      routerLink="/purchase-platforms"
-      routerLinkActive="active-link"
-      *ngIf="authService.isAdmin()"
-      (click)="closeMobileMenu()"
-    >
-      Plataforma de Compras
-    </a>
-    <a
-      mat-button
-      class="mobile-nav-link"
-      routerLink="/admin/email-settings"
-      routerLinkActive="active-link"
-      *ngIf="authService.isAdmin()"
-      (click)="closeMobileMenu()"
-    >
-      Email
-    </a>
-    <button mat-flat-button color="warn" type="button" class="mobile-logout-btn" (click)="logout()">Sair</button>
-  </nav>
-
-  <router-outlet></router-outlet>
+      <router-outlet #outlet="outlet"></router-outlet>
+    </main>
+  </div>
 </section>

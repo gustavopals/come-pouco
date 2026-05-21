@@ -4,13 +4,30 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { Company, CreateCompanyPayload, UpdateCompanyPayload } from '../models/company.model';
+import { PaginatedResponse, PaginationParams } from '../models/pagination.model';
+import { buildPaginationParams, collectPaginatedItems } from './pagination-params';
 
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   constructor(private readonly http: HttpClient) {}
 
-  list(): Observable<{ companies: Company[] }> {
-    return this.http.get<{ companies: Company[] }>(`${environment.apiUrl}/companies`);
+  list(
+    pagination?: PaginationParams,
+  ): Observable<{ companies: Company[] } & PaginatedResponse<Company>> {
+    return this.http.get<{ companies: Company[] } & PaginatedResponse<Company>>(
+      `${environment.apiUrl}/companies`,
+      {
+        params: buildPaginationParams(pagination),
+      },
+    );
+  }
+
+  listAll(): Observable<Company[]> {
+    return collectPaginatedItems(
+      (page, limit) => this.list({ page, limit }),
+      (response) =>
+        Array.isArray(response.companies) ? response.companies : (response.items ?? []),
+    );
   }
 
   create(payload: CreateCompanyPayload): Observable<{ company: Company }> {

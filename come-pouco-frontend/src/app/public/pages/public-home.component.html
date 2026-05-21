@@ -1,0 +1,139 @@
+<section class="conversion-page" [class.preview-mode]="isPreview()">
+  <div class="preview-banner" *ngIf="isPreview()" role="status">Modo preview</div>
+
+  <section class="conversion-hero" aria-labelledby="public-conversion-title">
+    <div class="hero-copy">
+      <p class="hero-banner">
+        <span *ngIf="landing()?.landingConfig?.bannerEmoji as emoji">{{ emoji }}</span>
+        {{ landing()?.landingConfig?.bannerText || 'Ofertas Shopee' }}
+      </p>
+
+      <h1 id="public-conversion-title">
+        {{
+          landing()?.landingConfig?.heroTitle ||
+            'Cole o link da Shopee e continue com os cupons ativos.'
+        }}
+      </h1>
+
+      <p class="hero-subtitle">
+        {{
+          landing()?.landingConfig?.heroSubtitle ||
+            'A pagina prepara seu link com rastreamento e direciona para a melhor opcao disponivel.'
+        }}
+      </p>
+
+      <p class="employee-context" *ngIf="employeeSlug()">Atendimento: {{ employeeSlug() }}</p>
+    </div>
+
+    <form
+      class="conversion-form"
+      [class.is-loading]="isSubmitting()"
+      [formGroup]="convertForm"
+      (ngSubmit)="submitConversion()"
+      *ngIf="shouldShowForm(); else resultState"
+      novalidate
+    >
+      <label for="shopee-url">Link da Shopee</label>
+
+      <div class="url-field" [class.has-error]="urlErrorMessage()">
+        <input
+          #urlInput
+          id="shopee-url"
+          type="url"
+          formControlName="url"
+          inputmode="url"
+          autocomplete="url"
+          placeholder="https://shopee.com.br/..."
+          aria-describedby="url-help url-error"
+          [attr.aria-invalid]="urlErrorMessage() ? 'true' : 'false'"
+          (paste)="handlePaste($event)"
+        />
+      </div>
+
+      <input
+        class="honeypot"
+        type="text"
+        name="website"
+        formControlName="website"
+        tabindex="-1"
+        autocomplete="off"
+        aria-hidden="true"
+      />
+
+      <p id="url-help" class="field-help">Cole um produto ou shortlink Shopee.</p>
+      <p id="url-error" class="field-error" role="alert" *ngIf="urlErrorMessage() as message">
+        {{ message }}
+      </p>
+
+      <button #submitButton class="conversion-cta" type="submit" [disabled]="isSubmitting()">
+        <mat-progress-spinner *ngIf="isSubmitting()" mode="indeterminate" diameter="18" />
+        <span>{{ isSubmitting() ? 'Buscando melhores cupons...' : 'Preparar meu link' }}</span>
+      </button>
+
+      <p
+        class="conversion-status"
+        [class.status-success]="statusTone() === 'success'"
+        [class.status-error]="statusTone() === 'error'"
+        role="status"
+        aria-live="polite"
+        *ngIf="statusMessage() as message"
+      >
+        {{ message }}
+      </p>
+    </form>
+
+    <ng-template #resultState>
+      <section
+        class="result-panel"
+        [class.result-success]="conversionState() === 'success'"
+        [class.result-fallback]="conversionState() === 'fallback'"
+        [class.result-error]="conversionState() === 'error'"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="result-mark" aria-hidden="true">{{ resultCopy().mark }}</span>
+        <p class="result-eyebrow">{{ resultCopy().eyebrow }}</p>
+        <h2>{{ resultCopy().title }}</h2>
+        <p class="result-message">{{ resultCopy().message }}</p>
+
+        <div class="redirect-progress" *ngIf="isRedirectState()">
+          <mat-progress-spinner mode="indeterminate" diameter="24" />
+          <span>Aplicando cupom e abrindo a Shopee.</span>
+        </div>
+
+        <a
+          class="result-cta"
+          *ngIf="redirectUrl() as url"
+          [href]="url"
+          rel="noopener"
+          (click)="goToShopeeNow($event)"
+        >
+          Ir para Shopee agora
+        </a>
+
+        <button
+          class="retry-button"
+          type="button"
+          *ngIf="conversionState() === 'error'"
+          (click)="retryConversion()"
+        >
+          Tentar de novo
+        </button>
+      </section>
+    </ng-template>
+  </section>
+
+  <section class="steps-section" *ngIf="steps().length" aria-labelledby="how-it-works-title">
+    <div class="steps-heading">
+      <p>Como funciona</p>
+      <h2 id="how-it-works-title">Da copia ao cupom em poucos toques.</h2>
+    </div>
+
+    <ol class="steps-list">
+      <li *ngFor="let step of steps().slice(0, 4); let index = index">
+        <span>{{ index + 1 }}</span>
+        <p>{{ step }}</p>
+      </li>
+    </ol>
+  </section>
+</section>

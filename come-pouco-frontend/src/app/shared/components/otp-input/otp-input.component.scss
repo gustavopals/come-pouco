@@ -1,0 +1,49 @@
+:host {
+  display: block;
+}
+
+.otp-field {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--cp-space-2);
+}
+
+.otp-input {
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, var(--cp-color-border) 82%, var(--cp-color-foreground));
+  border-radius: var(--cp-radius-md);
+  background: var(--cp-color-surface);
+  color: var(--cp-color-foreground);
+  font: 750 1.28rem / 1 var(--cp-font-family-mono);
+  letter-spacing: 0;
+  text-align: center;
+  box-shadow: var(--cp-shadow-sm);
+  transition:
+    border-color var(--cp-duration-short) var(--cp-ease-standard),
+    box-shadow var(--cp-duration-short) var(--cp-ease-standard),
+    transform var(--cp-duration-short) var(--cp-ease-standard);
+}
+
+.otp-input:focus {
+  border-color: var(--cp-color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cp-color-primary) 18%, transparent);
+  transform: translateY(-1px);
+}
+
+.otp-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 420px) {
+  .otp-field {
+    gap: var(--cp-space-1);
+  }
+
+  .otp-input {
+    font-size: 1rem;
+  }
+}

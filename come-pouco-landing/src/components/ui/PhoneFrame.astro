@@ -1,0 +1,29 @@
+---
+export interface Props {
+  /** Cor da moldura: `dark` (padrão) ou `light` */
+  bezel?: 'dark' | 'light';
+  class?: string;
+}
+
+const { bezel = 'dark', class: extraClass = '' } = Astro.props;
+
+const bezelClass =
+  bezel === 'dark' ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#e5e7eb] border-[#cbd5e1]';
+---
+
+<div
+  class:list={[
+    'relative mx-auto w-[290px] rounded-[42px] border-[10px] shadow-[var(--cp-shadow-xl)]',
+    bezelClass,
+    extraClass
+  ]}
+>
+  <div
+    class="absolute left-1/2 top-3 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-black/90"
+    aria-hidden="true"
+  >
+  </div>
+  <div class="aspect-[9/19] overflow-hidden rounded-[32px] bg-[var(--cp-color-surface)]">
+    <slot />
+  </div>
+</div>

@@ -13,15 +13,21 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   const token = authService.getToken();
   const isApiRequest = req.url.startsWith(environment.apiUrl);
+  const isPublicApiRequest =
+    isApiRequest && new URL(req.url, 'http://localhost').pathname.startsWith('/api/public/');
+
+  if (isPublicApiRequest) {
+    return next(req);
+  }
 
   const requestWithToken = isApiRequest
     ? req.clone({
         withCredentials: true,
         setHeaders: token
           ? {
-              Authorization: `Bearer ${token}`
+              Authorization: `Bearer ${token}`,
             }
-          : {}
+          : {},
       })
     : req;
 
@@ -39,12 +45,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         req.url.includes('/auth/2fa/confirm') ||
         req.url.includes('/auth/2fa/setup');
 
-      if ((error.status === 401 || error.status === 403) && authService.isAuthenticated() && isTokenError && !isAuthSetupEndpoint) {
+      if (
+        (error.status === 401 || error.status === 403) &&
+        authService.isAuthenticated() &&
+        isTokenError &&
+        !isAuthSetupEndpoint
+      ) {
         authService.clearSession();
-        router.navigate(['/login']);
+        void router.navigate(['/login']);
       }
 
       return throwError(() => error);
-    })
+    }),
   );
 };

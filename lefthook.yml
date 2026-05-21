@@ -1,0 +1,19 @@
+pre-commit:
+  parallel: true
+  commands:
+    prettier:
+      glob: '*.{astro,css,html,js,json,jsx,md,mjs,scss,ts,tsx,yaml,yml}'
+      run: npx prettier --write {staged_files} && git add {staged_files}
+    eslint:
+      glob: '*.{astro,html,js,mjs,cjs,ts,tsx}'
+      run: npx eslint --fix {staged_files} && git add {staged_files}
+
+pre-push:
+  parallel: false
+  commands:
+    check:
+      run: npm run check
+    test-backend:
+      run: npm run test:backend
+    test-frontend:
+      run: npm run test:frontend

@@ -1,286 +1,529 @@
 <section class="page-shell">
-  <main class="page-main admin-grid">
-    <mat-card appearance="outlined" class="form-card">
-      <mat-card-header>
-        <mat-card-title>Cadastro de links de afiliados</mat-card-title>
-        <mat-card-subtitle>Gere shortlinks Shopee e salve automaticamente no historico.</mat-card-subtitle>
-      </mat-card-header>
+  <main class="page-main affiliate-page">
+    <app-page-header
+      eyebrow="Afiliados"
+      title="Links de afiliado"
+      description="Gere shortlinks Shopee, revise resultados por linha e acompanhe o historico da operacao."
+    >
+      <button
+        pageHeaderActions
+        mat-stroked-button
+        type="button"
+        class="button-with-icon"
+        (click)="loadLinks()"
+      >
+        <app-icon name="refresh-cw" size="18" />
+        Atualizar historico
+      </button>
+    </app-page-header>
 
-      <mat-card-content>
-        <mat-progress-bar mode="indeterminate" *ngIf="(isSaving$ | async)"></mat-progress-bar>
+    <section class="affiliate-layout">
+      <mat-card appearance="outlined" class="panel-card form-card">
+        <mat-card-header class="panel-heading">
+          <div>
+            <mat-card-title>Geracao em lote</mat-card-title>
+            <mat-card-subtitle
+              >Informe ate {{ maxLinksPerBatch }} URLs por envio.</mat-card-subtitle
+            >
+          </div>
+          <app-status-chip
+            [label]="((linksCount$ | async) || 0) + '/' + maxLinksPerBatch"
+            variant="info"
+          />
+        </mat-card-header>
 
-        <form [formGroup]="form" (ngSubmit)="submit()" class="entity-form">
-          <mat-form-field appearance="outline" class="links-field" [class.links-count-error]="(isLinksOverLimit$ | async) === true">
-            <mat-label>Links originais</mat-label>
-            <textarea
-              matInput
-              rows="9"
-              class="links-textarea"
-              formControlName="originalLinksText"
-              placeholder="https://site1.com/produto&#10;https://site2.com/produto&#10;Maximo 5 links por envio"
-            ></textarea>
-            <mat-hint>
-              Um link por linha. Minimo 1 e maximo {{ maxLinksPerBatch }} por envio. ({{ (linksCount$ | async) || 0 }}/{{ maxLinksPerBatch }})
-            </mat-hint>
-            <mat-error *ngIf="form.controls.originalLinksText.touched && form.controls.originalLinksText.hasError('required')">
-              Informe ao menos 1 link original.
-            </mat-error>
-            <mat-error *ngIf="form.controls.originalLinksText.touched && form.controls.originalLinksText.hasError('maxLinks')">
-              Maximo {{ maxLinksPerBatch }} links por envio.
-            </mat-error>
-            <mat-error *ngIf="form.controls.originalLinksText.touched && form.controls.originalLinksText.hasError('invalidLink')">
-              Cada link precisa ser uma URL valida.
-            </mat-error>
-          </mat-form-field>
+        <mat-card-content>
+          <mat-progress-bar mode="indeterminate" *ngIf="isSaving$ | async"></mat-progress-bar>
 
-          <div class="auto-subid1-shell">
-            <mat-checkbox formControlName="useAutoSubId1">Usar meu usuario como sub_id1</mat-checkbox>
-            <small>O sub_id1 sera preenchido automaticamente com seu usuario (ex: maria).</small>
+          <form [formGroup]="form" (ngSubmit)="submit()" class="entity-form">
+            <mat-form-field
+              appearance="outline"
+              class="links-field"
+              [class.links-count-error]="(isLinksOverLimit$ | async) === true"
+            >
+              <mat-label>Links originais</mat-label>
+              <textarea
+                matInput
+                rows="9"
+                class="links-textarea"
+                formControlName="originalLinksText"
+                placeholder="https://site1.com/produto&#10;https://site2.com/produto"
+              ></textarea>
+              <mat-hint>
+                Um link por linha. Minimo 1 e maximo {{ maxLinksPerBatch }} por envio.
+              </mat-hint>
+              <mat-error
+                *ngIf="
+                  form.controls.originalLinksText.touched &&
+                  form.controls.originalLinksText.hasError('required')
+                "
+              >
+                Informe ao menos 1 link original.
+              </mat-error>
+              <mat-error
+                *ngIf="
+                  form.controls.originalLinksText.touched &&
+                  form.controls.originalLinksText.hasError('maxLinks')
+                "
+              >
+                Maximo {{ maxLinksPerBatch }} links por envio.
+              </mat-error>
+              <mat-error
+                *ngIf="
+                  form.controls.originalLinksText.touched &&
+                  form.controls.originalLinksText.hasError('invalidLink')
+                "
+              >
+                Cada link precisa ser uma URL valida.
+              </mat-error>
+            </mat-form-field>
+
+            <div class="auto-subid1-shell">
+              <mat-checkbox formControlName="useAutoSubId1"
+                >Usar meu usuario como sub_id1</mat-checkbox
+              >
+              <small>O sub_id1 sera preenchido automaticamente com seu usuario.</small>
+            </div>
+
+            <mat-form-field
+              appearance="outline"
+              [class.auto-subid1-active]="form.controls.useAutoSubId1.value === true"
+            >
+              <mat-label>sub_id1</mat-label>
+              <input matInput formControlName="subId1" placeholder="ex: maria" />
+              <mat-hint>Opcional. Use letras, numeros, underscore ou hifen.</mat-hint>
+              <mat-error
+                *ngIf="form.controls.subId1.touched && form.controls.subId1.hasError('pattern')"
+              >
+                sub_id1 invalido. Use apenas letras, numeros, underscore e hifen.
+              </mat-error>
+              <mat-error
+                *ngIf="form.controls.subId1.touched && form.controls.subId1.hasError('maxlength')"
+              >
+                sub_id1 deve ter no maximo 50 caracteres.
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" *ngIf="authService.isAdmin()">
+              <mat-label>Plataforma Shopee</mat-label>
+              <mat-select formControlName="platformId">
+                <mat-option [value]="null" *ngIf="adminShopeePlatforms.length !== 1"
+                  >Selecione...</mat-option
+                >
+                <mat-option *ngFor="let platform of adminShopeePlatforms" [value]="platform.id">
+                  #{{ platform.id }} - {{ platform.name }}
+                </mat-option>
+              </mat-select>
+              <mat-hint *ngIf="adminShopeePlatforms.length === 1"
+                >Plataforma ativa selecionada automaticamente.</mat-hint
+              >
+              <mat-hint *ngIf="adminShopeePlatforms.length !== 1"
+                >Selecione a plataforma ativa para esta geracao.</mat-hint
+              >
+            </mat-form-field>
+
+            <div class="entity-actions">
+              <button
+                mat-flat-button
+                color="primary"
+                type="submit"
+                class="button-with-icon"
+                [disabled]="
+                  form.invalid || ((linksCount$ | async) || 0) === 0 || (isSaving$ | async) === true
+                "
+              >
+                <app-icon name="link" size="18" />
+                {{ submitButtonLabel(isSaving$ | async) }}
+              </button>
+            </div>
+          </form>
+
+          <div class="results-shell" *ngIf="((processingResults$ | async)?.length ?? 0) > 0">
+            <div class="results-header">
+              <div>
+                <h3>Resultado por link</h3>
+                <p>Previa da ultima geracao antes do historico atualizar.</p>
+              </div>
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="Copiar shortlinks gerados"
+                [disabled]="(hasGeneratedShortLinks$ | async) !== true"
+                (click)="copyGeneratedShortLinks()"
+                aria-label="Copiar shortlinks gerados"
+              >
+                <app-icon name="copy" size="18" />
+              </button>
+            </div>
+
+            <div
+              class="result-item"
+              *ngFor="let item of processingResults$ | async"
+              [class.result-error]="item.status === 'error'"
+            >
+              <app-status-chip
+                [label]="item.status === 'saved' ? 'Salvo' : 'Erro'"
+                [variant]="item.status === 'saved' ? 'success' : 'danger'"
+              />
+              <div class="result-main">
+                <span class="result-url">{{ item.originUrl }}</span>
+                <span class="result-message">{{ item.message }}</span>
+              </div>
+              <a *ngIf="item.shortLink" [href]="item.shortLink" target="_blank" rel="noreferrer"
+                >Abrir</a
+              >
+            </div>
           </div>
 
-          <mat-form-field appearance="outline" [class.auto-subid1-active]="form.controls.useAutoSubId1.value === true">
-            <mat-label>sub_id1</mat-label>
-            <input matInput formControlName="subId1" placeholder="ex: maria" />
-            <mat-hint>Opcional. Use letras, numeros, underscore ou hifen.</mat-hint>
-            <mat-error *ngIf="form.controls.subId1.touched && form.controls.subId1.hasError('pattern')">
-              sub_id1 invalido. Use apenas letras, numeros, underscore e hifen.
-            </mat-error>
-            <mat-error *ngIf="form.controls.subId1.touched && form.controls.subId1.hasError('maxlength')">
-              sub_id1 deve ter no maximo 50 caracteres.
-            </mat-error>
-          </mat-form-field>
+          <p
+            class="status-block status-error"
+            role="alert"
+            *ngIf="errorMessage$ | async as errorMessage"
+          >
+            <app-icon name="circle-alert" size="18" />
+            {{ errorMessage }}
+          </p>
+          <p
+            class="status-block status-success"
+            role="status"
+            aria-live="polite"
+            *ngIf="successMessage$ | async as successMessage"
+          >
+            <app-icon name="circle-check" size="18" />
+            {{ successMessage }}
+          </p>
+        </mat-card-content>
+      </mat-card>
 
-          <mat-form-field appearance="outline" *ngIf="authService.isAdmin()">
-            <mat-label>Plataforma Shopee (ADMIN)</mat-label>
-            <mat-select formControlName="platformId">
-              <mat-option [value]="null" *ngIf="adminShopeePlatforms.length !== 1">Selecione...</mat-option>
-              <mat-option *ngFor="let platform of adminShopeePlatforms" [value]="platform.id">
-                #{{ platform.id }} - {{ platform.name }}
-              </mat-option>
-            </mat-select>
-            <mat-hint *ngIf="adminShopeePlatforms.length === 1">
-              Plataforma ativa selecionada automaticamente.
-            </mat-hint>
-            <mat-hint *ngIf="adminShopeePlatforms.length !== 1">
-              Com mais de uma plataforma ativa, selecione manualmente.
-            </mat-hint>
-          </mat-form-field>
-
-          <div class="entity-actions">
+      <mat-card appearance="outlined" class="panel-card table-card">
+        <mat-card-header class="panel-heading table-heading">
+          <div>
+            <mat-card-title>Historico</mat-card-title>
+            <mat-card-subtitle
+              >{{ (filteredTotalLinks$ | async) || 0 }} registro(s)</mat-card-subtitle
+            >
+          </div>
+          <div class="history-header-actions">
+            <button mat-stroked-button type="button" class="button-with-icon" (click)="loadLinks()">
+              <app-icon name="refresh-cw" size="18" />
+              Atualizar
+            </button>
             <button
               mat-flat-button
-              color="primary"
-              type="submit"
-              [disabled]="form.invalid || ((linksCount$ | async) || 0) === 0 || (isSaving$ | async) === true"
-            >
-              {{ submitButtonLabel(isSaving$ | async) }}
-            </button>
-          </div>
-        </form>
-
-        <div class="results-shell" *ngIf="((processingResults$ | async)?.length ?? 0) > 0">
-          <div class="results-header">
-            <h4>Resultado por link</h4>
-            <button
-              mat-icon-button
+              color="warn"
               type="button"
-              matTooltip="Copiar shortlinks gerados"
-              [disabled]="(hasGeneratedShortLinks$ | async) !== true"
-              (click)="copyGeneratedShortLinks()"
+              class="button-with-icon"
+              (click)="clearHistory()"
             >
-              <mat-icon>content_copy</mat-icon>
+              <app-icon name="trash-2" size="18" />
+              Limpar historico
             </button>
           </div>
-          <div class="result-item" *ngFor="let item of (processingResults$ | async)" [class.result-error]="item.status === 'error'">
-            <div class="result-main">
-              <span class="result-url">{{ item.originUrl }}</span>
-              <span class="result-message">{{ item.message }}</span>
-            </div>
-            <a *ngIf="item.shortLink" [href]="item.shortLink" target="_blank" rel="noreferrer">Abrir shortlink</a>
+        </mat-card-header>
+
+        <mat-card-content>
+          <mat-progress-bar mode="indeterminate" *ngIf="isLoading$ | async"></mat-progress-bar>
+
+          <div class="history-toolbar">
+            <mat-form-field appearance="outline" class="history-search">
+              <mat-label>Buscar no historico</mat-label>
+              <input
+                matInput
+                [formControl]="historySearchControl"
+                placeholder="Link, usuario ou ID"
+              />
+            </mat-form-field>
+
+            <form [formGroup]="filtersForm" class="field-grid history-filters">
+              <mat-form-field appearance="outline">
+                <mat-label>Periodo</mat-label>
+                <mat-date-range-input [rangePicker]="picker" formGroupName="dateRange">
+                  <input matStartDate formControlName="start" placeholder="Inicio" />
+                  <input matEndDate formControlName="end" placeholder="Fim" />
+                </mat-date-range-input>
+                <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                <mat-date-range-picker #picker></mat-date-range-picker>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" *ngIf="authService.isOwner()">
+                <mat-label>Funcionario</mat-label>
+                <mat-select formControlName="employeeId">
+                  <mat-option [value]="null">Todos</mat-option>
+                  <mat-option *ngFor="let employee of employees$ | async" [value]="employee.id">
+                    {{ employee.label }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </form>
           </div>
-        </div>
 
-        <p class="status-block status-error" *ngIf="(errorMessage$ | async) as errorMessage">
-          {{ errorMessage }}
-        </p>
-        <p class="status-block status-success" *ngIf="(successMessage$ | async) as successMessage">
-          {{ successMessage }}
-        </p>
-      </mat-card-content>
-    </mat-card>
+          <div class="entity-actions filter-actions">
+            <button
+              mat-stroked-button
+              type="button"
+              class="today-filter-btn"
+              [class.today-filter-btn-active]="isTodayDateRangeSelected()"
+              [attr.aria-pressed]="isTodayDateRangeSelected()"
+              (click)="setTodayDateRange()"
+            >
+              Hoje
+            </button>
+            <button mat-stroked-button type="button" (click)="clearFilters()">
+              Limpar filtros
+            </button>
+          </div>
 
-    <mat-card appearance="outlined" class="table-card">
-      <mat-card-header class="table-header">
-        <div>
-          <mat-card-title>Registros cadastrados</mat-card-title>
-          <mat-card-subtitle>{{ (filteredTotalLinks$ | async) || 0 }} registro(s)</mat-card-subtitle>
-        </div>
-        <div class="toolbar-spacer"></div>
-        <div class="history-header-actions">
-          <button mat-stroked-button type="button" (click)="loadLinks()">Atualizar</button>
-          <button mat-flat-button color="warn" type="button" (click)="clearHistory()">Limpar historico</button>
-        </div>
-      </mat-card-header>
-
-      <mat-card-content>
-        <mat-progress-bar mode="indeterminate" *ngIf="(isLoading$ | async)"></mat-progress-bar>
-
-        <form [formGroup]="filtersForm" class="field-grid history-filters">
-          <mat-form-field appearance="outline">
-            <mat-label>Periodo</mat-label>
-            <mat-date-range-input [rangePicker]="picker" formGroupName="dateRange">
-              <input matStartDate formControlName="start" placeholder="Inicio" />
-              <input matEndDate formControlName="end" placeholder="Fim" />
-            </mat-date-range-input>
-            <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-            <mat-date-range-picker #picker></mat-date-range-picker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" *ngIf="authService.isOwner()">
-            <mat-label>Funcionario</mat-label>
-            <mat-select formControlName="employeeId">
-              <mat-option [value]="null">Todos</mat-option>
-              <mat-option *ngFor="let employee of (employees$ | async)" [value]="employee.id">
-                {{ employee.label }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </form>
-        <div class="entity-actions">
-          <button
-            mat-stroked-button
-            type="button"
-            class="today-filter-btn"
-            [class.today-filter-btn-active]="isTodayDateRangeSelected()"
-            [attr.aria-pressed]="isTodayDateRangeSelected()"
-            (click)="setTodayDateRange()"
-          >
-            Hoje
-          </button>
-          <button mat-stroked-button type="button" (click)="clearFilters()">Limpar filtros</button>
-        </div>
-
-        <ng-container *ngIf="(filteredLinks$ | async) as links">
           <div class="bulk-actions-bar" *ngIf="selection.selected.length > 0">
             <span class="bulk-actions-count">{{ selection.selected.length }} selecionado(s)</span>
             <div class="bulk-actions-buttons">
-              <button mat-stroked-button type="button" (click)="copySelectedLinks()">Copiar selecionados</button>
-              <button mat-flat-button color="warn" type="button" (click)="removeSelectedLinks()">Excluir selecionados</button>
+              <button
+                mat-stroked-button
+                type="button"
+                class="button-with-icon"
+                (click)="copySelectedLinks()"
+              >
+                <app-icon name="copy" size="18" />
+                Copiar selecionados
+              </button>
+              <button
+                mat-flat-button
+                color="warn"
+                type="button"
+                class="button-with-icon"
+                (click)="removeSelectedLinks()"
+              >
+                <app-icon name="trash-2" size="18" />
+                Excluir selecionados
+              </button>
               <button mat-button type="button" (click)="clearSelection()">Limpar selecao</button>
             </div>
           </div>
 
-          <div class="table-shell" *ngIf="!(isLoading$ | async) && links.length">
-            <table mat-table [dataSource]="links" class="data-table">
-              <ng-container matColumnDef="select">
-                <th mat-header-cell *matHeaderCellDef class="select-column-header">
-                  <mat-checkbox
-                    color="primary"
-                    (change)="masterToggle()"
-                    [checked]="isAllSelected()"
-                    [indeterminate]="selection.hasValue() && !isAllSelected()"
-                    [aria-label]="checkboxLabel()"
-                  ></mat-checkbox>
-                </th>
-                <td mat-cell *matCellDef="let link" class="select-column-cell">
-                  <mat-checkbox
-                    color="primary"
-                    (click)="$event.stopPropagation()"
-                    (change)="toggleRow(link)"
-                    [checked]="selection.isSelected(link.id)"
-                    [aria-label]="checkboxLabel(link)"
-                  ></mat-checkbox>
-                </td>
-              </ng-container>
-
-              <ng-container matColumnDef="createdBy">
-                <th mat-header-cell *matHeaderCellDef>Criado por</th>
-                <td mat-cell *matCellDef="let link">
-                  {{ link.createdByUser?.fullName || link.createdByUser?.email || '-' }}
-                </td>
-              </ng-container>
-
-              <ng-container matColumnDef="originalLink">
-                <th mat-header-cell *matHeaderCellDef>Link original</th>
-                <td mat-cell *matCellDef="let link">
-                  <div class="original-link-inline">
-                    <span class="id-pill id-pill-inline">#{{ link.id }}</span>
-                    <a [href]="link.originalLink" target="_blank" rel="noreferrer">Abrir</a>
-                  </div>
-                </td>
-              </ng-container>
-
-              <ng-container matColumnDef="affiliateLink">
-                <th mat-header-cell *matHeaderCellDef>Link afiliado</th>
-                <td mat-cell *matCellDef="let link" class="affiliate-link-cell">
-                  <span class="affiliate-link-text" [matTooltip]="link.affiliateLink">{{ link.affiliateLink }}</span>
-                </td>
-              </ng-container>
-
-              <ng-container matColumnDef="updatedAt">
-                <th mat-header-cell *matHeaderCellDef>Atualizado em</th>
-                <td mat-cell *matCellDef="let link">{{ link.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</td>
-              </ng-container>
-
-              <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef>Acoes</th>
-                <td mat-cell *matCellDef="let link" class="row-actions">
-                  <button mat-icon-button type="button" (click)="copyToClipboard(link.affiliateLink)" matTooltip="Copiar link">
-                    <mat-icon>content_copy</mat-icon>
-                  </button>
-                  <a mat-icon-button [href]="link.affiliateLink" target="_blank" rel="noreferrer" matTooltip="Abrir link">
-                    <mat-icon>open_in_new</mat-icon>
-                  </a>
-                  <button mat-icon-button color="warn" type="button" (click)="remove(link)" matTooltip="Excluir link">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </td>
-              </ng-container>
-
-              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-            </table>
+          <div class="table-skeleton" *ngIf="isLoading$ | async">
+            <app-skeleton-loader variant="table-row" label="Carregando linha do historico" />
+            <app-skeleton-loader variant="table-row" label="Carregando linha do historico" />
+            <app-skeleton-loader variant="table-row" label="Carregando linha do historico" />
           </div>
 
-          <div class="mobile-history-list" *ngIf="!(isLoading$ | async) && links.length">
-            <article class="history-card" *ngFor="let link of links">
-              <header class="history-card-header">
-                <span class="id-pill">#{{ link.id }}</span>
-                <span class="history-date">{{ link.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
-              </header>
+          <ng-container
+            *ngIf="{
+              total: (filteredTotalLinks$ | async) || 0,
+              pageState: (pageState$ | async),
+            } as historyState"
+          >
+            <ng-container *ngIf="pagedLinks$ | async as links">
+              <app-responsive-table
+                *ngIf="!(isLoading$ | async) && links.length"
+                label="Historico de links afiliados"
+              >
+                <div responsiveTableDesktop class="table-shell">
+                  <table mat-table [dataSource]="links" class="data-table">
+                    <ng-container matColumnDef="select">
+                      <th mat-header-cell *matHeaderCellDef class="select-column-header">
+                        <mat-checkbox
+                          color="primary"
+                          (change)="masterToggle()"
+                          [checked]="isAllSelected()"
+                          [indeterminate]="selection.hasValue() && !isAllSelected()"
+                          [aria-label]="checkboxLabel()"
+                        ></mat-checkbox>
+                      </th>
+                      <td mat-cell *matCellDef="let link" class="select-column-cell">
+                        <mat-checkbox
+                          color="primary"
+                          (click)="$event.stopPropagation()"
+                          (change)="toggleRow(link)"
+                          [checked]="selection.isSelected(link.id)"
+                          [aria-label]="checkboxLabel(link)"
+                        ></mat-checkbox>
+                      </td>
+                    </ng-container>
 
-              <p class="history-created-by" *ngIf="authService.isOwner()">
-                Criado por: {{ link.createdByUser?.fullName || link.createdByUser?.email || '-' }}
-              </p>
+                    <ng-container matColumnDef="createdBy">
+                      <th mat-header-cell *matHeaderCellDef>Criado por</th>
+                      <td mat-cell *matCellDef="let link">
+                        {{ link.createdByUser?.fullName || link.createdByUser?.email || '-' }}
+                      </td>
+                    </ng-container>
 
-              <div class="history-row">
-                <span class="history-label">Link original</span>
-                <a mat-stroked-button [href]="link.originalLink" target="_blank" rel="noreferrer">Abrir</a>
-              </div>
+                    <ng-container matColumnDef="originalLink">
+                      <th mat-header-cell *matHeaderCellDef>Origem</th>
+                      <td mat-cell *matCellDef="let link">
+                        <div class="link-preview">
+                          <span class="id-pill">#{{ link.id }}</span>
+                          <a
+                            [href]="link.originalLink"
+                            target="_blank"
+                            rel="noreferrer"
+                            [matTooltip]="link.originalLink"
+                          >
+                            {{ link.originalLink }}
+                          </a>
+                        </div>
+                      </td>
+                    </ng-container>
 
-              <div class="history-row history-row-affiliate">
-                <span class="history-label">Link afiliado</span>
-                <div class="history-affiliate">
-                  <span class="history-affiliate-text">{{ link.affiliateLink }}</span>
-                  <div class="history-link-actions">
-                    <button mat-icon-button type="button" (click)="copyToClipboard(link.affiliateLink)" matTooltip="Copiar link">
-                      <mat-icon>content_copy</mat-icon>
-                    </button>
-                    <a mat-icon-button [href]="link.affiliateLink" target="_blank" rel="noreferrer" matTooltip="Abrir link">
-                      <mat-icon>open_in_new</mat-icon>
-                    </a>
-                    <button mat-icon-button color="warn" type="button" (click)="remove(link)" matTooltip="Excluir link">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </div>
+                    <ng-container matColumnDef="affiliateLink">
+                      <th mat-header-cell *matHeaderCellDef>Shortlink</th>
+                      <td mat-cell *matCellDef="let link" class="affiliate-link-cell">
+                        <span class="affiliate-link-text" [matTooltip]="link.affiliateLink">{{
+                          link.affiliateLink
+                        }}</span>
+                      </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="updatedAt">
+                      <th mat-header-cell *matHeaderCellDef>Atualizado</th>
+                      <td mat-cell *matCellDef="let link">
+                        {{ link.updatedAt | date: 'dd/MM/yyyy HH:mm' }}
+                      </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="actions">
+                      <th mat-header-cell *matHeaderCellDef>Acoes</th>
+                      <td mat-cell *matCellDef="let link" class="row-actions">
+                        <button
+                          mat-icon-button
+                          type="button"
+                          (click)="$event.stopPropagation(); copyToClipboard(link.affiliateLink)"
+                          matTooltip="Copiar link"
+                          [attr.aria-label]="'Copiar link #' + link.id"
+                        >
+                          <app-icon name="copy" size="18" />
+                        </button>
+                        <a
+                          mat-icon-button
+                          [href]="link.affiliateLink"
+                          target="_blank"
+                          rel="noreferrer"
+                          matTooltip="Abrir link"
+                          [attr.aria-label]="'Abrir link #' + link.id"
+                          (click)="$event.stopPropagation()"
+                        >
+                          <app-icon name="link" size="18" />
+                        </a>
+                        <button
+                          mat-icon-button
+                          color="warn"
+                          type="button"
+                          (click)="$event.stopPropagation(); remove(link)"
+                          matTooltip="Excluir link"
+                          [attr.aria-label]="'Excluir link #' + link.id"
+                        >
+                          <app-icon name="trash-2" size="18" />
+                        </button>
+                      </td>
+                    </ng-container>
+
+                    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                    <tr
+                      mat-row
+                      *matRowDef="let row; columns: displayedColumns"
+                      [class.row-selected]="selection.isSelected(row.id)"
+                      tabindex="0"
+                      (click)="toggleRow(row)"
+                      (keydown.enter)="toggleRow(row)"
+                      (keydown.space)="$event.preventDefault(); toggleRow(row)"
+                    ></tr>
+                  </table>
                 </div>
-              </div>
-            </article>
-          </div>
 
-          <p class="empty-state" *ngIf="!(isLoading$ | async) && !links.length">Nenhum link no periodo selecionado.</p>
-        </ng-container>
-      </mat-card-content>
-    </mat-card>
+                <div responsiveTableMobile class="mobile-history-list">
+                  <article
+                    class="history-card"
+                    *ngFor="let link of links"
+                    [class.row-selected]="selection.isSelected(link.id)"
+                  >
+                    <header class="history-card-header">
+                      <mat-checkbox
+                        color="primary"
+                        (change)="toggleRow(link)"
+                        [checked]="selection.isSelected(link.id)"
+                        [aria-label]="checkboxLabel(link)"
+                      ></mat-checkbox>
+                      <span class="id-pill">#{{ link.id }}</span>
+                      <span class="history-date">{{
+                        link.updatedAt | date: 'dd/MM/yyyy HH:mm'
+                      }}</span>
+                    </header>
+
+                    <p class="history-created-by" *ngIf="authService.isOwner()">
+                      Criado por:
+                      {{ link.createdByUser?.fullName || link.createdByUser?.email || '-' }}
+                    </p>
+
+                    <div class="history-row">
+                      <span class="history-label">Origem</span>
+                      <a [href]="link.originalLink" target="_blank" rel="noreferrer">{{
+                        link.originalLink
+                      }}</a>
+                    </div>
+
+                    <div class="history-row">
+                      <span class="history-label">Shortlink</span>
+                      <span class="history-affiliate-text">{{ link.affiliateLink }}</span>
+                    </div>
+
+                    <div class="history-link-actions">
+                      <button
+                        mat-icon-button
+                        type="button"
+                        (click)="copyToClipboard(link.affiliateLink)"
+                        matTooltip="Copiar link"
+                        [attr.aria-label]="'Copiar link #' + link.id"
+                      >
+                        <app-icon name="copy" size="18" />
+                      </button>
+                      <a
+                        mat-icon-button
+                        [href]="link.affiliateLink"
+                        target="_blank"
+                        rel="noreferrer"
+                        matTooltip="Abrir link"
+                        [attr.aria-label]="'Abrir link #' + link.id"
+                      >
+                        <app-icon name="link" size="18" />
+                      </a>
+                      <button
+                        mat-icon-button
+                        color="warn"
+                        type="button"
+                        (click)="remove(link)"
+                        matTooltip="Excluir link"
+                        [attr.aria-label]="'Excluir link #' + link.id"
+                      >
+                        <app-icon name="trash-2" size="18" />
+                      </button>
+                    </div>
+                  </article>
+                </div>
+              </app-responsive-table>
+
+              <app-empty-state
+                *ngIf="!(isLoading$ | async) && !links.length"
+                icon="search"
+                title="Nenhum link encontrado"
+                description="Ajuste a busca, o periodo ou o filtro de funcionario para encontrar registros."
+              >
+                <button emptyStateActions mat-stroked-button type="button" (click)="clearFilters()">
+                  Limpar filtros
+                </button>
+              </app-empty-state>
+
+              <mat-paginator
+                *ngIf="historyState.total > 0"
+                [length]="historyState.total"
+                [pageSize]="historyState.pageState?.pageSize || 10"
+                [pageIndex]="historyState.pageState?.pageIndex || 0"
+                [pageSizeOptions]="pageSizeOptions"
+                showFirstLastButtons
+                (page)="handlePage($event)"
+              >
+              </mat-paginator>
+            </ng-container>
+          </ng-container>
+        </mat-card-content>
+      </mat-card>
+    </section>
   </main>
 </section>

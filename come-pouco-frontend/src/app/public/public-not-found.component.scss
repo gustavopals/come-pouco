@@ -1,0 +1,53 @@
+:host {
+  display: block;
+  min-height: 100svh;
+  color: #10201a;
+  background: #f7faf8;
+  font-family: 'Manrope Variable', 'Manrope', 'Segoe UI', sans-serif;
+}
+
+:host-context(.dark) {
+  color: #eef9f3;
+  background: #07130f;
+}
+
+.not-found-shell {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+section {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 1rem;
+}
+
+p {
+  margin: 0;
+  color: #10b981;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 8vw, 5rem);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+a {
+  width: fit-content;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 1rem;
+  color: #ffffff;
+  background: #10b981;
+  font-weight: 800;
+  text-decoration: none;
+}

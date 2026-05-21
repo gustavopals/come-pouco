@@ -23,6 +23,8 @@ export interface Company {
     type: 'SHOPEE';
     isActive: boolean;
   } | null;
+  publicSlug: string | null;
+  fallbackAffiliateUrl: string | null;
   activeShopeePlatformId: number | null;
   activeShopeePlatformSource: 'TEST' | 'PROD' | 'LEGACY' | null;
   isShopeeConfiguredForMode: boolean;
@@ -36,6 +38,8 @@ export interface CreateCompanyPayload {
   shopeePlatformTestId?: number | null;
   shopeePlatformProdId?: number | null;
   shopeeMode?: 'TEST' | 'PROD';
+  publicSlug?: string | null;
+  fallbackAffiliateUrl?: string | null;
 }
 
 export interface UpdateCompanyPayload {
@@ -44,4 +48,6 @@ export interface UpdateCompanyPayload {
   shopeePlatformTestId?: number | null;
   shopeePlatformProdId?: number | null;
   shopeeMode?: 'TEST' | 'PROD';
+  publicSlug?: string | null;
+  fallbackAffiliateUrl?: string | null;
 }

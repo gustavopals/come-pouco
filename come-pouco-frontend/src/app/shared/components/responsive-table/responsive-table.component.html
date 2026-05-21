@@ -1,0 +1,9 @@
+<section class="responsive-table" [attr.aria-label]="label()">
+  <div class="responsive-table-desktop">
+    <ng-content select="[responsiveTableDesktop]"></ng-content>
+  </div>
+
+  <div class="responsive-table-mobile">
+    <ng-content select="[responsiveTableMobile]"></ng-content>
+  </div>
+</section>

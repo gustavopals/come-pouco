@@ -1,0 +1,25 @@
+---
+import LogoMark from './LogoMark.astro';
+
+export interface Props {
+  variant?: 'color' | 'mono';
+  href?: string;
+  class?: string;
+}
+
+const { variant = 'color', href = '/', class: extraClass = '' } = Astro.props;
+---
+
+<a
+  href={href}
+  aria-label="Come Pouco — voltar à página inicial"
+  class:list={[
+    'inline-flex items-center gap-2.5 font-bold tracking-tight text-[var(--cp-color-foreground)] text-[18px] leading-none',
+    extraClass
+  ]}
+>
+  <LogoMark size={28} variant={variant} />
+  <span class="hidden sm:inline">
+    Come <span class={variant === 'color' ? 'cp-grad-text' : ''}>Pouco</span>
+  </span>
+</a>

@@ -6,13 +6,26 @@ import QRCode from 'qrcode';
 
 import env from '../config/env';
 import prisma from '../config/prisma';
+import { logger } from '../lib/logger';
+import { recordAuthAttempt } from '../lib/metrics';
+import { assertNotLocked, recordFailedAttempt, resetFailedAttempts } from './auth-lockout.service';
+import { invalidateAuthUserCache } from './auth-user-cache.service';
 import { sendEmail } from './email/email.service';
 import { buildPasswordResetTemplate } from './email/password-reset.template';
 import * as companyService from './company.service';
+import { createDefaultLandingConfigData } from '../constants/landing-config.constants';
 import type { CompanyRole } from '../types/company-role';
 import type { UserRole } from '../types/user-role';
 import { parseCookieHeader } from '../utils/cookies';
-import { decryptValue, encryptValue, hashValue, randomNumericCode, randomToken, signValue, verifySignedValue } from '../utils/crypto';
+import {
+  decryptValue,
+  encryptValue,
+  hashValue,
+  randomNumericCode,
+  randomToken,
+  signValue,
+  verifySignedValue
+} from '../utils/crypto';
 import { buildOtpAuthUrl, generateBase32Secret, verifyTotp } from '../utils/totp';
 import HttpError from '../utils/httpError';
 
@@ -22,6 +35,7 @@ const TRUSTED_DEVICE_COOKIE_NAME = 'cp_td';
 const TRUSTED_DEVICE_COOKIE_VERSION = 'v1';
 const PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = 15;
 const PASSWORD_RESET_COOLDOWN_MS = 60 * 1000;
+const authLogger = logger.child({ scope: 'auth' });
 
 interface UserRecord {
   id: number;
@@ -43,6 +57,7 @@ interface UserRecord {
     isShopeeConfiguredForMode: boolean;
   } | null;
   passwordHash?: string;
+  passwordChangedAt?: Date | null;
 }
 
 interface LoginInput {
@@ -143,6 +158,7 @@ type BaseUserRecord = {
   twoFactorPendingCreatedAt: Date | null;
   twoFactorConfirmedAt: Date | null;
   passwordHash?: string;
+  passwordChangedAt?: Date | null;
 };
 
 const resolveSafeRole = (role: unknown, username: string, email: string | null): UserRole => {
@@ -151,7 +167,14 @@ const resolveSafeRole = (role: unknown, username: string, email: string | null):
   }
 
   if (env.appEnv === 'development') {
-    console.debug(`[auth] invalid role found for user=${username} email=${email || '-'}; defaulting to USER.`);
+    authLogger.debug(
+      {
+        eventType: 'auth_invalid_role_found',
+        usernameHash: hashValue(username).slice(0, 16),
+        emailHash: email ? hashValue(email.toLowerCase()).slice(0, 16) : null
+      },
+      'invalid role found; defaulting to USER'
+    );
   }
 
   return 'USER';
@@ -168,9 +191,19 @@ const normalizeUserState = (user: BaseUserRecord): BaseUserRecord => {
 };
 
 const mapAuthReadError = (error: unknown, context: string): never => {
-  if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2022' || error.code === 'P2021')) {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === 'P2022' || error.code === 'P2021')
+  ) {
     if (env.appEnv === 'development') {
-      console.debug(`[auth] ${context} failed due to database schema mismatch (${error.code}).`);
+      authLogger.debug(
+        {
+          eventType: 'auth_schema_mismatch',
+          context,
+          prismaCode: error.code
+        },
+        'auth read failed due to database schema mismatch'
+      );
     }
     throw new HttpError(
       400,
@@ -220,7 +253,9 @@ const attachCompanyContext = async (user: BaseUserRecord): Promise<UserRecord> =
       id: company.id,
       name: company.name,
       shopeeMode: company.shopeeMode,
-      isShopeeConfiguredForMode: Boolean(companyService.resolveActiveShopeePlatform(company).platformId)
+      isShopeeConfiguredForMode: Boolean(
+        companyService.resolveActiveShopeePlatform(company).platformId
+      )
     }
   };
 };
@@ -234,7 +269,8 @@ const buildAuthResponse = (user: UserRecord): AuthResponse => {
       role: user.role,
       companyId: user.companyId,
       companyRole: user.companyRole,
-      company: user.company
+      company: user.company,
+      authIssuedAt: Date.now()
     },
     env.jwt.secret,
     {
@@ -260,11 +296,13 @@ const createTempTwoFactorToken = (userId: number): string => {
 };
 
 const maskTwoFactorSecret = (secret: string): string => {
-  return secret
-    .replace(/\s+/g, '')
-    .toUpperCase()
-    .match(/.{1,4}/g)
-    ?.join(' ') ?? '';
+  return (
+    secret
+      .replace(/\s+/g, '')
+      .toUpperCase()
+      .match(/.{1,4}/g)
+      ?.join(' ') ?? ''
+  );
 };
 
 const parseTempToken = (tempToken: string): number => {
@@ -313,6 +351,7 @@ const findUserByIdentifier = async (identifier: string): Promise<UserRecord | nu
         role: true,
         companyId: true,
         companyRole: true,
+        passwordChangedAt: true,
         twoFactorEnabled: true,
         twoFactorSecret: true,
         twoFactorSecretPending: true,
@@ -345,6 +384,7 @@ const getUserById = async (userId: number): Promise<UserRecord | null> => {
         role: true,
         companyId: true,
         companyRole: true,
+        passwordChangedAt: true,
         twoFactorEnabled: true,
         twoFactorSecret: true,
         twoFactorSecretPending: true,
@@ -363,7 +403,10 @@ const getUserById = async (userId: number): Promise<UserRecord | null> => {
   return attachCompanyContext(user);
 };
 
-const ensureValidTrustedDevice = async (userId: number, cookieHeader?: string): Promise<boolean> => {
+const ensureValidTrustedDevice = async (
+  userId: number,
+  cookieHeader?: string
+): Promise<boolean> => {
   const cookies = parseCookieHeader(cookieHeader);
   const rawCookie = cookies[TRUSTED_DEVICE_COOKIE_NAME];
 
@@ -375,14 +418,20 @@ const ensureValidTrustedDevice = async (userId: number, cookieHeader?: string): 
 
   if (version !== TRUSTED_DEVICE_COOKIE_VERSION || !deviceToken || !signature) {
     if (env.appEnv === 'development') {
-      console.debug(`[auth/trusted-device] malformed cookie for user=${userId}`);
+      authLogger.debug(
+        { eventType: 'auth_trusted_device_cookie_malformed', userId },
+        'trusted-device cookie malformed'
+      );
     }
     return false;
   }
 
   if (!verifySignedValue(deviceToken, signature, env.jwt.secret)) {
     if (env.appEnv === 'development') {
-      console.debug(`[auth/trusted-device] invalid signature for user=${userId}`);
+      authLogger.debug(
+        { eventType: 'auth_trusted_device_signature_invalid', userId },
+        'trusted-device signature invalid'
+      );
     }
     return false;
   }
@@ -445,7 +494,10 @@ const createTrustedDevice = async ({
 };
 
 const normalizeBackupCode = (code: string): string => {
-  return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return code
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
 };
 
 const generateBackupCodes = (): string[] => {
@@ -485,7 +537,13 @@ const useBackupCode = async (userId: number, code: string): Promise<boolean> => 
   return true;
 };
 
-const verifyTwoFactorCode = async ({ user, code }: { user: UserRecord; code: string }): Promise<boolean> => {
+const verifyTwoFactorCode = async ({
+  user,
+  code
+}: {
+  user: UserRecord;
+  code: string;
+}): Promise<boolean> => {
   if (user.twoFactorSecret) {
     try {
       const secret = decryptValue(user.twoFactorSecret);
@@ -500,31 +558,63 @@ const verifyTwoFactorCode = async ({ user, code }: { user: UserRecord; code: str
   return useBackupCode(user.id, code);
 };
 
-const login = async ({ identifier, password, cookieHeader }: LoginInput): Promise<AuthResponse | TwoFactorPendingResponse> => {
+const login = async ({
+  identifier,
+  password,
+  cookieHeader
+}: LoginInput): Promise<AuthResponse | TwoFactorPendingResponse> => {
+  try {
+    assertNotLocked('login', identifier);
+  } catch (error) {
+    if (error instanceof HttpError && error.errorCode === 'AUTH_LOGIN_LOCKED') {
+      recordAuthAttempt('login_locked');
+    }
+
+    throw error;
+  }
+
   const user = await findUserByIdentifier(identifier);
 
   if (!user || !user.passwordHash) {
+    recordFailedAttempt('login', identifier);
+    recordAuthAttempt('login_failure');
     throw new HttpError(401, 'Usuario/e-mail ou senha invalidos.', 'AUTH_INVALID_CREDENTIALS');
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
   if (!isPasswordValid) {
+    recordFailedAttempt('login', identifier);
+    recordAuthAttempt('login_failure');
     throw new HttpError(401, 'Usuario/e-mail ou senha invalidos.', 'AUTH_INVALID_CREDENTIALS');
   }
 
+  resetFailedAttempts('login', identifier);
+
   if (env.appEnv === 'development') {
-    console.debug(`[auth/login] user=${user.id} twoFactorEnabled=${user.twoFactorEnabled}`);
+    authLogger.debug(
+      {
+        eventType: 'auth_login_password_valid',
+        userId: user.id,
+        twoFactorEnabled: user.twoFactorEnabled
+      },
+      'login password valid'
+    );
   }
 
   if (!user.twoFactorEnabled) {
+    recordAuthAttempt('login_success');
     return buildAuthResponse(user);
   }
 
   if (!user.twoFactorSecret) {
     if (env.appEnv === 'development') {
-      console.debug(`[auth/login] invalid 2FA state for user=${user.id}: twoFactorEnabled=true and secret missing`);
+      authLogger.debug(
+        { eventType: 'auth_login_2fa_state_invalid', userId: user.id },
+        'login 2FA state invalid'
+      );
     }
+    recordAuthAttempt('login_failure');
     throw new HttpError(
       400,
       '2FA habilitado sem secret configurado. Reconfigure o 2FA na tela de seguranca.',
@@ -536,12 +626,17 @@ const login = async ({ identifier, password, cookieHeader }: LoginInput): Promis
 
   if (trusted) {
     if (env.appEnv === 'development') {
-      console.debug(`[auth/login] trusted-device bypass user=${user.id}`);
+      authLogger.debug(
+        { eventType: 'auth_login_trusted_device_bypass', userId: user.id },
+        'trusted-device bypass'
+      );
     }
+    recordAuthAttempt('login_success');
     return buildAuthResponse(user);
   }
 
   const challenge = createTempTwoFactorToken(user.id);
+  recordAuthAttempt('login_2fa_required');
 
   return {
     twoFactorRequired: true,
@@ -551,19 +646,43 @@ const login = async ({ identifier, password, cookieHeader }: LoginInput): Promis
   };
 };
 
-const loginWithTwoFactor = async ({ tempToken, code, trustDevice, userAgent, ip }: LoginTwoFactorInput): Promise<TwoFactorLoginResponse> => {
+const loginWithTwoFactor = async ({
+  tempToken,
+  code,
+  trustDevice,
+  userAgent,
+  ip
+}: LoginTwoFactorInput): Promise<TwoFactorLoginResponse> => {
   const userId = parseTempToken(tempToken);
+  const lockoutIdentifier = String(userId);
+
+  try {
+    assertNotLocked('2fa', lockoutIdentifier);
+  } catch (error) {
+    if (error instanceof HttpError && error.errorCode === 'AUTH_2FA_LOCKED') {
+      recordAuthAttempt('2fa_locked');
+    }
+
+    throw error;
+  }
+
   const user = await getUserById(userId);
 
   if (!user || !user.twoFactorEnabled) {
+    recordAuthAttempt('2fa_failure');
     throw new HttpError(401, '2FA nao esta habilitado para este usuario.', 'AUTH_2FA_NOT_ENABLED');
   }
 
   const validCode = await verifyTwoFactorCode({ user, code });
 
   if (!validCode) {
+    recordFailedAttempt('2fa', lockoutIdentifier);
+    recordAuthAttempt('2fa_failure');
     throw new HttpError(400, 'Codigo 2FA invalido.', 'AUTH_INVALID_2FA_CODE');
   }
+
+  resetFailedAttempts('2fa', lockoutIdentifier);
+  recordAuthAttempt('2fa_success');
 
   const authResponse = buildAuthResponse(user);
 
@@ -596,7 +715,11 @@ const normalizeUsername = (username: string): string => {
   }
 
   if (!/^[a-z0-9_-]+$/.test(normalized)) {
-    throw new HttpError(400, 'Username invalido. Use apenas letras, numeros, _ ou -.', 'AUTH_INVALID_USERNAME');
+    throw new HttpError(
+      400,
+      'Username invalido. Use apenas letras, numeros, _ ou -.',
+      'AUTH_INVALID_USERNAME'
+    );
   }
 
   return normalized;
@@ -608,8 +731,17 @@ const buildResetLink = (token: string): string => {
 };
 
 const forgotPassword = async ({ email, requesterIp }: ForgotPasswordInput): Promise<void> => {
+  recordAuthAttempt('forgot_password_requested');
   const safeEmail = normalizeEmail(email);
-  console.info(`[auth/forgot-password] requisicao ip=${requesterIp || '-'} email=${safeEmail || '-'}`);
+  const emailHash = safeEmail ? hashValue(safeEmail).slice(0, 16) : '-';
+  authLogger.info(
+    {
+      eventType: 'auth_forgot_password_requested',
+      requesterIp: requesterIp || null,
+      emailHash
+    },
+    'forgot password requested'
+  );
 
   if (!safeEmail) {
     return;
@@ -640,7 +772,10 @@ const forgotPassword = async ({ email, requesterIp }: ForgotPasswordInput): Prom
   });
 
   if (latestToken && now.getTime() - latestToken.createdAt.getTime() < PASSWORD_RESET_COOLDOWN_MS) {
-    console.info(`[auth/forgot-password] cooldown ativo user=${user.id}`);
+    authLogger.info(
+      { eventType: 'auth_forgot_password_cooldown_active', userId: user.id },
+      'password reset cooldown active'
+    );
     return;
   }
 
@@ -671,21 +806,38 @@ const forgotPassword = async ({ email, requesterIp }: ForgotPasswordInput): Prom
       text: template.text
     });
 
-    console.info(`[auth/forgot-password] email enviado user=${user.id}`);
+    authLogger.info(
+      { eventType: 'auth_forgot_password_email_sent', userId: user.id },
+      'password reset email sent'
+    );
   } catch (error) {
-    console.error(
-      `[auth/forgot-password] falha ao enviar email user=${user.id}:`,
-      error instanceof Error ? error.message : 'erro desconhecido'
+    authLogger.error(
+      {
+        eventType: 'auth_forgot_password_email_failed',
+        userId: user.id,
+        err: error instanceof Error ? error : undefined,
+        errorMessage: error instanceof Error ? error.message : 'erro desconhecido'
+      },
+      'password reset email failed'
     );
   }
 };
 
-const resetPassword = async ({ token, newPassword }: ResetPasswordInput): Promise<void> => {
+const resetPassword = async ({
+  token,
+  newPassword
+}: ResetPasswordInput): Promise<{ userId: number }> => {
   if (!newPassword || newPassword.length < 8) {
-    throw new HttpError(400, 'A nova senha deve ter no minimo 8 caracteres.', 'AUTH_INVALID_PASSWORD');
+    recordAuthAttempt('reset_password_failure');
+    throw new HttpError(
+      400,
+      'A nova senha deve ter no minimo 8 caracteres.',
+      'AUTH_INVALID_PASSWORD'
+    );
   }
 
   if (!token || token.trim().length < 20) {
+    recordAuthAttempt('reset_password_failure');
     throw new HttpError(400, 'Token invalido ou expirado.', 'AUTH_RESET_TOKEN_INVALID');
   }
 
@@ -697,6 +849,7 @@ const resetPassword = async ({ token, newPassword }: ResetPasswordInput): Promis
   });
 
   if (!resetToken || resetToken.usedAt || resetToken.expiresAt <= now) {
+    recordAuthAttempt('reset_password_failure');
     throw new HttpError(400, 'Token invalido ou expirado.', 'AUTH_RESET_TOKEN_INVALID');
   }
 
@@ -709,21 +862,36 @@ const resetPassword = async ({ token, newPassword }: ResetPasswordInput): Promis
     });
 
     if (useToken.count !== 1) {
+      recordAuthAttempt('reset_password_failure');
       throw new HttpError(400, 'Token invalido ou expirado.', 'AUTH_RESET_TOKEN_INVALID');
     }
 
     await tx.user.update({
       where: { id: resetToken.userId },
-      data: { passwordHash }
+      data: {
+        passwordHash,
+        passwordChangedAt: now
+      }
     });
 
     await tx.trustedDevice.deleteMany({ where: { userId: resetToken.userId } });
   });
 
-  console.info(`[auth/reset-password] senha redefinida user=${resetToken.userId}`);
+  authLogger.info(
+    { eventType: 'auth_password_reset', userId: resetToken.userId },
+    'password reset completed'
+  );
+  recordAuthAttempt('reset_password_success');
+  invalidateAuthUserCache(resetToken.userId);
+  return { userId: resetToken.userId };
 };
 
-const register = async ({ fullName, username, email, password }: RegisterInput): Promise<AuthResponse> => {
+const register = async ({
+  fullName,
+  username,
+  email,
+  password
+}: RegisterInput): Promise<AuthResponse> => {
   const safeFullName = fullName.trim();
   const safeUsername = normalizeUsername(username);
   const safeEmail = normalizeEmail(email);
@@ -731,8 +899,19 @@ const register = async ({ fullName, username, email, password }: RegisterInput):
 
   try {
     const defaultCompany =
-      (await prisma.company.findFirst({ where: { name: 'Default Company' }, select: { id: true } })) ||
-      (await prisma.company.create({ data: { name: 'Default Company' }, select: { id: true } }));
+      (await prisma.company.findFirst({
+        where: { name: 'Default Company' },
+        select: { id: true }
+      })) ||
+      (await prisma.company.create({
+        data: {
+          name: 'Default Company',
+          landingConfig: {
+            create: createDefaultLandingConfigData()
+          }
+        },
+        select: { id: true }
+      }));
 
     const user = await prisma.user.create({
       data: {
@@ -752,6 +931,7 @@ const register = async ({ fullName, username, email, password }: RegisterInput):
         role: true,
         companyId: true,
         companyRole: true,
+        passwordChangedAt: true,
         twoFactorEnabled: true,
         twoFactorSecret: true,
         twoFactorSecretPending: true,
@@ -766,7 +946,11 @@ const register = async ({ fullName, username, email, password }: RegisterInput):
     return buildAuthResponse(normalizedUser);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      throw new HttpError(409, 'Ja existe um usuario com este username ou e-mail.', 'AUTH_IDENTIFIER_CONFLICT');
+      throw new HttpError(
+        409,
+        'Ja existe um usuario com este username ou e-mail.',
+        'AUTH_IDENTIFIER_CONFLICT'
+      );
     }
 
     throw error;
@@ -808,7 +992,15 @@ const setupTwoFactor = async (userId: number): Promise<TwoFactorSetupResponse> =
       scale: 6
     });
   } catch (error) {
-    console.error(error instanceof Error ? error.stack : error);
+    authLogger.error(
+      {
+        eventType: 'auth_2fa_qrcode_generation_failed',
+        userId,
+        err: error instanceof Error ? error : undefined,
+        error: error instanceof Error ? undefined : error
+      },
+      '2FA QR Code generation failed'
+    );
     throw new HttpError(500, 'Falha ao gerar QR Code local');
   }
 
@@ -823,7 +1015,10 @@ const setupTwoFactor = async (userId: number): Promise<TwoFactorSetupResponse> =
   return { otpauthUrl, qrCodeDataUrl, secretMasked };
 };
 
-const confirmTwoFactor = async (userId: number, code: string): Promise<TwoFactorConfirmResponse> => {
+const confirmTwoFactor = async (
+  userId: number,
+  code: string
+): Promise<TwoFactorConfirmResponse> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -850,7 +1045,11 @@ const confirmTwoFactor = async (userId: number, code: string): Promise<TwoFactor
   const maxAgeMs = 10 * 60 * 1000;
 
   if (Date.now() - createdAt > maxAgeMs) {
-    throw new HttpError(400, 'Setup de 2FA expirado. Gere um novo QR code.', 'AUTH_2FA_SETUP_EXPIRED');
+    throw new HttpError(
+      400,
+      'Setup de 2FA expirado. Gere um novo QR code.',
+      'AUTH_2FA_SETUP_EXPIRED'
+    );
   }
 
   let secret = '';
@@ -909,7 +1108,15 @@ const resetTwoFactorByUserId = async (userId: number): Promise<void> => {
   ]);
 };
 
-const disableTwoFactor = async ({ userId, password, code }: { userId: number; password: string; code: string }): Promise<void> => {
+const disableTwoFactor = async ({
+  userId,
+  password,
+  code
+}: {
+  userId: number;
+  password: string;
+  code: string;
+}): Promise<void> => {
   const user = await findUserByIdWithPassword(userId);
 
   if (!user) {
@@ -952,6 +1159,7 @@ const findUserByIdWithPassword = async (userId: number): Promise<UserRecord | nu
         role: true,
         companyId: true,
         companyRole: true,
+        passwordChangedAt: true,
         twoFactorEnabled: true,
         twoFactorSecret: true,
         twoFactorSecretPending: true,
@@ -1012,12 +1220,19 @@ const revokeTrustedDevice = async (userId: number, deviceId: number): Promise<vo
   });
 
   if (result.count === 0) {
-    throw new HttpError(404, 'Dispositivo confiavel nao encontrado.', 'AUTH_TRUSTED_DEVICE_NOT_FOUND');
+    throw new HttpError(
+      404,
+      'Dispositivo confiavel nao encontrado.',
+      'AUTH_TRUSTED_DEVICE_NOT_FOUND'
+    );
   }
 };
 
 const adminResetTwoFactor = async (targetUserId: number): Promise<void> => {
-  const target = await prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true } });
+  const target = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true }
+  });
 
   if (!target) {
     throw new HttpError(404, 'Usuario nao encontrado.', 'AUTH_USER_NOT_FOUND');

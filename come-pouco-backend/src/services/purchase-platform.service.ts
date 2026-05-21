@@ -1,7 +1,14 @@
 import { Prisma } from '@prisma/client';
 
 import prisma from '../config/prisma';
+import { decryptSecret, encryptSecret, maskSecret } from '../utils/encryption';
 import HttpError from '../utils/httpError';
+import {
+  PaginatedResult,
+  PaginationInput,
+  normalizePagination,
+  toPaginatedResult
+} from '../utils/pagination';
 
 type PurchasePlatformType = 'SHOPEE';
 
@@ -43,6 +50,7 @@ interface PurchasePlatformOutput {
   description: string;
   type: PurchasePlatformType;
   appId: string;
+  secret: string | null;
   isActive: boolean;
   mockMode: boolean;
   apiUrl: string;
@@ -79,18 +87,22 @@ interface UpdatePurchasePlatformInput {
   accessKey?: string;
 }
 
+interface ListPurchasePlatformsInput {
+  pagination?: PaginationInput;
+}
+
 const mapRowToRecord = (row: PurchasePlatformRow): PurchasePlatformRecord => ({
   id: row.id,
   name: row.name,
   description: row.description,
   type: row.type,
   appId: row.app_id,
-  secret: row.secret,
+  secret: decryptSecret(row.secret),
   isActive: row.is_active,
   mockMode: row.mock_mode,
   apiUrl: row.api_url,
   apiLink: row.api_link,
-  accessKey: row.access_key,
+  accessKey: decryptSecret(row.access_key),
   createdAt: row.created_at,
   updatedAt: row.updated_at
 });
@@ -101,17 +113,55 @@ const toPurchasePlatformOutput = (platform: PurchasePlatformRecord): PurchasePla
   description: platform.description,
   type: platform.type,
   appId: platform.appId,
+  secret: maskSecret(platform.secret),
   isActive: platform.isActive,
   mockMode: platform.mockMode,
   apiUrl: platform.apiUrl,
   apiLink: platform.apiLink,
-  accessKey: platform.accessKey ? '********' : 'nao configurado',
+  accessKey: maskSecret(platform.accessKey) ?? 'nao configurado',
   secretConfigured: platform.secret.trim().length > 0,
   createdAt: platform.createdAt.toISOString(),
   updatedAt: platform.updatedAt.toISOString()
 });
 
-const listPurchasePlatforms = async (): Promise<PurchasePlatformOutput[]> => {
+const listPurchasePlatforms = async ({
+  pagination: paginationInput
+}: ListPurchasePlatformsInput = {}): Promise<PaginatedResult<PurchasePlatformOutput>> => {
+  const pagination = normalizePagination(paginationInput);
+  const totalRows = await prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+    SELECT COUNT(*)::bigint AS total
+    FROM purchase_platforms
+  `);
+
+  const rows = await prisma.$queryRaw<PurchasePlatformRow[]>(Prisma.sql`
+    SELECT
+      id,
+      name,
+      description,
+      type,
+      app_id,
+      secret,
+      is_active,
+      mock_mode,
+      api_url,
+      api_link,
+      access_key,
+      created_at,
+      updated_at
+    FROM purchase_platforms
+    ORDER BY id DESC
+    LIMIT ${pagination.take}
+    OFFSET ${pagination.skip}
+  `);
+
+  return toPaginatedResult(
+    rows.map((row) => toPurchasePlatformOutput(mapRowToRecord(row))),
+    Number(totalRows[0]?.total ?? 0),
+    pagination
+  );
+};
+
+const listAllPurchasePlatforms = async (): Promise<PurchasePlatformOutput[]> => {
   const rows = await prisma.$queryRaw<PurchasePlatformRow[]>(Prisma.sql`
     SELECT
       id,
@@ -148,6 +198,7 @@ const createPurchasePlatform = async ({
 }: CreatePurchasePlatformInput): Promise<PurchasePlatformOutput> => {
   const normalizedApiUrl = apiUrl.trim();
   const normalizedSecret = secret.trim();
+  const normalizedAccessKey = accessKey?.trim() || '';
 
   const rows = await prisma.$queryRaw<PurchasePlatformRow[]>(Prisma.sql`
     INSERT INTO purchase_platforms (
@@ -169,12 +220,12 @@ const createPurchasePlatform = async ({
       ${description.trim()},
       CAST(${type} AS "PurchasePlatformType"),
       ${appId.trim()},
-      ${normalizedSecret},
+      ${encryptSecret(normalizedSecret)},
       ${isActive},
       ${mockMode},
       ${normalizedApiUrl},
       ${(apiLink || normalizedApiUrl).trim()},
-      ${(accessKey || normalizedSecret).trim()},
+      ${encryptSecret(normalizedAccessKey)},
       NOW(),
       NOW()
     )
@@ -199,7 +250,18 @@ const createPurchasePlatform = async ({
 
 const updatePurchasePlatform = async (
   id: number,
-  { name, description, type, appId, secret, isActive, mockMode, apiUrl, apiLink, accessKey }: UpdatePurchasePlatformInput
+  {
+    name,
+    description,
+    type,
+    appId,
+    secret,
+    isActive,
+    mockMode,
+    apiUrl,
+    apiLink,
+    accessKey
+  }: UpdatePurchasePlatformInput
 ): Promise<PurchasePlatformOutput> => {
   const updateClauses: Prisma.Sql[] = [];
 
@@ -221,8 +283,7 @@ const updatePurchasePlatform = async (
 
   if (secret !== undefined) {
     const normalizedSecret = secret.trim();
-    updateClauses.push(Prisma.sql`secret = ${normalizedSecret}`);
-    updateClauses.push(Prisma.sql`access_key = ${normalizedSecret}`);
+    updateClauses.push(Prisma.sql`secret = ${encryptSecret(normalizedSecret)}`);
   }
 
   if (isActive !== undefined) {
@@ -244,7 +305,7 @@ const updatePurchasePlatform = async (
   }
 
   if (accessKey !== undefined) {
-    updateClauses.push(Prisma.sql`access_key = ${accessKey.trim()}`);
+    updateClauses.push(Prisma.sql`access_key = ${encryptSecret(accessKey.trim())}`);
   }
 
   if (!updateClauses.length) {
@@ -309,7 +370,9 @@ const getPurchasePlatformById = async (id: number): Promise<PurchasePlatformReco
 };
 
 const deletePurchasePlatform = async (id: number): Promise<void> => {
-  const deletedRows = await prisma.$executeRaw(Prisma.sql`DELETE FROM purchase_platforms WHERE id = ${id}`);
+  const deletedRows = await prisma.$executeRaw(
+    Prisma.sql`DELETE FROM purchase_platforms WHERE id = ${id}`
+  );
 
   if (!Number(deletedRows)) {
     throw new HttpError(404, 'Plataforma de compras nao encontrada.');
@@ -320,6 +383,7 @@ export {
   createPurchasePlatform,
   deletePurchasePlatform,
   getPurchasePlatformById,
+  listAllPurchasePlatforms,
   listPurchasePlatforms,
   updatePurchasePlatform
 };

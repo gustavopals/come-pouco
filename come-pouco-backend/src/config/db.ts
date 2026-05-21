@@ -5,6 +5,7 @@ import prisma from './prisma';
 
 const REQUIRED_AUTH_COLUMNS = [
   'username',
+  'password_changed_at',
   'two_factor_enabled',
   'two_factor_secret',
   'two_factor_secret_pending',
@@ -47,7 +48,9 @@ const ensureMasterAdminSeed = async (): Promise<void> => {
   }
 
   if (admin.role !== 'ADMIN') {
-    throw new Error(`Usuario master admin sem role ADMIN (id=${admin.id}). Corrija seed/migration do ambiente.`);
+    throw new Error(
+      `Usuario master admin sem role ADMIN (id=${admin.id}). Corrija seed/migration do ambiente.`
+    );
   }
 };
 
@@ -60,7 +63,10 @@ const ensureDatabaseSchema = async (): Promise<void> => {
     await ensureAuthSchemaColumns();
     await ensureMasterAdminSeed();
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2021' || error.code === 'P2022')) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === 'P2021' || error.code === 'P2022')
+    ) {
       throw new Error('Banco nao migrado. Execute: npx prisma migrate deploy');
     }
 

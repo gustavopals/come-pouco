@@ -1,76 +1,218 @@
 <section class="page-shell">
-  <main class="page-main">
-    <mat-card class="welcome-card" appearance="outlined">
-      <mat-card-header>
-        <mat-card-title>Painel Inicial</mat-card-title>
-        <mat-card-subtitle *ngIf="(companyName$ | async) as companyName; else defaultOverview">
-          Visao geral da operacao {{ companyName }}
-        </mat-card-subtitle>
-        <ng-template #defaultOverview>
-          <mat-card-subtitle>{{ authService.isAdmin() ? 'Visao geral da operacao (Admin)' : 'Visao geral da operacao' }}</mat-card-subtitle>
-        </ng-template>
-      </mat-card-header>
+  <main class="page-main home-page">
+    <app-page-header
+      eyebrow="Visao geral"
+      title="Painel Inicial"
+      [description]="
+        (companyName$ | async)
+          ? 'Operacao e atalhos principais da empresa ' + (companyName$ | async)
+          : authService.isAdmin()
+            ? 'Operacao geral da plataforma e rotas administrativas'
+            : 'Operacao da sua empresa e links de afiliado'
+      "
+    >
+      <a pageHeaderActions mat-flat-button routerLink="/affiliate-links" class="button-with-icon">
+        <app-icon name="link" size="18" />
+        Gerar links
+      </a>
+    </app-page-header>
 
-      <mat-card-content>
-        <p *ngIf="!(errorMessage$ | async)">
-          Bem-vindo,
-          <strong>{{ authService.currentUser()?.fullName || 'Usuario' }}</strong>
-          ({{ authService.currentUser()?.username || authService.currentUser()?.email || 'sem identificador' }}) -
-          perfil <strong>{{ authService.currentUser()?.role === 'ADMIN' ? 'Administrador' : 'Usuario padrao' }}</strong>.
-        </p>
+    <p
+      class="status-message status-message-error"
+      role="alert"
+      *ngIf="errorMessage$ | async as errorMessage"
+    >
+      <app-icon name="circle-alert" size="18" />
+      {{ errorMessage }}
+    </p>
 
-        <p class="status-error" *ngIf="(errorMessage$ | async) as errorMessage">{{ errorMessage }}</p>
-        <p class="status-error" *ngIf="!authService.currentUser()?.twoFactorEnabled && !(errorMessage$ | async)">
-          Sua conta ainda nao possui 2FA ativo. Configure em Seguranca para proteger o acesso.
-        </p>
+    <section class="home-grid">
+      <article class="profile-panel">
+        <div class="profile-main">
+          <span class="profile-avatar">
+            <app-icon name="user-round" size="28" />
+          </span>
 
-        <mat-chip-set>
-          <mat-chip routerLink="/users" *ngIf="authService.isAdmin()">Gestao de usuarios</mat-chip>
-          <mat-chip routerLink="/purchase-platforms" *ngIf="authService.isAdmin()">Plataformas de compras</mat-chip>
-          <mat-chip routerLink="/companies" *ngIf="authService.isAdmin()">Empresas</mat-chip>
-          <mat-chip routerLink="/my-company" *ngIf="authService.isOwner()">Minha empresa</mat-chip>
-          <mat-chip routerLink="/affiliate-links">Gestao de afiliados</mat-chip>
-        </mat-chip-set>
-      </mat-card-content>
-
-      <mat-card-actions>
-        <a mat-stroked-button routerLink="/users" *ngIf="authService.isAdmin()">Ir para usuarios</a>
-        <a mat-stroked-button routerLink="/purchase-platforms" *ngIf="authService.isAdmin()">Ir para plataformas</a>
-        <a mat-stroked-button routerLink="/companies" *ngIf="authService.isAdmin()">Ir para empresas</a>
-        <a mat-stroked-button routerLink="/my-company" *ngIf="authService.isOwner()">Ir para minha empresa</a>
-        <a mat-stroked-button routerLink="/security" *ngIf="!authService.currentUser()?.twoFactorEnabled">Configurar 2FA</a>
-        <a mat-flat-button color="primary" routerLink="/affiliate-links">Ir para afiliados</a>
-      </mat-card-actions>
-    </mat-card>
-
-    <mat-card class="production-health-card" appearance="outlined" *ngIf="(productionSummary$ | async) as summary">
-      <mat-card-header>
-        <mat-card-title>Saude da Producao</mat-card-title>
-        <mat-card-subtitle>Indicadores de desempenho de links</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="summary-container">
-          <div class="main-indicator">
-            <span class="label">Total de Hoje</span>
-            <span class="value highlighted">{{ summary.todayCount }}</span>
-          </div>
-          
-          <div class="secondary-indicators">
-            <div class="indicator">
-              <span class="label">Media (7 dias)</span>
-              <span class="value">{{ summary.avgLast7Days }}</span>
-            </div>
-            <div class="indicator">
-              <span class="label">Maxima (7 dias)</span>
-              <span class="value">{{ summary.maxLast7Days }}</span>
-            </div>
-            <div class="indicator">
-              <span class="label">Minima (7 dias)</span>
-              <span class="value">{{ summary.minLast7Days }}</span>
-            </div>
+          <div>
+            <p class="panel-eyebrow">Sessao ativa</p>
+            <h2>{{ authService.currentUser()?.fullName || 'Usuario' }}</h2>
+            <p>
+              {{
+                authService.currentUser()?.username ||
+                  authService.currentUser()?.email ||
+                  'sem identificador'
+              }}
+            </p>
           </div>
         </div>
-      </mat-card-content>
-    </mat-card>
+
+        <div class="profile-status">
+          <app-status-chip [label]="roleLabel()" variant="info" />
+          <app-status-chip [label]="securityLabel()" [variant]="securityVariant()" />
+        </div>
+
+        <div class="security-callout" *ngIf="!authService.currentUser()?.twoFactorEnabled">
+          <app-icon name="shield-x" size="20" />
+          <div>
+            <strong>Protecao incompleta</strong>
+            <span>Ative a verificacao em duas etapas para reduzir risco de acesso indevido.</span>
+          </div>
+          <a mat-stroked-button routerLink="/security">Configurar</a>
+        </div>
+      </article>
+
+      <section class="quick-actions" aria-label="Atalhos por papel">
+        <a class="quick-action" routerLink="/users" *ngIf="authService.isAdmin()">
+          <span><app-icon name="users" size="20" /></span>
+          <strong>Usuarios</strong>
+          <small>Convites, papeis e reset de 2FA</small>
+        </a>
+
+        <a class="quick-action" routerLink="/purchase-platforms" *ngIf="authService.isAdmin()">
+          <span><app-icon name="shopping-bag" size="20" /></span>
+          <strong>Plataformas</strong>
+          <small>Credenciais de compra TEST e PROD</small>
+        </a>
+
+        <a class="quick-action" routerLink="/companies" *ngIf="authService.isAdmin()">
+          <span><app-icon name="building-2" size="20" /></span>
+          <strong>Empresas</strong>
+          <small>Configuracao por operacao</small>
+        </a>
+
+        <a class="quick-action" routerLink="/my-company" *ngIf="authService.isOwner()">
+          <span><app-icon name="building-2" size="20" /></span>
+          <strong>Minha empresa</strong>
+          <small>Equipe e vinculos operacionais</small>
+        </a>
+
+        <a class="quick-action" routerLink="/affiliate-links">
+          <span><app-icon name="link" size="20" /></span>
+          <strong>Afiliados</strong>
+          <small>Geracao e historico de links</small>
+        </a>
+
+        <a
+          class="quick-action"
+          routerLink="/conversions"
+          *ngIf="authService.isAdmin() || authService.isOwner()"
+        >
+          <span><app-icon name="activity" size="20" /></span>
+          <strong>Conversoes</strong>
+          <small>Landing publica e atribuicao</small>
+        </a>
+      </section>
+    </section>
+
+    <section
+      class="production-panel"
+      *ngIf="productionSummary$ | async as summary; else productionPending"
+    >
+      <div class="panel-heading">
+        <div>
+          <p class="panel-eyebrow">Saude da producao</p>
+          <h2>Indicadores de links</h2>
+        </div>
+        <app-status-chip
+          [label]="productionLabel(summary)"
+          [variant]="productionVariant(summary)"
+        />
+      </div>
+
+      <div class="kpi-grid">
+        <article class="kpi-card kpi-card-primary">
+          <span>Total de hoje</span>
+          <strong>{{ summary.todayCount }}</strong>
+          <small>Links gerados no dia atual</small>
+        </article>
+
+        <article class="kpi-card">
+          <span>Media 7 dias</span>
+          <strong>{{ summary.avgLast7Days }}</strong>
+          <small>Ritmo recente da operacao</small>
+        </article>
+
+        <article class="kpi-card">
+          <span>Maxima 7 dias</span>
+          <strong>{{ summary.maxLast7Days }}</strong>
+          <small>Melhor dia do periodo</small>
+        </article>
+
+        <article class="kpi-card">
+          <span>Minima 7 dias</span>
+          <strong>{{ summary.minLast7Days }}</strong>
+          <small>Menor volume registrado</small>
+        </article>
+      </div>
+    </section>
+
+    <ng-template #productionPending>
+      <section class="production-panel" *ngIf="isProductionLoading$ | async; else productionEmpty">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-eyebrow">Saude da producao</p>
+            <h2>Carregando indicadores</h2>
+          </div>
+        </div>
+        <div class="kpi-grid">
+          <app-skeleton-loader variant="card" label="Carregando total de hoje" />
+          <app-skeleton-loader variant="card" label="Carregando media" />
+          <app-skeleton-loader variant="card" label="Carregando maxima" />
+          <app-skeleton-loader variant="card" label="Carregando minima" />
+        </div>
+      </section>
+    </ng-template>
+
+    <ng-template #productionEmpty>
+      <app-empty-state
+        icon="inbox"
+        title="Indicadores indisponiveis"
+        description="Nao foi possivel carregar o resumo de producao agora. Tente atualizar a pagina em alguns instantes."
+      />
+    </ng-template>
+
+    <section class="production-panel" *ngIf="conversionSummary$ | async as conversionSummary">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-eyebrow">Conversoes da Landing</p>
+          <h2>Ultimos 7 dias</h2>
+        </div>
+        <app-status-chip
+          [label]="conversionLabel(conversionSummary)"
+          [variant]="conversionVariant(conversionSummary)"
+        />
+      </div>
+
+      <div class="kpi-grid">
+        <article class="kpi-card kpi-card-primary">
+          <span>Total</span>
+          <strong>{{ conversionSummary.total }}</strong>
+          <small>Conversoes publicas no periodo</small>
+        </article>
+
+        <article class="kpi-card">
+          <span>Sucesso</span>
+          <strong>{{ conversionSummary.successRate }}%</strong>
+          <small>{{ conversionSummary.successCount }} links prontos</small>
+        </article>
+
+        <article class="kpi-card">
+          <span>Fallback</span>
+          <strong>{{ conversionSummary.fallbackRate }}%</strong>
+          <small>{{ conversionSummary.fallbackCount }} redirecionamentos alternativos</small>
+        </article>
+
+        <article class="kpi-card">
+          <span>Media diaria</span>
+          <strong>{{ conversionSummary.averageDaily }}</strong>
+          <small>Volume medio do periodo</small>
+        </article>
+      </div>
+
+      <a mat-stroked-button routerLink="/conversions" class="panel-link button-with-icon">
+        <app-icon name="activity" size="18" />
+        Ver dashboard
+      </a>
+    </section>
   </main>
 </section>

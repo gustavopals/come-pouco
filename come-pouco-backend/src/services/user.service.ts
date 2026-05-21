@@ -2,9 +2,17 @@ import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 import prisma from '../config/prisma';
+import { invalidateAuthUserCache } from './auth-user-cache.service';
 import type { CompanyRole } from '../types/company-role';
 import type { UserRole } from '../types/user-role';
 import HttpError from '../utils/httpError';
+import {
+  PaginatedResult,
+  PaginationInput,
+  normalizePagination,
+  toPaginatedResult
+} from '../utils/pagination';
+import { normalizePublicSlugInput } from './public-slug.service';
 
 interface UserRecord {
   id: number;
@@ -14,6 +22,7 @@ interface UserRecord {
   role: UserRole;
   companyId: number | null;
   companyRole: CompanyRole | null;
+  publicSlug: string | null;
   twoFactorEnabled: boolean;
   createdAt: Date;
 }
@@ -26,6 +35,7 @@ interface UserOutput {
   role: UserRole;
   companyId: number | null;
   companyRole: CompanyRole | null;
+  publicSlug: string | null;
   twoFactorEnabled: boolean;
   createdAt: string;
 }
@@ -34,6 +44,7 @@ interface ListUsersScope {
   requesterRole: UserRole;
   requesterCompanyId: number | null;
   requesterCompanyRole: CompanyRole | null;
+  pagination?: PaginationInput;
 }
 
 interface CreateUserInput {
@@ -44,6 +55,7 @@ interface CreateUserInput {
   role: UserRole;
   companyId?: number | null;
   companyRole?: CompanyRole | null;
+  publicSlug?: string | null;
 }
 
 interface UpdateUserInput {
@@ -54,6 +66,7 @@ interface UpdateUserInput {
   role?: UserRole;
   companyId?: number | null;
   companyRole?: CompanyRole | null;
+  publicSlug?: string | null;
 }
 
 const toUserOutput = (user: UserRecord): UserOutput => ({
@@ -64,6 +77,7 @@ const toUserOutput = (user: UserRecord): UserOutput => ({
   role: user.role,
   companyId: user.companyId,
   companyRole: user.companyRole,
+  publicSlug: user.publicSlug,
   twoFactorEnabled: user.twoFactorEnabled,
   createdAt: user.createdAt.toISOString()
 });
@@ -71,6 +85,11 @@ const toUserOutput = (user: UserRecord): UserOutput => ({
 const mapPrismaError = (error: unknown): never => {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === 'P2002') {
+      const target = Array.isArray(error.meta?.target) ? error.meta.target.join(',') : '';
+      if (target.includes('public_slug')) {
+        throw new HttpError(409, 'Ja existe um usuario com esse slug publico nesta empresa.');
+      }
+
       throw new HttpError(409, 'Ja existe um usuario com este username ou e-mail.');
     }
 
@@ -113,6 +132,7 @@ const userSelect = {
   role: true,
   companyId: true,
   companyRole: true,
+  publicSlug: true,
   twoFactorEnabled: true,
   createdAt: true
 } satisfies Prisma.UserSelect;
@@ -121,29 +141,56 @@ const getUserRecordById = async (id: number): Promise<UserRecord | null> => {
   return prisma.user.findUnique({ where: { id }, select: userSelect });
 };
 
-const listUsers = async (scope: ListUsersScope): Promise<UserOutput[]> => {
+const listUsers = async (scope: ListUsersScope): Promise<PaginatedResult<UserOutput>> => {
+  const pagination = normalizePagination(scope.pagination);
+
   if (scope.requesterRole === 'ADMIN') {
-    const users = await prisma.user.findMany({ orderBy: { id: 'asc' }, select: userSelect });
-    return users.map(toUserOutput);
+    const [total, users] = await prisma.$transaction([
+      prisma.user.count(),
+      prisma.user.findMany({
+        orderBy: { id: 'asc' },
+        skip: pagination.skip,
+        take: pagination.take,
+        select: userSelect
+      })
+    ]);
+    return toPaginatedResult(users.map(toUserOutput), total, pagination);
   }
 
   if (scope.requesterCompanyRole === 'OWNER' && scope.requesterCompanyId) {
-    const users = await prisma.user.findMany({
-      where: { role: 'USER', companyId: scope.requesterCompanyId },
-      orderBy: { id: 'asc' },
-      select: userSelect
-    });
+    const where = { role: 'USER' as const, companyId: scope.requesterCompanyId };
+    const [total, users] = await prisma.$transaction([
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where,
+        orderBy: { id: 'asc' },
+        skip: pagination.skip,
+        take: pagination.take,
+        select: userSelect
+      })
+    ]);
 
-    return users.map(toUserOutput);
+    return toPaginatedResult(users.map(toUserOutput), total, pagination);
   }
 
   throw new HttpError(403, 'Acesso negado para listar usuarios.');
 };
 
-const createUser = async ({ fullName, username, email, password, role, companyId, companyRole }: CreateUserInput): Promise<UserOutput> => {
+const createUser = async ({
+  fullName,
+  username,
+  email,
+  password,
+  role,
+  companyId,
+  companyRole,
+  publicSlug
+}: CreateUserInput): Promise<UserOutput> => {
   const safeFullName = fullName.trim();
   const safeUsername = normalizeUsername(username);
   const safeEmail = normalizeEmail(email);
+  const normalizedPublicSlug =
+    role === 'ADMIN' ? null : normalizePublicSlugInput(publicSlug, { nullable: true });
   const passwordHash = await bcrypt.hash(password, 10);
 
   try {
@@ -155,7 +202,8 @@ const createUser = async ({ fullName, username, email, password, role, companyId
         passwordHash,
         role,
         companyId: companyId ?? null,
-        companyRole: role === 'ADMIN' ? null : companyRole ?? 'EMPLOYEE'
+        companyRole: role === 'ADMIN' ? null : (companyRole ?? 'EMPLOYEE'),
+        publicSlug: normalizedPublicSlug
       },
       select: userSelect
     });
@@ -198,8 +246,17 @@ const updateUser = async (userId: number, data: UpdateUserInput): Promise<UserOu
     updateData.companyRole = data.companyRole;
   }
 
+  if (data.publicSlug !== undefined) {
+    updateData.publicSlug = normalizePublicSlugInput(data.publicSlug, { nullable: true });
+  }
+
+  if (data.role === 'ADMIN') {
+    updateData.publicSlug = null;
+  }
+
   if (data.password !== undefined && data.password !== '') {
     updateData.passwordHash = await bcrypt.hash(data.password, 10);
+    updateData.passwordChangedAt = new Date();
   }
 
   if (!Object.keys(updateData).length) {
@@ -207,7 +264,12 @@ const updateUser = async (userId: number, data: UpdateUserInput): Promise<UserOu
   }
 
   try {
-    const user = await prisma.user.update({ where: { id: userId }, data: updateData, select: userSelect });
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: userSelect
+    });
+    invalidateAuthUserCache(userId);
     return toUserOutput(user);
   } catch (error) {
     return mapPrismaError(error);
@@ -217,6 +279,7 @@ const updateUser = async (userId: number, data: UpdateUserInput): Promise<UserOu
 const deleteUser = async (userId: number): Promise<void> => {
   try {
     await prisma.user.delete({ where: { id: userId } });
+    invalidateAuthUserCache(userId);
   } catch (error) {
     return mapPrismaError(error);
   }

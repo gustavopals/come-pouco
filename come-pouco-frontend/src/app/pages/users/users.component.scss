@@ -9,6 +9,23 @@
   align-items: start;
 }
 
+.grid-header {
+  grid-column: 1 / -1;
+}
+
+.button-with-icon,
+.role-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cp-space-2);
+}
+
+.table-loading {
+  display: grid;
+  gap: var(--cp-space-2);
+  margin-top: var(--cp-space-3);
+}
+
 .form-card,
 .table-card {
   border-radius: var(--panel-card-radius);
@@ -58,7 +75,7 @@ mat-card-header {
 
 .data-table {
   width: 100%;
-  min-width: 820px;
+  min-width: 1080px;
 }
 
 .data-table .mat-mdc-header-row {
@@ -94,6 +111,33 @@ mat-card-header {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.slug-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.slug-input {
+  min-height: 38px;
+  width: 136px;
+  border: 1px solid rgba(21, 66, 102, 0.22);
+  border-radius: 8px;
+  padding: 0 0.65rem;
+  color: #123f61;
+  font: inherit;
+}
+
+.slug-display {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-slug-editor {
+  align-items: stretch;
 }
 
 .row-actions .mat-mdc-icon-button {
@@ -170,7 +214,7 @@ mat-card-header {
   }
 
   .data-table {
-    min-width: 720px;
+    min-width: 940px;
   }
 }
 

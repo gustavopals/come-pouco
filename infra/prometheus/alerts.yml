@@ -1,0 +1,83 @@
+groups:
+  - name: come-pouco-critical
+    interval: 30s
+    rules:
+      - alert: ComePoucoHighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5..",route!="/api/metrics"}[5m]))
+            /
+            clamp_min(sum(rate(http_requests_total{route!="/api/metrics"}[5m])), 0.001)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: high
+          service: backend
+          area: http
+        annotations:
+          summary: 'Error rate HTTP acima de 5% em 5 minutos'
+          description: 'Mais de 5% das requisicoes recentes terminaram em HTTP 5xx.'
+          dashboard_url: 'http://localhost:5080'
+          runbook_url: 'docs/runbooks/erro-500-em-pico.md'
+
+      - alert: ComePoucoShopeeSuccessRateLow
+        expr: |
+          (
+            (sum(rate(shopee_api_calls_total{success="true"}[10m])) or vector(0))
+            /
+            clamp_min(sum(rate(shopee_api_calls_total[10m])), 0.001)
+          ) < 0.8
+          and
+          sum(rate(shopee_api_calls_total[10m])) > 0
+        for: 5m
+        labels:
+          severity: high
+          service: shopee
+          area: integration
+        annotations:
+          summary: 'Success rate da Shopee abaixo de 80% em 10 minutos'
+          description: 'A integracao Shopee esta falhando acima do limite operacional.'
+          dashboard_url: 'http://localhost:5080'
+          runbook_url: 'docs/runbooks/shopee-api-down.md'
+
+      - alert: ComePoucoBackendHealthcheckDown
+        expr: |
+          (probe_success{job="come-pouco-backend-health",probe="liveness"} == 0)
+          or
+          (up{job="come-pouco-backend-health"} == 0)
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+          area: availability
+        annotations:
+          summary: 'Backend offline ou healthcheck indisponivel por mais de 1 minuto'
+          description: 'A sonda HTTP do backend falhou de forma consecutiva.'
+          dashboard_url: 'http://localhost:5080'
+          runbook_url: 'docs/runbooks/backend-healthcheck-down.md'
+
+      - alert: ComePoucoDatabaseLatencyHigh
+        expr: quantile_over_time(0.95, db_health_latency_seconds[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: medium
+          service: database
+          area: readiness
+        annotations:
+          summary: 'Latencia p95 do DB acima de 500ms em 5 minutos'
+          description: 'O check de readiness do banco esta lento e pode impactar fluxos autenticados.'
+          dashboard_url: 'http://localhost:5080'
+          runbook_url: 'docs/runbooks/db-lento.md'
+
+      - alert: ComePoucoSentryExceptionSpike
+        expr: increase(sentry_events_total{surface="backend",event_type="exception"}[1h]) > 10
+        for: 5m
+        labels:
+          severity: medium
+          service: backend
+          area: sentry
+        annotations:
+          summary: 'Mais de 10 excecoes capturadas pelo Sentry em 1 hora'
+          description: 'O backend esta enviando volume anormal de excecoes ao Sentry.'
+          dashboard_url: 'http://localhost:5080'
+          runbook_url: 'docs/runbooks/erro-500-em-pico.md'

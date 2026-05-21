@@ -1,0 +1,101 @@
+---
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import Icon from '@components/ui/Icon.astro';
+import { comparisonRows, plans } from '@lib/plans';
+
+const renderCell = (value: string | boolean) => {
+  if (value === true) return { kind: 'check' as const };
+  if (value === false) return { kind: 'cross' as const };
+  return { kind: 'text' as const, value };
+};
+
+const categories = Array.from(new Set(comparisonRows.map((r) => r.category)));
+---
+
+<Section
+  id="pricing-comparison"
+  spacing="sm"
+  tone="default"
+  ariaLabelledby="pricing-comparison-title"
+>
+  <Container size="page" class="flex flex-col gap-8">
+    <header class="mx-auto max-w-[var(--cp-mkt-prose-max)] text-center flex flex-col gap-3">
+      <h3
+        id="pricing-comparison-title"
+        class="text-[24px] font-bold tracking-tight text-[var(--cp-color-foreground)]"
+      >
+        Compare os planos lado a lado
+      </h3>
+      <p class="text-[14px] text-[var(--cp-color-muted-foreground)]">
+        Tudo que cada plano inclui, de forma honesta.
+      </p>
+    </header>
+
+    <div
+      class="overflow-x-auto rounded-[var(--cp-radius-lg)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)]"
+    >
+      <table class="w-full min-w-[640px] border-collapse text-[14px]">
+        <thead>
+          <tr class="border-b border-[var(--cp-color-border)] bg-[var(--cp-color-muted)]/50">
+            <th
+              class="sticky left-0 z-10 bg-[var(--cp-color-muted)]/50 px-5 py-4 text-left text-[12px] font-semibold uppercase tracking-wider text-[var(--cp-color-muted-foreground)]"
+            >
+              Recurso
+            </th>
+            {
+              plans.map((plan) => (
+                <th class="px-5 py-4 text-left text-[13px] font-semibold text-[var(--cp-color-foreground)]">
+                  {plan.name}
+                </th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
+          {
+            categories.map((category) => (
+              <>
+                <tr class="bg-[var(--cp-color-background)]">
+                  <td
+                    class="px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--cp-color-muted-foreground)]"
+                    colspan={plans.length + 1}
+                  >
+                    {category}
+                  </td>
+                </tr>
+                {comparisonRows
+                  .filter((r) => r.category === category)
+                  .map((row) => (
+                    <tr class="border-b border-[var(--cp-color-border)]/60">
+                      <td class="px-5 py-3 text-[14px] text-[var(--cp-color-foreground)]">
+                        {row.feature}
+                      </td>
+                      {(['free', 'pro', 'enterprise'] as const).map((id) => {
+                        const cell = renderCell(row[id]);
+                        return (
+                          <td class="px-5 py-3 text-[14px] text-[var(--cp-color-muted-foreground)]">
+                            {cell.kind === 'check' ? (
+                              <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--cp-color-primary-soft)] text-[var(--cp-color-primary)]">
+                                <Icon name="Check" size={14} strokeWidth={2.5} />
+                              </span>
+                            ) : cell.kind === 'cross' ? (
+                              <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--cp-color-muted)] text-[var(--cp-color-muted-foreground)]/60">
+                                <Icon name="X" size={14} strokeWidth={2} />
+                              </span>
+                            ) : (
+                              <span class="text-[var(--cp-color-foreground)]">{cell.value}</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+              </>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </Container>
+</Section>

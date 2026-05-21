@@ -1,0 +1,49 @@
+<section class="auth-shell">
+  <div class="auth-shell-form">
+    <header class="auth-shell-topbar">
+      <app-logo></app-logo>
+      <app-theme-toggle></app-theme-toggle>
+    </header>
+
+    <main class="auth-shell-main" aria-live="polite">
+      <div class="auth-shell-heading">
+        <span class="auth-shell-eyebrow">{{ eyebrow() }}</span>
+        <h1>{{ title() }}</h1>
+        <p>{{ description() }}</p>
+      </div>
+
+      <ng-content></ng-content>
+    </main>
+  </div>
+
+  <aside class="auth-shell-visual" aria-label="Come Pouco">
+    <div class="auth-visual-content">
+      <span class="auth-visual-icon">
+        <app-icon [name]="featureIcon()" [size]="28"></app-icon>
+      </span>
+
+      <div class="auth-visual-copy">
+        <p class="auth-visual-kicker">Come Pouco</p>
+        <h2>{{ featureTitle() }}</h2>
+        <p>{{ featureDescription() }}</p>
+      </div>
+
+      <div class="auth-visual-stack" aria-hidden="true">
+        <span class="auth-visual-row auth-visual-row-strong"></span>
+        <span class="auth-visual-row"></span>
+        <span class="auth-visual-row auth-visual-row-short"></span>
+      </div>
+
+      <div class="auth-visual-metrics" aria-hidden="true">
+        <span>
+          <strong>2FA</strong>
+          <small>Obrigatorio para contas criticas</small>
+        </span>
+        <span>
+          <strong>MD3</strong>
+          <small>Tema consistente em claro e escuro</small>
+        </span>
+      </div>
+    </div>
+  </aside>
+</section>

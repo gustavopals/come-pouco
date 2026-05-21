@@ -9,19 +9,45 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { BehaviorSubject, Subject, catchError, finalize, map, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
+import {
+  BehaviorSubject,
+  Subject,
+  catchError,
+  combineLatest,
+  finalize,
+  map,
+  of,
+  shareReplay,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs';
 
 import { COMPANY_ROLE_LABEL, type CompanyRole } from '../../core/models/company-role.model';
 import { Company } from '../../core/models/company.model';
 import { UpdateUserPayload, User } from '../../core/models/user.model';
 import { USER_ROLE_LABEL, type UserRole } from '../../core/models/user-role.model';
 import { CompanyService } from '../../core/services/company.service';
+import { LandingConfigService } from '../../core/services/landing-config.service';
 import { UserService } from '../../core/services/user.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import {
+  EmptyStateComponent,
+  IconComponent,
+  PageHeaderComponent,
+  ResponsiveTableComponent,
+  SkeletonLoaderComponent,
+  StatusChipComponent,
+} from '../../shared/components';
+import {
+  getStrongPasswordErrorMessage,
+  strongPasswordValidator,
+} from '../../shared/validators/strong-password.validator';
 
 @Component({
   selector: 'app-users',
@@ -37,65 +63,99 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatPaginatorModule,
     MatProgressBarModule,
     MatSelectModule,
     MatSnackBarModule,
     MatTableModule,
-    MatTooltipModule
+    MatTooltipModule,
+    EmptyStateComponent,
+    IconComponent,
+    PageHeaderComponent,
+    ResponsiveTableComponent,
+    SkeletonLoaderComponent,
+    StatusChipComponent,
   ],
   templateUrl: './users.component.html',
-  styleUrl: './users.component.scss'
+  styleUrl: './users.component.scss',
 })
 export class UsersComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly userService = inject(UserService);
   private readonly companyService = inject(CompanyService);
+  private readonly landingConfigService = inject(LandingConfigService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
   private readonly refresh$ = new Subject<void>();
+  protected readonly pageSizeOptions = [10, 20, 50, 100];
+  protected readonly pageState$ = new BehaviorSubject<{ pageIndex: number; pageSize: number }>({
+    pageIndex: 0,
+    pageSize: 20,
+  });
 
-  protected readonly displayedColumns: string[] = ['id', 'fullName', 'username', 'email', 'role', 'company', 'createdAt', 'actions'];
+  protected readonly displayedColumns: string[] = [
+    'id',
+    'fullName',
+    'username',
+    'email',
+    'role',
+    'company',
+    'publicSlug',
+    'createdAt',
+    'actions',
+  ];
   protected readonly roleOptions: UserRole[] = ['ADMIN', 'USER'];
   protected readonly companyRoleOptions: CompanyRole[] = ['OWNER', 'EMPLOYEE'];
   protected companies: Company[] = [];
   protected filteredCompanies: Company[] = [];
   protected isSaving = false;
   protected editingUserId: number | null = null;
+  protected editingSlugUserId: number | null = null;
+  protected slugDraft = '';
+  protected slugSavingUserId: number | null = null;
 
   protected readonly isLoading$ = new BehaviorSubject<boolean>(false);
   protected readonly errorMessage$ = new BehaviorSubject<string | null>(null);
   protected readonly successMessage$ = new BehaviorSubject<string | null>(null);
 
-  protected readonly users$ = this.refresh$.pipe(
-    startWith(void 0),
+  protected readonly totalUsers$ = new BehaviorSubject<number>(0);
+  protected readonly users$ = combineLatest([
+    this.refresh$.pipe(startWith(void 0)),
+    this.pageState$,
+  ]).pipe(
     tap(() => {
       this.isLoading$.next(true);
       this.errorMessage$.next(null);
     }),
-    switchMap(() =>
-      this.userService.listUsers().pipe(
+    switchMap(([, pageState]) =>
+      this.userService.listUsers({ page: pageState.pageIndex + 1, limit: pageState.pageSize }).pipe(
+        tap((response) =>
+          this.totalUsers$.next(response.meta?.total ?? response.users?.length ?? 0),
+        ),
         map((response) => (Array.isArray(response?.users) ? response.users : [])),
         catchError((error) => {
-          this.errorMessage$.next(error?.error?.message || 'Nao foi possivel carregar os usuarios.');
+          this.errorMessage$.next(
+            error?.error?.message || 'Nao foi possivel carregar os usuarios.',
+          );
+          this.totalUsers$.next(0);
           return of([] as User[]);
         }),
-        finalize(() => this.isLoading$.next(false))
-      )
+        finalize(() => this.isLoading$.next(false)),
+      ),
     ),
-    shareReplay({ bufferSize: 1, refCount: true })
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
-  protected readonly totalUsers$ = this.users$.pipe(map((users) => users.length));
 
   protected readonly form = this.formBuilder.group({
     fullName: ['', [Validators.required, Validators.minLength(3)]],
     username: ['', [Validators.required, Validators.pattern(/^[a-zA-Z0-9_-]+$/)]],
     email: ['', [Validators.email]],
-    password: ['', [Validators.minLength(6)]],
+    password: ['', [strongPasswordValidator]],
     role: ['USER' as UserRole, [Validators.required]],
     companyId: [null as number | null],
     companyRole: ['EMPLOYEE' as CompanyRole],
-    companySearch: ['']
+    companySearch: [''],
   });
 
   ngOnInit(): void {
@@ -105,7 +165,9 @@ export class UsersComponent implements OnInit {
       this.applyCompanyFilter(value || '');
 
       const normalized = (value || '').trim().toLowerCase();
-      const selectedCompany = this.companies.find((company) => company.name.toLowerCase() === normalized);
+      const selectedCompany = this.companies.find(
+        (company) => company.name.toLowerCase() === normalized,
+      );
 
       if (!selectedCompany) {
         this.form.controls.companyId.setValue(null, { emitEvent: false });
@@ -114,21 +176,28 @@ export class UsersComponent implements OnInit {
   }
 
   protected loadCompanies(): void {
-    this.companyService.list().subscribe({
-      next: ({ companies }) => {
+    this.companyService.listAll().subscribe({
+      next: (companies) => {
         this.companies = Array.isArray(companies) ? companies : [];
         this.applyCompanyFilter(this.form.controls.companySearch.value || '');
       },
       error: () => {
         this.companies = [];
         this.filteredCompanies = [];
-      }
+      },
     });
   }
 
   protected loadUsers(): void {
     this.refresh$.next();
     this.loadCompanies();
+  }
+
+  protected handlePage(event: PageEvent): void {
+    this.pageState$.next({
+      pageIndex: event.pageIndex,
+      pageSize: event.pageSize,
+    });
   }
 
   protected startCreate(): void {
@@ -141,7 +210,7 @@ export class UsersComponent implements OnInit {
       role: 'USER',
       companyId: null,
       companyRole: 'EMPLOYEE',
-      companySearch: ''
+      companySearch: '',
     });
     this.applyCompanyFilter('');
   }
@@ -158,7 +227,7 @@ export class UsersComponent implements OnInit {
       role: user.role,
       companyId: user.companyId ?? null,
       companyRole: (user.companyRole ?? 'EMPLOYEE') as CompanyRole,
-      companySearch: user.companyId ? this.companyLabel(user.companyId) : ''
+      companySearch: user.companyId ? this.companyLabel(user.companyId) : '',
     });
 
     this.applyCompanyFilter(this.form.controls.companySearch.value || '');
@@ -168,13 +237,18 @@ export class UsersComponent implements OnInit {
     this.startCreate();
   }
 
+  protected passwordErrorMessage(): string {
+    return getStrongPasswordErrorMessage(this.form.controls.password);
+  }
+
   protected submit(): void {
     if (this.form.invalid || this.isSaving) {
       this.form.markAllAsTouched();
       return;
     }
 
-    const { fullName, username, email, password, role, companyId, companyRole } = this.form.getRawValue();
+    const { fullName, username, email, password, role, companyId, companyRole } =
+      this.form.getRawValue();
     const normalizedEmail = (email || '').trim().toLowerCase();
 
     if (this.isCreateMode() && !password) {
@@ -205,7 +279,7 @@ export class UsersComponent implements OnInit {
           password: password!,
           role,
           companyId: role === 'USER' ? companyId : null,
-          companyRole: role === 'USER' ? (companyRole as CompanyRole) : null
+          companyRole: role === 'USER' ? (companyRole as CompanyRole) : null,
         })
         .subscribe({
           next: ({ user }) => {
@@ -217,7 +291,7 @@ export class UsersComponent implements OnInit {
           error: (error) => {
             this.isSaving = false;
             this.errorMessage$.next(error?.error?.message || 'Nao foi possivel criar usuario.');
-          }
+          },
         });
 
       return;
@@ -229,7 +303,7 @@ export class UsersComponent implements OnInit {
       email: normalizedEmail || null,
       role,
       companyId: role === 'USER' ? companyId : null,
-      companyRole: role === 'USER' ? (companyRole as CompanyRole) : null
+      companyRole: role === 'USER' ? (companyRole as CompanyRole) : null,
     };
 
     if (password) {
@@ -246,7 +320,7 @@ export class UsersComponent implements OnInit {
       error: (error) => {
         this.isSaving = false;
         this.errorMessage$.next(error?.error?.message || 'Nao foi possivel atualizar usuario.');
-      }
+      },
     });
   }
 
@@ -269,18 +343,21 @@ export class UsersComponent implements OnInit {
       },
       error: (error) => {
         this.errorMessage$.next(error?.error?.message || 'Nao foi possivel remover usuario.');
-      }
+      },
     });
   }
 
   protected resetTwoFactor(user: User): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '460px',
+      maxWidth: '100vw',
+      maxHeight: '100dvh',
+      panelClass: 'app-responsive-dialog',
       data: {
         title: 'Resetar 2FA',
         message: `Resetar 2FA do usuario ${user.username}? Isso desativara 2FA, removera dispositivos confiaveis e backup codes.`,
-        confirmText: 'Resetar 2FA'
-      }
+        confirmText: 'Resetar 2FA',
+      },
     });
 
     dialogRef.afterClosed().subscribe((confirmed) => {
@@ -295,14 +372,18 @@ export class UsersComponent implements OnInit {
         },
         error: () => {
           this.snackBar.open('Falha ao resetar 2FA.', 'Fechar', { duration: 3500 });
-        }
+        },
       });
     });
   }
 
-  protected onCompanySelected(companyId: number): void {
-    this.form.controls.companyId.setValue(companyId);
-    this.form.controls.companySearch.setValue(this.companyLabel(companyId), { emitEvent: false });
+  protected onCompanySelected(company: Company, isUserInput: boolean): void {
+    if (!isUserInput) {
+      return;
+    }
+
+    this.form.controls.companyId.setValue(company.id);
+    this.form.controls.companySearch.setValue(company.name, { emitEvent: false });
   }
 
   protected clearSelectedCompany(): void {
@@ -336,6 +417,42 @@ export class UsersComponent implements OnInit {
     return company ? company.name : `#${companyId}`;
   }
 
+  protected startSlugEdit(user: User): void {
+    this.editingSlugUserId = user.id;
+    this.slugDraft = user.publicSlug || '';
+  }
+
+  protected cancelSlugEdit(): void {
+    this.editingSlugUserId = null;
+    this.slugDraft = '';
+  }
+
+  protected saveUserPublicSlug(user: User): void {
+    if (this.slugSavingUserId) {
+      return;
+    }
+
+    this.slugSavingUserId = user.id;
+    this.errorMessage$.next(null);
+    this.successMessage$.next(null);
+
+    this.landingConfigService
+      .updateUserPublicSlug(user.id, this.slugify(this.slugDraft) || null)
+      .pipe(finalize(() => (this.slugSavingUserId = null)))
+      .subscribe({
+        next: () => {
+          this.cancelSlugEdit();
+          this.successMessage$.next(`Slug publico de ${user.fullName} atualizado com sucesso.`);
+          this.refresh$.next();
+        },
+        error: (error) => {
+          this.errorMessage$.next(
+            error?.error?.message || 'Nao foi possivel atualizar slug publico.',
+          );
+        },
+      });
+  }
+
   private applyCompanyFilter(search: string): void {
     const normalized = search.trim().toLowerCase();
 
@@ -348,4 +465,13 @@ export class UsersComponent implements OnInit {
     });
   }
 
+  private slugify(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-');
+  }
 }

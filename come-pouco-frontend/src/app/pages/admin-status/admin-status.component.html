@@ -1,0 +1,274 @@
+<section class="page-shell">
+  <main class="page-main status-page">
+    <app-page-header
+      eyebrow="Observabilidade"
+      title="Status interno"
+      description="Saude atual dos componentes e historico operacional dos ultimos 7 dias."
+    >
+      <ng-container pageHeaderActions *ngIf="status$ | async as status">
+        <app-status-chip
+          [label]="statusLabel(status.overallStatus)"
+          [variant]="statusVariant(status.overallStatus)"
+        />
+        <button mat-flat-button type="button" class="button-with-icon" (click)="openIncidentForm()">
+          <app-icon name="plus" size="18" />
+          Reportar incidente
+        </button>
+      </ng-container>
+    </app-page-header>
+
+    <mat-progress-bar mode="indeterminate" *ngIf="isLoading$ | async"></mat-progress-bar>
+
+    <p class="status-block status-success" role="status" *ngIf="message$ | async as message">
+      <app-icon name="circle-check" size="18" />
+      {{ message }}
+    </p>
+    <p class="status-block status-error" role="alert" *ngIf="error$ | async as error">
+      <app-icon name="circle-alert" size="18" />
+      {{ error }}
+    </p>
+
+    <section class="incident-form-panel" *ngIf="isFormOpen$ | async">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-eyebrow">Incidente manual</p>
+          <h2>Reportar incidente</h2>
+        </div>
+        <button
+          mat-stroked-button
+          type="button"
+          class="button-with-icon"
+          (click)="closeIncidentForm()"
+        >
+          <app-icon name="x" size="18" />
+          Fechar
+        </button>
+      </div>
+
+      <form [formGroup]="form" class="incident-form" (ngSubmit)="createIncident()">
+        <div class="field-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Titulo</mat-label>
+            <input matInput type="text" formControlName="title" maxlength="160" />
+            <mat-error
+              *ngIf="form.controls.title.touched && form.controls.title.hasError('required')"
+            >
+              Informe o titulo.
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Componentes afetados</mat-label>
+            <mat-select formControlName="affectedComponents" multiple>
+              <mat-option *ngFor="let component of components" [value]="component.key">
+                {{ component.label }}
+              </mat-option>
+            </mat-select>
+            <mat-error
+              *ngIf="
+                form.controls.affectedComponents.touched &&
+                form.controls.affectedComponents.hasError('required')
+              "
+            >
+              Selecione ao menos um componente.
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Severidade</mat-label>
+            <mat-select formControlName="severity">
+              <mat-option *ngFor="let severity of severities" [value]="severity.value">
+                {{ severity.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="status">
+              <mat-option *ngFor="let status of statuses" [value]="status.value">
+                {{ status.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Inicio</mat-label>
+            <input matInput type="datetime-local" formControlName="startedAt" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Resolvido em</mat-label>
+            <input matInput type="datetime-local" formControlName="resolvedAt" />
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="description-field">
+          <mat-label>Descricao</mat-label>
+          <textarea matInput rows="4" formControlName="description" maxlength="2000"></textarea>
+          <mat-error
+            *ngIf="
+              form.controls.description.touched && form.controls.description.hasError('required')
+            "
+          >
+            Informe a descricao.
+          </mat-error>
+        </mat-form-field>
+
+        <div class="form-actions">
+          <button
+            mat-flat-button
+            type="submit"
+            class="button-with-icon"
+            [disabled]="(isSaving$ | async) === true"
+          >
+            <app-icon [name]="(isSaving$ | async) === true ? 'loader-circle' : 'check'" size="18" />
+            {{ (isSaving$ | async) === true ? 'Salvando...' : 'Registrar incidente' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <ng-container *ngIf="status$ | async as status; else statusLoading">
+      <section class="component-grid" aria-label="Componentes monitorados">
+        <article
+          class="component-card"
+          *ngFor="let component of status.components"
+          [class.component-card-down]="component.status === 'down'"
+          [class.component-card-degraded]="component.status === 'degraded'"
+        >
+          <div class="component-icon">
+            <app-icon [name]="componentIcon(component)" size="22" />
+          </div>
+          <div class="component-copy">
+            <span>{{ component.label }}</span>
+            <strong>{{ statusLabel(component.status) }}</strong>
+            <small *ngIf="component.latencyMs !== undefined">{{ component.latencyMs }}ms</small>
+            <small *ngIf="component.latencyMs === undefined">{{
+              component.message || 'Sem latencia'
+            }}</small>
+          </div>
+          <app-status-chip
+            [label]="statusLabel(component.status)"
+            [variant]="statusVariant(component.status)"
+            [showIcon]="false"
+          />
+        </article>
+      </section>
+
+      <section class="timeline-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-eyebrow">Ultimos 7 dias</p>
+            <h2>Timeline de incidentes</h2>
+          </div>
+          <app-status-chip
+            [label]="status.activeIncidents.length + ' ativo(s)'"
+            [variant]="status.activeIncidents.length ? 'warning' : 'success'"
+          />
+        </div>
+
+        <div class="timeline-track" aria-label="Timeline dos ultimos 7 dias">
+          <div
+            class="timeline-day"
+            *ngFor="let item of status.timeline"
+            [ngClass]="timelineClass(item)"
+            [attr.aria-label]="
+              formatTimelineDate(item) + ': ' + item.incidentCount + ' incidente(s)'
+            "
+          >
+            <span class="timeline-marker"></span>
+            <strong>{{ item.incidentCount }}</strong>
+            <small>{{ formatTimelineDate(item) }}</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="incident-list">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-eyebrow">Historico</p>
+            <h2>Incidentes recentes</h2>
+          </div>
+          <button mat-stroked-button type="button" class="button-with-icon" (click)="loadStatus()">
+            <app-icon name="refresh-cw" size="18" />
+            Recarregar
+          </button>
+        </div>
+
+        <div class="incident-items" *ngIf="status.incidents.length; else noIncidents">
+          <article class="incident-item" *ngFor="let incident of status.incidents">
+            <div class="incident-main">
+              <div class="incident-title-row">
+                <h3>{{ incident.title }}</h3>
+                <div class="incident-chips">
+                  <app-status-chip
+                    [label]="incidentStatusLabel(incident.status)"
+                    [variant]="incidentStatusVariant(incident.status)"
+                  />
+                  <app-status-chip
+                    [label]="severityLabel(incident.severity)"
+                    [variant]="severityVariant(incident.severity)"
+                  />
+                </div>
+              </div>
+
+              <p>{{ incident.description }}</p>
+
+              <div class="component-tags">
+                <span *ngFor="let component of incident.affectedComponents">
+                  <app-icon [name]="componentIcon(component)" size="15" />
+                  {{ componentLabel(component) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="incident-meta">
+              <span>Inicio: {{ formatDateTime(incident.startedAt) }}</span>
+              <span>Fim: {{ formatDateTime(incident.resolvedAt) }}</span>
+              <div class="incident-actions" *ngIf="incident.status !== 'resolved'">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="button-with-icon"
+                  *ngIf="incident.status === 'investigating'"
+                  (click)="updateIncidentStatus(incident, 'identified')"
+                >
+                  <app-icon name="info" size="17" />
+                  Identificado
+                </button>
+                <button
+                  mat-flat-button
+                  type="button"
+                  class="button-with-icon"
+                  (click)="updateIncidentStatus(incident, 'resolved')"
+                >
+                  <app-icon name="circle-check" size="17" />
+                  Resolver
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </ng-container>
+
+    <ng-template #statusLoading>
+      <section class="component-grid" *ngIf="isLoading$ | async">
+        <app-skeleton-loader variant="card" label="Carregando Backend" />
+        <app-skeleton-loader variant="card" label="Carregando Database" />
+        <app-skeleton-loader variant="card" label="Carregando Shopee API" />
+        <app-skeleton-loader variant="card" label="Carregando Email" />
+        <app-skeleton-loader variant="card" label="Carregando Cache" />
+      </section>
+    </ng-template>
+
+    <ng-template #noIncidents>
+      <app-empty-state
+        icon="circle-check"
+        title="Sem incidentes nos ultimos 7 dias"
+        description="A timeline continua disponivel para acompanhar novas ocorrencias operacionais."
+      />
+    </ng-template>
+  </main>
+</section>

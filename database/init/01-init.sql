@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS users (
   full_name VARCHAR(120) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  password_changed_at TIMESTAMP NULL,
   role "UserRole" NOT NULL DEFAULT 'USER',
   company_id INTEGER NULL REFERENCES companies(id) ON DELETE SET NULL,
   company_role "CompanyRole" NULL,

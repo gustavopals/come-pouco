@@ -1,0 +1,70 @@
+---
+import {
+  Zap,
+  Users,
+  BarChart3,
+  TestTube,
+  ShieldCheck,
+  Webhook,
+  KeyRound,
+  Lock,
+  FileSearch,
+  HardDriveDownload,
+  Globe,
+  Link as LinkIcon,
+  User as UserIcon,
+  ArrowRight,
+  Check,
+  X,
+  Sparkles,
+  Loader2,
+  ExternalLink,
+  ChevronDown,
+  Menu,
+  Sun,
+  Moon,
+  Monitor
+} from 'lucide-astro';
+
+import type { LucideIconName } from '@lib/features';
+
+export interface Props {
+  name: LucideIconName | string;
+  size?: number;
+  strokeWidth?: number;
+  class?: string;
+}
+
+const { name, size = 22, strokeWidth = 1.75, class: extraClass = '' } = Astro.props;
+
+const map = {
+  Zap,
+  Users,
+  BarChart3,
+  TestTube,
+  ShieldCheck,
+  Webhook,
+  KeyRound,
+  Lock,
+  FileSearch,
+  HardDriveDownload,
+  Globe,
+  Link: LinkIcon,
+  User: UserIcon,
+  ArrowRight,
+  Check,
+  X,
+  Sparkles,
+  Loader2,
+  ExternalLink,
+  ChevronDown,
+  Menu,
+  Sun,
+  Moon,
+  Monitor
+} as Record<string, typeof Zap>;
+
+const Component = map[name] ?? Zap;
+---
+
+<Component size={size} strokeWidth={strokeWidth} class={extraClass} aria-hidden="true" />

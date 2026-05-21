@@ -1,0 +1,47 @@
+---
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import Icon from '@components/ui/Icon.astro';
+import { faq } from '@lib/faq';
+---
+
+<Section id="faq" tone="default" divided ariaLabelledby="faq-title">
+  <Container size="narrow" class="flex flex-col gap-10">
+    <header class="flex flex-col gap-3 text-center">
+      <span
+        class="text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--cp-color-primary)]"
+      >
+        Dúvidas frequentes
+      </span>
+      <h2
+        id="faq-title"
+        class="text-[length:var(--cp-text-h2-size)] font-bold leading-[var(--cp-text-h2-line-height)] tracking-[-0.02em]"
+      >
+        Perguntas frequentes
+      </h2>
+    </header>
+
+    <ul class="flex flex-col gap-3">
+      {
+        faq.map((item) => (
+          <li>
+            <details
+              class="group rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] p-5 transition-shadow open:shadow-[var(--cp-shadow-sm)]"
+              data-event="faq_expand"
+            >
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-[16px] font-semibold text-[var(--cp-color-foreground)] [&::-webkit-details-marker]:hidden">
+                <span>{item.q}</span>
+                <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--cp-color-muted)] text-[var(--cp-color-muted-foreground)] transition-transform group-open:rotate-180 group-open:bg-[var(--cp-color-primary-soft)] group-open:text-[var(--cp-color-primary)]">
+                  <Icon name="ChevronDown" size={16} strokeWidth={2.25} />
+                </span>
+              </summary>
+              <div class="mt-3 text-[14px] leading-relaxed text-[var(--cp-color-muted-foreground)]">
+                {item.a}
+              </div>
+            </details>
+          </li>
+        ))
+      }
+    </ul>
+  </Container>
+</Section>

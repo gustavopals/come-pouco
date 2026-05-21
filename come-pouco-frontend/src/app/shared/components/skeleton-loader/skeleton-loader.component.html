@@ -1,0 +1,43 @@
+<div
+  class="skeleton-loader"
+  [class.skeleton-text]="variant() === 'text'"
+  [class.skeleton-card]="variant() === 'card'"
+  [class.skeleton-table]="variant() === 'table-row'"
+  [class.skeleton-avatar-wrapper]="variant() === 'avatar'"
+  role="status"
+  [attr.aria-label]="label()"
+>
+  @switch (variant()) {
+    @case ('avatar') {
+      <span class="skeleton-block skeleton-avatar"></span>
+    }
+
+    @case ('card') {
+      <span class="skeleton-block skeleton-card-title"></span>
+      <span class="skeleton-block skeleton-card-line"></span>
+      <span class="skeleton-block skeleton-card-line skeleton-card-line-short"></span>
+    }
+
+    @case ('table-row') {
+      @for (_ of rows(); track $index) {
+        <span class="skeleton-table-row">
+          <span class="skeleton-block"></span>
+          <span class="skeleton-block"></span>
+          <span class="skeleton-block"></span>
+          <span class="skeleton-block"></span>
+        </span>
+      }
+    }
+
+    @default {
+      @for (_ of rows(); track $index) {
+        <span
+          class="skeleton-block skeleton-text-line"
+          [class.skeleton-text-line-short]="$last"
+        ></span>
+      }
+    }
+  }
+
+  <span class="skeleton-sr">{{ label() }}</span>
+</div>

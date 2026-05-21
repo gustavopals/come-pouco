@@ -1,0 +1,107 @@
+:host {
+  --public-primary: #10b981;
+  --public-bg: #f7faf8;
+  --public-ink: #10201a;
+  --public-muted: #5d6b64;
+  --public-surface: #ffffff;
+  --public-border: rgba(16, 32, 26, 0.12);
+  display: block;
+  min-height: 100svh;
+  color: var(--public-ink);
+  background: var(--public-bg);
+  font-family: 'Manrope Variable', 'Manrope', 'Segoe UI', sans-serif;
+}
+
+:host([data-public-theme='dark']) {
+  --public-bg: #07130f;
+  --public-ink: #eef9f3;
+  --public-muted: #abc0b6;
+  --public-surface: #0d1d17;
+  --public-border: rgba(238, 249, 243, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.public-shell {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.public-header {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  padding: 0 clamp(1rem, 4vw, 3.5rem);
+  border-bottom: 1px solid var(--public-border);
+  background: color-mix(in srgb, var(--public-bg) 86%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.brand-mark,
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  background: var(--public-primary);
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.brand-logo {
+  object-fit: contain;
+  background: var(--public-surface);
+  border: 1px solid var(--public-border);
+}
+
+.brand-name {
+  font-weight: 800;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-main {
+  flex: 1;
+}
+
+.public-footer {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem clamp(1rem, 4vw, 3.5rem);
+  border-top: 1px solid var(--public-border);
+  color: var(--public-muted);
+  font-size: 0.92rem;
+}
+
+@media (max-width: 720px) {
+  .public-header {
+    min-height: 64px;
+  }
+
+  .public-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

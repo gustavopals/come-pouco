@@ -1,0 +1,201 @@
+<section class="page-shell">
+  <main class="page-main conversions-page">
+    <app-page-header
+      eyebrow="Landing publica"
+      title="Conversoes"
+      description="Acompanhe volume, sucesso, fallback e atribuicao das conversoes publicas."
+    >
+      <div pageHeaderActions class="range-control" aria-label="Periodo">
+        <button
+          type="button"
+          *ngFor="let option of rangeOptions"
+          [class.active]="selectedRange() === option.value"
+          (click)="setRange(option.value)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+    </app-page-header>
+
+    <p class="status-message status-message-error" role="alert" *ngIf="errorMessage() as message">
+      <app-icon name="circle-alert" size="18" />
+      {{ message }}
+    </p>
+
+    <section class="filter-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Colaborador</mat-label>
+        <mat-select [value]="selectedEmployeeId()" (selectionChange)="setEmployee($event)">
+          <mat-option [value]="null">Todos</mat-option>
+          <mat-option
+            *ngFor="let employee of employeeOptions(); trackBy: trackEmployee"
+            [value]="employee.employeeId"
+          >
+            {{ employee.employeeName }} ({{ employee.employeeSlug }})
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <div class="bucket-control" aria-label="Agrupamento">
+        <button
+          type="button"
+          [class.active]="selectedBucket() === 'day'"
+          (click)="setBucket('day')"
+        >
+          Dia
+        </button>
+        <button
+          type="button"
+          [class.active]="selectedBucket() === 'hour'"
+          (click)="setBucket('hour')"
+        >
+          Hora
+        </button>
+      </div>
+
+      <button
+        mat-stroked-button
+        type="button"
+        *ngIf="selectedEmployeeId()"
+        (click)="clearEmployeeFilter()"
+      >
+        Limpar filtro
+      </button>
+    </section>
+
+    <ng-container *ngIf="!isLoading(); else loadingState">
+      <ng-container *ngIf="summary() as data; else emptyState">
+        <section class="kpi-grid">
+          <article class="kpi-card kpi-card-primary">
+            <span>Total</span>
+            <strong>{{ data.total }}</strong>
+            <small>Conversoes no periodo</small>
+          </article>
+
+          <article class="kpi-card">
+            <span>Sucesso</span>
+            <strong>{{ formatPercent(data.successRate) }}</strong>
+            <small>{{ data.successCount }} links convertidos</small>
+          </article>
+
+          <article class="kpi-card">
+            <span>Fallback</span>
+            <strong>{{ formatPercent(data.fallbackRate) }}</strong>
+            <small>{{ data.fallbackCount }} usos de fallback</small>
+          </article>
+
+          <article class="kpi-card">
+            <span>Media diaria</span>
+            <strong>{{ data.averageDaily }}</strong>
+            <small>Conversoes por dia</small>
+          </article>
+        </section>
+
+        <section class="chart-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-eyebrow">Linha do tempo</p>
+              <h2>Conversoes por {{ selectedBucket() === 'day' ? 'dia' : 'hora' }}</h2>
+            </div>
+            <app-status-chip
+              [label]="formatPercent(data.successRate) + ' sucesso'"
+              [variant]="summaryVariant(data)"
+            />
+          </div>
+
+          <div class="chart-frame" *ngIf="timeline()?.items?.length; else emptyTimeline">
+            <canvas baseChart type="line" [data]="chartData()" [options]="chartOptions"></canvas>
+          </div>
+        </section>
+
+        <section class="tables-grid">
+          <article class="table-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="panel-eyebrow">Produtos</p>
+                <h2>Top produtos</h2>
+              </div>
+            </div>
+
+            <div class="data-table" *ngIf="topProducts().length; else emptyProducts">
+              <div class="table-row table-head">
+                <span>Produto</span>
+                <span>Item</span>
+                <span>Total</span>
+              </div>
+              <div class="table-row" *ngFor="let product of topProducts(); trackBy: trackProduct">
+                <strong>{{ productLabel(product) }}</strong>
+                <span>{{ product.itemId }}</span>
+                <span>{{ product.total }}</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="table-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="panel-eyebrow">Atribuicao</p>
+                <h2>Top colaboradores</h2>
+              </div>
+            </div>
+
+            <div class="data-table employee-table" *ngIf="employees().length; else emptyEmployees">
+              <div class="table-row table-head">
+                <span>Colaborador</span>
+                <span>Total</span>
+                <span>Sucesso</span>
+              </div>
+              <div class="table-row" *ngFor="let employee of employees(); trackBy: trackEmployee">
+                <strong>{{ employee.employeeName }}</strong>
+                <span>{{ employee.total }}</span>
+                <span>{{ formatPercent(employee.successRate) }}</span>
+              </div>
+            </div>
+          </article>
+        </section>
+      </ng-container>
+    </ng-container>
+
+    <ng-template #loadingState>
+      <section class="kpi-grid">
+        <app-skeleton-loader variant="card" label="Carregando total" />
+        <app-skeleton-loader variant="card" label="Carregando sucesso" />
+        <app-skeleton-loader variant="card" label="Carregando fallback" />
+        <app-skeleton-loader variant="card" label="Carregando media" />
+      </section>
+      <app-skeleton-loader variant="card" label="Carregando grafico" />
+    </ng-template>
+
+    <ng-template #emptyState>
+      <app-empty-state
+        icon="inbox"
+        title="Sem dados de conversao"
+        description="Ative a landing publica e aguarde as primeiras conversoes para visualizar o dashboard."
+      />
+    </ng-template>
+
+    <ng-template #emptyTimeline>
+      <app-empty-state
+        icon="activity"
+        title="Linha do tempo vazia"
+        description="Ainda nao ha conversoes no periodo selecionado."
+      />
+    </ng-template>
+
+    <ng-template #emptyProducts>
+      <app-empty-state
+        icon="search"
+        title="Produtos indisponiveis"
+        description="As conversoes do periodo ainda nao possuem itemId de produto."
+      />
+    </ng-template>
+
+    <ng-template #emptyEmployees>
+      <app-empty-state
+        icon="users"
+        title="Sem atribuicao"
+        description="Nenhuma conversao atribuida ao filtro atual."
+      />
+    </ng-template>
+  </main>
+</section>

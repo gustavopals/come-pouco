@@ -1,0 +1,42 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.breadcrumbs {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--cp-space-2);
+  color: var(--cp-color-muted-foreground);
+  font-size: var(--cp-text-body-sm-size);
+  line-height: var(--cp-text-body-sm-line-height);
+}
+
+.breadcrumbs a,
+.breadcrumbs span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breadcrumbs a {
+  color: var(--cp-color-muted-foreground);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  color: var(--cp-color-primary);
+}
+
+.breadcrumbs span {
+  color: var(--cp-color-foreground);
+  font-weight: 750;
+}
+
+app-icon {
+  flex: 0 0 auto;
+  color: var(--cp-color-muted-foreground);
+}

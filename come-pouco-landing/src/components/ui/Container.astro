@@ -1,0 +1,30 @@
+---
+export interface Props {
+  /** Largura máxima. `page` (1200px) é padrão. `narrow` para hero/forms, `prose` para texto. */
+  size?: 'page' | 'narrow' | 'prose' | 'full';
+  as?: keyof HTMLElementTagNameMap;
+  class?: string;
+}
+
+const { size = 'page', as: Tag = 'div', class: extraClass = '' } = Astro.props;
+
+const sizeMap: Record<NonNullable<Props['size']>, string> = {
+  page: 'max-w-[var(--cp-layout-content-max)]',
+  narrow: 'max-w-[var(--cp-layout-content-narrow)]',
+  prose: 'max-w-[var(--cp-layout-content-prose)]',
+  full: 'max-w-none'
+};
+---
+
+<Tag
+  class:list={[
+    'mx-auto w-full',
+    'px-[var(--cp-layout-page-gutter-sm)]',
+    'md:px-[var(--cp-layout-page-gutter-md)]',
+    'lg:px-[var(--cp-layout-page-gutter-lg)]',
+    sizeMap[size],
+    extraClass
+  ]}
+>
+  <slot />
+</Tag>

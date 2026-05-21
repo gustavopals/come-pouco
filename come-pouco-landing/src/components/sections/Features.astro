@@ -1,0 +1,62 @@
+---
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import Card from '@components/ui/Card.astro';
+import IconBox from '@components/ui/IconBox.astro';
+import Icon from '@components/ui/Icon.astro';
+import Badge from '@components/ui/Badge.astro';
+import { coreFeatures } from '@lib/features';
+---
+
+<Section id="features" tone="default" ariaLabelledby="features-title">
+  <Container size="page" class="flex flex-col gap-12">
+    <header class="max-w-[var(--cp-mkt-prose-max)] flex flex-col gap-4">
+      <span
+        class="text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--cp-color-primary)]"
+      >
+        Recursos
+      </span>
+      <h2
+        id="features-title"
+        class="text-[length:var(--cp-text-h2-size)] font-bold leading-[var(--cp-text-h2-line-height)] tracking-[-0.02em] text-[var(--cp-color-foreground)]"
+      >
+        Tudo que você precisa pra escalar afiliados Shopee.
+      </h2>
+      <p
+        class="text-[length:var(--cp-text-body-lg-size)] leading-[var(--cp-text-body-lg-line-height)] text-[var(--cp-color-muted-foreground)]"
+      >
+        Geração de links, gestão de time, métricas, segurança e integrações. Tudo num lugar só,
+        pensado pra crescer com você.
+      </p>
+    </header>
+
+    <ul data-cp-reveal class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
+      {
+        coreFeatures.map((feature) => (
+          <li>
+            <Card tone="default" interactive class="h-full flex flex-col gap-4">
+              <div class="flex items-start justify-between gap-3">
+                <IconBox variant={feature.variant ?? 'primary'} size="md">
+                  <Icon name={feature.icon} />
+                </IconBox>
+                {feature.upcoming && (
+                  <Badge variant="soft" size="sm">
+                    Em breve
+                  </Badge>
+                )}
+              </div>
+              <div class="flex flex-col gap-2">
+                <h3 class="text-[18px] font-semibold leading-tight tracking-tight text-[var(--cp-color-foreground)]">
+                  {feature.title}
+                </h3>
+                <p class="text-[14px] leading-relaxed text-[var(--cp-color-muted-foreground)]">
+                  {feature.description}
+                </p>
+              </div>
+            </Card>
+          </li>
+        ))
+      }
+    </ul>
+  </Container>
+</Section>

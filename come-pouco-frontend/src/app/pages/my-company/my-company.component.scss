@@ -2,14 +2,44 @@
   display: block;
 }
 
+.my-company-page {
+  display: grid;
+  gap: var(--panel-grid-gap);
+}
+
+.company-tabs {
+  min-width: 0;
+}
+
+.tab-panel {
+  padding-top: var(--cp-space-4);
+}
+
 .my-company-layout {
   display: grid;
   gap: var(--panel-grid-gap);
   grid-template-columns: minmax(var(--panel-form-col-min), var(--panel-form-col-max)) 1fr;
 }
 
+.grid-header {
+  grid-column: 1 / -1;
+}
+
+.button-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cp-space-2);
+}
+
+.table-loading {
+  display: grid;
+  gap: var(--cp-space-2);
+  margin-top: var(--cp-space-3);
+}
+
 .form-card,
-.table-card {
+.table-card,
+.landing-card {
   border-radius: var(--panel-card-radius);
 }
 
@@ -64,7 +94,7 @@ mat-card-header {
 
 .data-table {
   width: 100%;
-  min-width: 860px;
+  min-width: 1040px;
   table-layout: auto;
 }
 
@@ -120,6 +150,11 @@ mat-card-header {
   min-width: 190px;
 }
 
+.data-table .mat-mdc-header-cell.mat-column-publicSlug,
+.data-table .mat-mdc-cell.mat-column-publicSlug {
+  min-width: 260px;
+}
+
 .data-table .mat-mdc-header-cell.mat-column-createdAt,
 .data-table .mat-mdc-cell.mat-column-createdAt {
   min-width: 170px;
@@ -137,6 +172,140 @@ mat-card-header {
   display: none;
 }
 
+.slug-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.slug-input {
+  min-height: 38px;
+  width: 132px;
+  border: 1px solid rgba(21, 66, 102, 0.22);
+  border-radius: 8px;
+  padding: 0 0.65rem;
+  color: #123f61;
+  font: inherit;
+}
+
+.slug-display {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landing-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  gap: var(--panel-grid-gap);
+  align-items: start;
+}
+
+.landing-card {
+  min-width: 0;
+  background: linear-gradient(165deg, #f7fffb 0%, #ffffff 34%);
+}
+
+.landing-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--panel-form-gap);
+}
+
+.full-field {
+  grid-column: 1 / -1;
+}
+
+.color-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: start;
+  gap: 0.65rem;
+}
+
+.color-swatch {
+  width: 48px;
+  height: 56px;
+  padding: 4px;
+  border: 1px solid rgba(21, 66, 102, 0.18);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.steps-editor {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.steps-header,
+.step-row,
+.preview-header,
+.mobile-slug-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.steps-header {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.steps-header h3,
+.preview-header h2 {
+  margin: 0;
+  color: #123f61;
+  font-size: 1rem;
+}
+
+.steps-header p,
+.preview-header p {
+  margin: 0.15rem 0 0;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.step-row mat-form-field {
+  flex: 1 1 auto;
+}
+
+.preview-panel {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.preview-header {
+  justify-content: space-between;
+}
+
+.preview-panel iframe {
+  width: 100%;
+  min-height: 620px;
+  border: 1px solid rgba(21, 66, 102, 0.16);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.mobile-slug-row {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  color: #334155;
+}
+
+.mobile-slug-editor {
+  align-items: stretch;
+}
+
 @media (max-width: 1200px) {
   .my-company-layout {
     grid-template-columns: 1fr;
@@ -145,7 +314,7 @@ mat-card-header {
 
 @media (max-width: 1024px) {
   .data-table {
-    min-width: 760px;
+    min-width: 920px;
   }
 
   .data-table .mat-mdc-cell,
@@ -168,6 +337,16 @@ mat-card-header {
   .data-table .mat-mdc-header-cell.mat-column-companyRole,
   .data-table .mat-mdc-cell.mat-column-companyRole {
     min-width: 170px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .landing-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-panel {
+    position: static;
   }
 }
 
@@ -205,6 +384,22 @@ mat-card-header {
     display: grid;
     gap: 0.75rem;
     margin-top: 0.9rem;
+  }
+
+  .landing-grid,
+  .color-field {
+    grid-template-columns: 1fr;
+  }
+
+  .steps-header,
+  .step-row,
+  .preview-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .preview-panel iframe {
+    min-height: 520px;
   }
 
   .employee-card {

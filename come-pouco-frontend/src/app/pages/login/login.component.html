@@ -1,73 +1,170 @@
-<section class="page-shell auth-shell">
-  <mat-card class="auth-card" appearance="raised" *ngIf="vm$ | async as vm">
-    <mat-card-header>
-      <mat-card-title>Painel</mat-card-title>
-      <mat-card-subtitle *ngIf="!vm.tempToken">Acesse com seu usuario para entrar na area administrativa.</mat-card-subtitle>
-      <mat-card-subtitle *ngIf="vm.tempToken">Verificacao em duas etapas</mat-card-subtitle>
-    </mat-card-header>
+<app-auth-shell
+  *ngIf="vm$ | async as vm"
+  [eyebrow]="vm.tempToken ? 'Verificacao em duas etapas' : 'Acesso administrativo'"
+  [title]="vm.tempToken ? 'Confirme sua identidade' : 'Entre no painel'"
+  [description]="
+    vm.tempToken
+      ? 'Digite o codigo do app autenticador ou use um codigo de backup para concluir o login.'
+      : 'Acesse sua area de trabalho para administrar links, empresas e configuracoes.'
+  "
+  [featureTitle]="vm.tempToken ? 'Protecao em camadas' : 'Gestao segura de afiliados'"
+  [featureDescription]="
+    vm.tempToken
+      ? 'O desafio 2FA reduz risco de acesso indevido mesmo quando a senha e conhecida.'
+      : 'Tokens, tema e componentes compartilhados mantem o painel consistente.'
+  "
+  [featureIcon]="vm.tempToken ? 'lock-keyhole' : 'shield-check'"
+>
+  <form *ngIf="!vm.tempToken" [formGroup]="loginForm" (ngSubmit)="submit(vm)" class="auth-form">
+    <mat-form-field appearance="outline">
+      <mat-label>Usuario ou e-mail</mat-label>
+      <input matInput type="text" formControlName="identifier" autocomplete="username" />
+      <mat-error
+        *ngIf="loginForm.controls.identifier.touched && loginForm.controls.identifier.invalid"
+      >
+        Informe o usuario ou e-mail.
+      </mat-error>
+    </mat-form-field>
 
-    <mat-card-content>
-      <form *ngIf="!vm.tempToken" [formGroup]="loginForm" (ngSubmit)="submit(vm)" class="auth-form">
-        <mat-form-field appearance="outline">
-          <mat-label>Usuario ou e-mail</mat-label>
-          <input matInput type="text" formControlName="identifier" />
-          <mat-error *ngIf="loginForm.controls.identifier.touched && loginForm.controls.identifier.invalid">
-            Informe o usuario ou e-mail.
-          </mat-error>
-        </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Senha</mat-label>
+      <input
+        matInput
+        [type]="hidePassword() ? 'password' : 'text'"
+        formControlName="password"
+        autocomplete="current-password"
+        placeholder="Sua senha"
+      />
+      <button
+        mat-icon-button
+        matSuffix
+        type="button"
+        class="password-toggle"
+        [attr.aria-label]="hidePassword() ? 'Mostrar senha' : 'Ocultar senha'"
+        (click)="togglePasswordVisibility()"
+      >
+        <app-icon [name]="hidePassword() ? 'eye' : 'eye-off'" [size]="18"></app-icon>
+      </button>
+      <mat-error *ngIf="loginForm.controls.password.touched && loginForm.controls.password.invalid">
+        A senha e obrigatoria.
+      </mat-error>
+    </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Senha</mat-label>
-          <input matInput type="password" formControlName="password" placeholder="******" />
-          <mat-error *ngIf="loginForm.controls.password.touched && loginForm.controls.password.invalid">
-            A senha e obrigatoria.
-          </mat-error>
-        </mat-form-field>
+    <div class="auth-form-meta">
+      <a routerLink="/forgot-password">Esqueci minha senha</a>
+    </div>
 
-        <button mat-flat-button color="primary" type="submit" [disabled]="vm.isSubmitting">
-          {{ vm.isSubmitting ? 'Entrando...' : 'Entrar' }}
-        </button>
+    <p class="auth-alert auth-alert-error" role="alert" *ngIf="vm.errorMessage">
+      <app-icon name="circle-alert" [size]="18"></app-icon>
+      <span>{{ vm.errorMessage }}</span>
+    </p>
 
-        <a mat-stroked-button routerLink="/forgot-password">Esqueci minha senha</a>
-      </form>
+    <button
+      mat-flat-button
+      color="primary"
+      type="submit"
+      class="auth-submit"
+      [disabled]="vm.isSubmitting"
+    >
+      <app-icon *ngIf="vm.isSubmitting" name="loader-circle" [size]="18"></app-icon>
+      <span>{{ vm.isSubmitting ? 'Entrando...' : 'Entrar' }}</span>
+    </button>
+  </form>
 
-      <div class="login-help" *ngIf="!vm.tempToken">
-        <span class="login-help-text">Nao tem conta? Gostaria de testar seu gerenciador de links afiliados?</span>
-        <a
-          mat-stroked-button
-          color="primary"
-          class="login-whatsapp-btn"
-          href="https://wa.me/5542988086146?text=Ol%C3%A1%2C%20gostaria%20de%20testar%20o%20gerenciador%20de%20links%20afiliados"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <mat-icon>chat</mat-icon>
-          WhatsApp
-        </a>
-      </div>
+  <section class="login-help" *ngIf="!vm.tempToken">
+    <div>
+      <strong>Nao tem conta?</strong>
+      <span>Solicite acesso para testar o gerenciador de links afiliados.</span>
+    </div>
+    <a
+      mat-stroked-button
+      color="primary"
+      class="login-whatsapp-btn"
+      href="https://wa.me/5542988086146?text=Ol%C3%A1%2C%20gostaria%20de%20testar%20o%20gerenciador%20de%20links%20afiliados"
+      target="_blank"
+      rel="noreferrer"
+    >
+      <app-icon name="message-circle" [size]="17"></app-icon>
+      WhatsApp
+    </a>
+  </section>
 
-      <form *ngIf="vm.tempToken" [formGroup]="twoFactorForm" (ngSubmit)="submit(vm)" class="auth-form">
-        <mat-form-field appearance="outline">
-          <mat-label>Codigo TOTP ou backup</mat-label>
-          <input matInput type="text" formControlName="code" placeholder="000000 ou 1234-5678" />
-          <mat-error *ngIf="twoFactorForm.controls.code.touched && twoFactorForm.controls.code.invalid">
-            Informe o codigo de verificacao.
-          </mat-error>
-        </mat-form-field>
+  <form
+    *ngIf="vm.tempToken"
+    [formGroup]="twoFactorForm"
+    (ngSubmit)="submit(vm)"
+    class="auth-form two-factor-form"
+  >
+    <div class="challenge-switch" role="group" aria-label="Tipo de codigo">
+      <button
+        type="button"
+        [class.challenge-switch-active]="!useBackupCode()"
+        (click)="setChallengeMode(false)"
+      >
+        App autenticador
+      </button>
+      <button
+        type="button"
+        [class.challenge-switch-active]="useBackupCode()"
+        (click)="setChallengeMode(true)"
+      >
+        Codigo de backup
+      </button>
+    </div>
 
-        <mat-checkbox formControlName="trustDevice">Confiar neste navegador (30 dias)</mat-checkbox>
+    <div class="otp-wrap" *ngIf="!useBackupCode()">
+      <p class="otp-label">Codigo de seis digitos</p>
+      <app-otp-input formControlName="code" label="Codigo do app autenticador"></app-otp-input>
+      <p class="field-hint">Cole ou digite o codigo exibido no seu app autenticador.</p>
+    </div>
 
-        <button mat-flat-button color="primary" type="submit" [disabled]="vm.isSubmitting">
-          {{ vm.isSubmitting ? 'Verificando...' : 'Confirmar' }}
-        </button>
+    <mat-form-field appearance="outline" *ngIf="useBackupCode()">
+      <mat-label>Codigo de backup</mat-label>
+      <input
+        matInput
+        type="text"
+        formControlName="code"
+        autocomplete="one-time-code"
+        placeholder="1234-5678"
+      />
+      <mat-error *ngIf="twoFactorForm.controls.code.touched && twoFactorForm.controls.code.invalid">
+        Informe o codigo de backup.
+      </mat-error>
+    </mat-form-field>
 
-        <button mat-stroked-button type="button" (click)="backToLogin()" [disabled]="vm.isSubmitting">
-          Voltar
-        </button>
-      </form>
+    <p
+      class="field-error"
+      *ngIf="
+        twoFactorForm.controls.code.touched &&
+        twoFactorForm.controls.code.invalid &&
+        !useBackupCode()
+      "
+    >
+      Informe o codigo de verificacao.
+    </p>
 
-      <p class="status-block status-error" *ngIf="vm.errorMessage">{{ vm.errorMessage }}</p>
-    </mat-card-content>
+    <mat-checkbox formControlName="trustDevice">Confiar neste navegador por 30 dias</mat-checkbox>
 
-  </mat-card>
-</section>
+    <p class="auth-alert auth-alert-error" role="alert" *ngIf="vm.errorMessage">
+      <app-icon name="circle-alert" [size]="18"></app-icon>
+      <span>{{ vm.errorMessage }}</span>
+    </p>
+
+    <div class="auth-actions-row">
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        class="auth-submit"
+        [disabled]="vm.isSubmitting"
+      >
+        <app-icon *ngIf="vm.isSubmitting" name="loader-circle" [size]="18"></app-icon>
+        <span>{{ vm.isSubmitting ? 'Verificando...' : 'Confirmar' }}</span>
+      </button>
+
+      <button mat-stroked-button type="button" (click)="backToLogin()" [disabled]="vm.isSubmitting">
+        Voltar
+      </button>
+    </div>
+  </form>
+</app-auth-shell>

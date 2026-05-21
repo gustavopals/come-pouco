@@ -1,0 +1,13 @@
+<span
+  class="status-chip"
+  [class.status-chip-success]="variant() === 'success'"
+  [class.status-chip-warning]="variant() === 'warning'"
+  [class.status-chip-danger]="variant() === 'danger'"
+  [class.status-chip-info]="variant() === 'info'"
+  [class.status-chip-neutral]="variant() === 'neutral'"
+>
+  @if (showIcon()) {
+    <app-icon [name]="resolvedIcon()" [size]="14" [strokeWidth]="2.1"></app-icon>
+  }
+  <span>{{ label() }}</span>
+</span>

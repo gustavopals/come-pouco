@@ -1,0 +1,49 @@
+---
+export interface Props {
+  id?: string;
+  /** Espaçamento vertical: `default` (clamp 72-128px), `sm` (48px), `hero` (96-192px) */
+  spacing?: 'default' | 'sm' | 'hero' | 'none';
+  /** Cor de fundo da seção */
+  tone?: 'default' | 'muted' | 'gradient';
+  /** Adiciona linha sutil no topo */
+  divided?: boolean;
+  class?: string;
+  ariaLabelledby?: string;
+}
+
+const {
+  id,
+  spacing = 'default',
+  tone = 'default',
+  divided = false,
+  class: extraClass = '',
+  ariaLabelledby
+} = Astro.props;
+
+const spacingMap: Record<NonNullable<Props['spacing']>, string> = {
+  default: 'py-[var(--cp-mkt-section-pad-y)]',
+  sm: 'py-12 md:py-16',
+  hero: 'pt-[var(--cp-mkt-hero-pad-y)] pb-24 md:pb-32',
+  none: 'py-0'
+};
+
+const toneMap: Record<NonNullable<Props['tone']>, string> = {
+  default: 'bg-[var(--cp-color-background)]',
+  muted: 'bg-[var(--cp-color-muted)]',
+  gradient: 'bg-gradient-to-b from-[var(--cp-color-background)] to-[var(--cp-color-muted)]'
+};
+---
+
+<section
+  id={id}
+  aria-labelledby={ariaLabelledby}
+  class:list={[
+    'relative isolate overflow-hidden',
+    spacingMap[spacing],
+    toneMap[tone],
+    divided && 'cp-hairline',
+    extraClass
+  ]}
+>
+  <slot />
+</section>

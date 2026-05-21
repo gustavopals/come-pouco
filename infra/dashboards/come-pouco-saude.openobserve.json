@@ -1,0 +1,572 @@
+{
+  "version": 5,
+  "dashboardId": "come-pouco-saude",
+  "title": "Come Pouco - Saude",
+  "description": "Dashboard unico de saude operacional do Come Pouco.",
+  "role": "",
+  "owner": "",
+  "created": "2026-05-21T00:00:00.000Z",
+  "tabs": [
+    {
+      "tabId": "overview",
+      "name": "Saude",
+      "panels": [
+        {
+          "id": "requests_per_min",
+          "type": "line",
+          "title": "Requests/min",
+          "description": "Volume de requisicoes HTTP por minuto.",
+          "config": {
+            "show_legends": true,
+            "decimals": 2,
+            "line_thickness": 1.5,
+            "axis_border_show": false,
+            "show_symbol": false,
+            "line_interpolation": "smooth",
+            "connect_nulls": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum(rate(http_requests_total[1m])) * 60",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_requests_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "requests/min",
+                "limit": 0,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 24, "h": 8, "i": 1 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "error_rate",
+          "type": "line",
+          "title": "Error rate %",
+          "description": "Percentual de respostas HTTP 5xx em 5 minutos.",
+          "config": {
+            "show_legends": true,
+            "decimals": 2,
+            "line_thickness": 1.5,
+            "axis_border_show": false,
+            "show_symbol": false,
+            "line_interpolation": "smooth",
+            "connect_nulls": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "100 * sum(rate(http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 0.001)",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_requests_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "5xx %",
+                "limit": 0,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 24, "y": 0, "w": 24, "h": 8, "i": 2 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "latency_percentiles",
+          "type": "line",
+          "title": "Latency p50/p95/p99",
+          "description": "Latencia HTTP por percentil.",
+          "config": {
+            "show_legends": true,
+            "decimals": 3,
+            "line_thickness": 1.5,
+            "axis_border_show": false,
+            "show_symbol": false,
+            "line_interpolation": "smooth",
+            "connect_nulls": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_request_duration_seconds",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": { "promql_legend": "p50", "limit": 0, "time_shift": [] }
+            },
+            {
+              "query": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_request_duration_seconds",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": { "promql_legend": "p95", "limit": 0, "time_shift": [] }
+            },
+            {
+              "query": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_request_duration_seconds",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": { "promql_legend": "p99", "limit": 0, "time_shift": [] }
+            }
+          ],
+          "layout": { "x": 0, "y": 8, "w": 32, "h": 8, "i": 3 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "shopee_success_rate",
+          "type": "line",
+          "title": "Shopee success rate %",
+          "description": "Taxa de sucesso das chamadas Shopee em 10 minutos.",
+          "config": {
+            "show_legends": true,
+            "decimals": 2,
+            "line_thickness": 1.5,
+            "axis_border_show": false,
+            "show_symbol": false,
+            "line_interpolation": "smooth",
+            "connect_nulls": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "100 * sum(rate(shopee_api_calls_total{success=\"true\"}[10m])) / clamp_min(sum(rate(shopee_api_calls_total[10m])), 0.001)",
+              "customQuery": true,
+              "fields": {
+                "stream": "shopee_api_calls_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "success %",
+                "limit": 0,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 32, "y": 8, "w": 16, "h": 8, "i": 4 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "conversions_per_hour",
+          "type": "line",
+          "title": "Conversoes/h por status",
+          "description": "Conversoes publicas por hora, quebradas por status.",
+          "config": {
+            "show_legends": true,
+            "decimals": 2,
+            "line_thickness": 1.5,
+            "axis_border_show": false,
+            "show_symbol": false,
+            "line_interpolation": "smooth",
+            "connect_nulls": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (status) (increase(conversions_total[1h]))",
+              "customQuery": true,
+              "fields": {
+                "stream": "conversions_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{{status}}",
+                "limit": 0,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 16, "w": 24, "h": 8, "i": 5 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "auth_attempts",
+          "type": "line",
+          "title": "Auth attempts/min",
+          "description": "Tentativas de autenticacao por resultado.",
+          "config": {
+            "show_legends": true,
+            "decimals": 2,
+            "line_thickness": 1.5,
+            "axis_border_show": false,
+            "show_symbol": false,
+            "line_interpolation": "smooth",
+            "connect_nulls": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (result) (rate(auth_attempts_total[1m]) * 60)",
+              "customQuery": true,
+              "fields": {
+                "stream": "auth_attempts_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{{result}}",
+                "limit": 0,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 24, "y": 16, "w": 24, "h": 8, "i": 6 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "top_errors",
+          "type": "table",
+          "title": "Top 10 errors",
+          "description": "Rotas com maior volume de respostas HTTP 5xx na ultima hora.",
+          "config": {
+            "show_legends": false,
+            "decimals": 2,
+            "wrap_table_cells": true,
+            "table_transpose": false,
+            "table_dynamic_columns": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "topk(10, sum by (route, status) (increase(http_requests_total{status=~\"5..\"}[1h])))",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_requests_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{{route}} {{status}}",
+                "limit": 10,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 24, "w": 24, "h": 9, "i": 7 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "event_loop_lag",
+          "type": "line",
+          "title": "Event loop lag",
+          "description": "Lag do event loop Node.js.",
+          "config": {
+            "show_legends": true,
+            "decimals": 4,
+            "line_thickness": 1.5,
+            "axis_border_show": false,
+            "show_symbol": false,
+            "line_interpolation": "smooth",
+            "connect_nulls": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "nodejs_eventloop_lag_seconds",
+              "customQuery": true,
+              "fields": {
+                "stream": "nodejs_eventloop_lag_seconds",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "lag seconds",
+                "limit": 0,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 24, "y": 24, "w": 24, "h": 9, "i": 8 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "db_latency",
+          "type": "line",
+          "title": "DB health latency",
+          "description": "Ultima latencia medida pelo readiness check.",
+          "config": {
+            "show_legends": true,
+            "decimals": 3,
+            "line_thickness": 1.5,
+            "axis_border_show": false,
+            "show_symbol": false,
+            "line_interpolation": "smooth",
+            "connect_nulls": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "db_health_latency_seconds",
+              "customQuery": true,
+              "fields": {
+                "stream": "db_health_latency_seconds",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "db latency seconds",
+                "limit": 0,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 33, "w": 16, "h": 8, "i": 9 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "cache_hit_ratio",
+          "type": "line",
+          "title": "Cache hit ratio %",
+          "description": "Taxa de acerto do cache publico.",
+          "config": {
+            "show_legends": true,
+            "decimals": 2,
+            "line_thickness": 1.5,
+            "axis_border_show": false,
+            "show_symbol": false,
+            "line_interpolation": "smooth",
+            "connect_nulls": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "cache_hit_ratio{cache=\"public\"} * 100",
+              "customQuery": true,
+              "fields": {
+                "stream": "cache_hit_ratio",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "public cache %",
+                "limit": 0,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 16, "y": 33, "w": 16, "h": 8, "i": 10 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "active_users",
+          "type": "line",
+          "title": "Active users",
+          "description": "Usuarios autenticados vistos nos ultimos 5 minutos.",
+          "config": {
+            "show_legends": true,
+            "decimals": 0,
+            "line_thickness": 1.5,
+            "axis_border_show": false,
+            "show_symbol": false,
+            "line_interpolation": "smooth",
+            "connect_nulls": false,
+            "color": {
+              "mode": "palette-classic-by-series",
+              "seriesBy": "last"
+            }
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "active_users{window=\"5m\"}",
+              "customQuery": true,
+              "fields": {
+                "stream": "active_users",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "active users",
+                "limit": 0,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 32, "y": 33, "w": 16, "h": 8, "i": 11 },
+          "htmlContent": "",
+          "markdownContent": ""
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "list": [],
+    "showDynamicFilters": true
+  },
+  "defaultDatetimeDuration": {
+    "type": "relative",
+    "relativeTimePeriod": "24h"
+  }
+}

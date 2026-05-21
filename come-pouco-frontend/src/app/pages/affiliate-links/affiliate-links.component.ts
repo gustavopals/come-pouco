@@ -1,7 +1,13 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { SelectionModel } from '@angular/cdk/collections';
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -11,24 +17,43 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { BehaviorSubject, Subject, catchError, combineLatest, finalize, firstValueFrom, map, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
+import {
+  BehaviorSubject,
+  Subject,
+  catchError,
+  combineLatest,
+  finalize,
+  firstValueFrom,
+  map,
+  of,
+  shareReplay,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs';
 
 import { AffiliateLinksResultsDialogComponent } from './affiliate-links-results-dialog.component';
-import {
-  AffiliateLink,
-  ShopeeShortLinkResult
-} from '../../core/models/affiliate-link.model';
+import { AffiliateLink, ShopeeShortLinkResult } from '../../core/models/affiliate-link.model';
 import { PurchasePlatform } from '../../core/models/purchase-platform.model';
 import { User } from '../../core/models/user.model';
 import { AffiliateLinkService } from '../../core/services/affiliate-link.service';
 import { AuthService } from '../../core/services/auth.service';
 import { PurchasePlatformService } from '../../core/services/purchase-platform.service';
 import { UserService } from '../../core/services/user.service';
+import {
+  EmptyStateComponent,
+  IconComponent,
+  PageHeaderComponent,
+  ResponsiveTableComponent,
+  SkeletonLoaderComponent,
+  StatusChipComponent,
+} from '../../shared/components';
 
 export type LinkProcessResult = {
   originUrl: string;
@@ -62,14 +87,21 @@ const MAX_LINKS_PER_BATCH = 5;
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
+    MatPaginatorModule,
     MatProgressBarModule,
     MatSelectModule,
     MatSnackBarModule,
     MatTableModule,
-    MatTooltipModule
+    MatTooltipModule,
+    EmptyStateComponent,
+    IconComponent,
+    PageHeaderComponent,
+    ResponsiveTableComponent,
+    SkeletonLoaderComponent,
+    StatusChipComponent,
   ],
   templateUrl: './affiliate-links.component.html',
-  styleUrl: './affiliate-links.component.scss'
+  styleUrl: './affiliate-links.component.scss',
 })
 export class AffiliateLinksComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
@@ -88,16 +120,17 @@ export class AffiliateLinksComponent implements OnInit {
     'originalLink',
     'affiliateLink',
     'updatedAt',
-    'actions'
+    'actions',
   ];
   protected readonly displayedColumnsDefault: string[] = [
     'select',
     'originalLink',
     'affiliateLink',
     'updatedAt',
-    'actions'
+    'actions',
   ];
   protected readonly selection = new SelectionModel<number>(true, []);
+  protected currentFilteredLinks: AffiliateLink[] = [];
   protected visibleFilteredLinks: AffiliateLink[] = [];
 
   protected readonly processingResults$ = new BehaviorSubject<LinkProcessResult[]>([]);
@@ -107,58 +140,74 @@ export class AffiliateLinksComponent implements OnInit {
   protected readonly successMessage$ = new BehaviorSubject<string | null>(null);
   protected readonly normalizedLinks$ = new BehaviorSubject<string[]>([]);
   protected adminShopeePlatforms: PurchasePlatform[] = [];
+  protected readonly pageSizeOptions = [10, 25, 50, 100];
+  protected readonly pageState$ = new BehaviorSubject<{ pageIndex: number; pageSize: number }>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  protected readonly totalLinks$ = new BehaviorSubject<number>(0);
+  protected readonly historySearchControl = this.formBuilder.control('');
+  protected readonly filtersForm = this.formBuilder.group({
+    dateRange: this.formBuilder.group({
+      start: [this.getTodayStart()],
+      end: [this.getTodayEnd()],
+    }),
+    employeeId: [null as number | null],
+  });
 
-  protected readonly links$ = this.refresh$.pipe(
-    startWith(void 0),
+  protected readonly links$ = combineLatest([
+    this.refresh$.pipe(startWith(void 0)),
+    this.pageState$,
+  ]).pipe(
     tap(() => {
       this.isLoading$.next(true);
       this.errorMessage$.next(null);
     }),
-    switchMap(() =>
-      this.affiliateLinkService.list().pipe(
+    switchMap(([, pageState]) =>
+      this.affiliateLinkService.list(this.buildHistoryListParams(pageState)).pipe(
+        tap((response) =>
+          this.totalLinks$.next(response.meta?.total ?? response.links?.length ?? 0),
+        ),
         map((response) => (Array.isArray(response?.links) ? response.links : [])),
         catchError((error) => {
           this.errorMessage$.next(error?.error?.message || 'Nao foi possivel carregar os links.');
+          this.totalLinks$.next(0);
           return of([] as AffiliateLink[]);
         }),
-        finalize(() => this.isLoading$.next(false))
-      )
+        finalize(() => this.isLoading$.next(false)),
+      ),
     ),
-    shareReplay({ bufferSize: 1, refCount: true })
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
 
-  protected readonly totalLinks$ = this.links$.pipe(map((links) => links.length));
-  protected readonly filtersForm = this.formBuilder.group({
-    dateRange: this.formBuilder.group({
-      start: [this.getTodayStart()],
-      end: [this.getTodayEnd()]
-    }),
-    employeeId: [null as number | null]
-  });
   protected readonly employees$ = (this.authService.isOwner()
-    ? this.userService.listUsers().pipe(
-        map(({ users }) => this.toEmployeeOptions(users)),
-        catchError(() => of([] as EmployeeOption[]))
+    ? this.userService.listAllUsers().pipe(
+        map((users) => this.toEmployeeOptions(users)),
+        catchError(() => of([] as EmployeeOption[])),
       )
     : of([] as EmployeeOption[])
   ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
-  protected readonly filteredLinks$ = combineLatest([
-    this.links$,
-    this.filtersForm.valueChanges.pipe(startWith(this.filtersForm.getRawValue())),
-    this.employees$
-  ]).pipe(
-    map(([links, filters, employees]) => this.applyHistoryFilters(links, filters, employees)),
+  protected readonly filteredLinks$ = this.links$.pipe(
     tap((links) => {
-      this.visibleFilteredLinks = links;
+      this.currentFilteredLinks = links;
       const visibleIds = new Set(links.map((item) => item.id));
       this.selection.selected
         .filter((selectedId) => !visibleIds.has(selectedId))
         .forEach((selectedId) => this.selection.deselect(selectedId));
-    })
+    }),
   );
-  protected readonly filteredTotalLinks$ = this.filteredLinks$.pipe(map((links) => links.length));
+  protected readonly filteredTotalLinks$ = this.totalLinks$.asObservable();
+  protected readonly pagedLinks$ = this.filteredLinks$.pipe(
+    tap((links) => {
+      this.visibleFilteredLinks = links;
+    }),
+  );
   protected readonly hasGeneratedShortLinks$ = this.processingResults$.pipe(
-    map((results) => results.some((item) => typeof item.shortLink === 'string' && item.shortLink.trim().length > 0))
+    map((results) =>
+      results.some(
+        (item) => typeof item.shortLink === 'string' && item.shortLink.trim().length > 0,
+      ),
+    ),
   );
   protected readonly maxLinksPerBatch = MAX_LINKS_PER_BATCH;
 
@@ -166,11 +215,11 @@ export class AffiliateLinksComponent implements OnInit {
     originalLinksText: ['', [Validators.required, this.originalLinksValidator.bind(this)]],
     subId1: ['', [Validators.maxLength(50), Validators.pattern(/^[A-Za-z0-9_-]+$/)]],
     platformId: [null as number | null],
-    useAutoSubId1: [false]
+    useAutoSubId1: [false],
   });
   protected readonly linksCount$ = this.normalizedLinks$.pipe(
     map((links) => links.length),
-    shareReplay({ bufferSize: 1, refCount: true })
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
   protected readonly isLinksOverLimit$ = this.linksCount$.pipe(map(() => false));
 
@@ -183,7 +232,7 @@ export class AffiliateLinksComponent implements OnInit {
       error: () => {
         this.errorMessage$.next('Nao foi possivel atualizar o contexto da empresa.');
         this.loadAdminPlatforms();
-      }
+      },
     });
 
     this.form.controls.useAutoSubId1.valueChanges.subscribe((value) => {
@@ -197,7 +246,17 @@ export class AffiliateLinksComponent implements OnInit {
       this.form.controls.subId1.setValue('');
     });
 
-    this.form.controls.originalLinksText.valueChanges.subscribe((value) => this.applyOriginalLinksInput(value || ''));
+    this.form.controls.originalLinksText.valueChanges.subscribe((value) =>
+      this.applyOriginalLinksInput(value || ''),
+    );
+    this.filtersForm.valueChanges.subscribe(() => {
+      this.resetHistoryPage();
+      this.selection.clear();
+    });
+    this.historySearchControl.valueChanges.subscribe(() => {
+      this.resetHistoryPage();
+      this.selection.clear();
+    });
 
     this.syncAutoSubId1WithCurrentUser();
     this.loadAdminPlatforms();
@@ -206,7 +265,9 @@ export class AffiliateLinksComponent implements OnInit {
   }
 
   protected get displayedColumns(): string[] {
-    return this.authService.isOwner() ? this.displayedColumnsWithCreator : this.displayedColumnsDefault;
+    return this.authService.isOwner()
+      ? this.displayedColumnsWithCreator
+      : this.displayedColumnsDefault;
   }
 
   protected loadLinks(): void {
@@ -215,12 +276,13 @@ export class AffiliateLinksComponent implements OnInit {
   }
 
   protected clearFilters(): void {
+    this.historySearchControl.setValue('');
     this.filtersForm.reset({
       dateRange: {
         start: null,
-        end: null
+        end: null,
       },
-      employeeId: null
+      employeeId: null,
     });
     this.selection.clear();
   }
@@ -228,9 +290,16 @@ export class AffiliateLinksComponent implements OnInit {
   protected setTodayDateRange(): void {
     this.filtersForm.controls.dateRange.patchValue({
       start: this.getTodayStart(),
-      end: this.getTodayEnd()
+      end: this.getTodayEnd(),
     });
     this.selection.clear();
+  }
+
+  protected handlePage(event: PageEvent): void {
+    this.pageState$.next({
+      pageIndex: event.pageIndex,
+      pageSize: event.pageSize,
+    });
   }
 
   protected isTodayDateRangeSelected(): boolean {
@@ -241,7 +310,10 @@ export class AffiliateLinksComponent implements OnInit {
       return false;
     }
 
-    return this.startOfDay(start)?.getTime() === this.getTodayStart().getTime() && this.endOfDay(end)?.getTime() === this.getTodayEnd().getTime();
+    return (
+      this.startOfDay(start)?.getTime() === this.getTodayStart().getTime() &&
+      this.endOfDay(end)?.getTime() === this.getTodayEnd().getTime()
+    );
   }
 
   protected startCreate(): void {
@@ -252,7 +324,7 @@ export class AffiliateLinksComponent implements OnInit {
       originalLinksText: '',
       subId1: '',
       platformId: this.getDefaultAdminPlatformId(),
-      useAutoSubId1: false
+      useAutoSubId1: false,
     });
     this.form.controls.subId1.enable();
     this.normalizedLinks$.next([]);
@@ -274,10 +346,13 @@ export class AffiliateLinksComponent implements OnInit {
     }
 
     const subIdValue = useAutoSubId1
-      ? this.getUsernameFromEmail(this.authService.currentUser()?.username || this.authService.currentUser()?.email || '')
+      ? this.getUsernameFromEmail(
+          this.authService.currentUser()?.username || this.authService.currentUser()?.email || '',
+        )
       : this.normalizeSubId1(this.form.controls.subId1.value);
     const selectedPlatformId = Number(this.form.controls.platformId.value || 0);
-    const effectivePlatformId = Number.isInteger(selectedPlatformId) && selectedPlatformId > 0 ? selectedPlatformId : null;
+    const effectivePlatformId =
+      Number.isInteger(selectedPlatformId) && selectedPlatformId > 0 ? selectedPlatformId : null;
 
     if (this.authService.isAdmin() && !effectivePlatformId) {
       this.errorMessage$.next('Selecione uma plataforma SHOPEE para gerar links.');
@@ -292,7 +367,7 @@ export class AffiliateLinksComponent implements OnInit {
     this.submitShopeeCreate({
       originalLinks,
       subId1: subIdValue,
-      platformId: effectivePlatformId
+      platformId: effectivePlatformId,
     });
   }
 
@@ -312,12 +387,12 @@ export class AffiliateLinksComponent implements OnInit {
       },
       error: (error) => {
         this.errorMessage$.next(error?.error?.message || 'Nao foi possivel remover o registro.');
-      }
+      },
     });
   }
 
   protected copyToClipboard(value: string): void {
-    this.copyTextToClipboard(value).then((copied) => {
+    void this.copyTextToClipboard(value).then((copied) => {
       if (copied) {
         this.successMessage$.next('Link copiado.');
       } else {
@@ -336,25 +411,28 @@ export class AffiliateLinksComponent implements OnInit {
       return;
     }
 
-    this.copyTextToClipboard(shortLinks.join('\n')).then((copied) => {
+    void this.copyTextToClipboard(shortLinks.join('\n')).then((copied) => {
       if (!copied) {
         this.errorMessage$.next('Nao foi possivel copiar os shortlinks.');
         return;
       }
 
       this.snackBar.open('Shortlinks copiados!', 'Fechar', {
-        duration: 2500
+        duration: 2500,
       });
     });
   }
 
   protected isAllSelected(): boolean {
-    return this.visibleFilteredLinks.length > 0 && this.selection.selected.length === this.visibleFilteredLinks.length;
+    return (
+      this.visibleFilteredLinks.length > 0 &&
+      this.visibleFilteredLinks.every((item) => this.selection.isSelected(item.id))
+    );
   }
 
   protected masterToggle(): void {
     if (this.isAllSelected()) {
-      this.selection.clear();
+      this.visibleFilteredLinks.forEach((row) => this.selection.deselect(row.id));
       return;
     }
 
@@ -380,14 +458,14 @@ export class AffiliateLinksComponent implements OnInit {
     }
 
     const content = selected.map((item) => item.affiliateLink).join('\n');
-    this.copyTextToClipboard(content).then((copied) => {
+    void this.copyTextToClipboard(content).then((copied) => {
       if (!copied) {
         this.errorMessage$.next('Nao foi possivel copiar os links selecionados.');
         return;
       }
 
       this.snackBar.open(`${selected.length} link(s) copiado(s).`, 'Fechar', {
-        duration: 2500
+        duration: 2500,
       });
     });
   }
@@ -405,7 +483,9 @@ export class AffiliateLinksComponent implements OnInit {
     this.errorMessage$.next(null);
     this.successMessage$.next(null);
 
-    const results = await Promise.allSettled(selected.map((item) => firstValueFrom(this.affiliateLinkService.delete(item.id))));
+    const results = await Promise.allSettled(
+      selected.map((item) => firstValueFrom(this.affiliateLinkService.delete(item.id))),
+    );
     const deletedCount = results.filter((result) => result.status === 'fulfilled').length;
     const failedCount = results.length - deletedCount;
 
@@ -417,7 +497,7 @@ export class AffiliateLinksComponent implements OnInit {
       this.errorMessage$.next(
         failedCount === results.length
           ? 'Nao foi possivel remover os registros selecionados.'
-          : `${failedCount} registro(s) nao puderam ser removido(s).`
+          : `${failedCount} registro(s) nao puderam ser removido(s).`,
       );
     }
 
@@ -430,7 +510,7 @@ export class AffiliateLinksComponent implements OnInit {
   }
 
   protected clearHistory(): void {
-    if (!confirm('Deseja limpar todo o historico visivel para seu perfil?')) {
+    if (!confirm('Deseja limpar todo o historico disponivel para seu perfil?')) {
       return;
     }
 
@@ -445,7 +525,7 @@ export class AffiliateLinksComponent implements OnInit {
       },
       error: (error) => {
         this.errorMessage$.next(error?.error?.message || 'Nao foi possivel limpar o historico.');
-      }
+      },
     });
   }
 
@@ -468,88 +548,94 @@ export class AffiliateLinksComponent implements OnInit {
       subId1?: string;
     } = {
       originUrls: input.originalLinks,
-      subId1: input.subId1 || undefined
+      subId1: input.subId1 || undefined,
     };
 
     if (this.authService.isAdmin() && input.platformId) {
       payload.platformId = input.platformId;
     }
 
-    this.affiliateLinkService
-      .generateShopeeShortLinks(payload)
-      .subscribe({
-        next: ({ results }) => {
-          const generated = Array.isArray(results) ? results : [];
-          const successItems = generated.filter((item) => item.success && item.shortLink);
+    this.affiliateLinkService.generateShopeeShortLinks(payload).subscribe({
+      next: ({ results }) => {
+        const generated = Array.isArray(results) ? results : [];
+        const successItems = generated.filter((item) => item.success && item.shortLink);
 
-          this.processingResults$.next(generated.map((item) => this.toProcessResult(item)));
+        this.processingResults$.next(generated.map((item) => this.toProcessResult(item)));
 
-          if (!successItems.length) {
-            this.isSaving$.next(false);
-            this.errorMessage$.next('Nenhum shortlink foi gerado. Verifique os erros por item abaixo.');
-            return;
-          }
-
-          this.affiliateLinkService
-            .createFromGenerated({
-              generatedLinks: successItems.map((item) => ({
-                originUrl: item.originUrl,
-                shortLink: item.shortLink!
-              })),
-              subId1: input.subId1
-            })
-            .subscribe({
-              next: ({ links }) => {
-                this.isSaving$.next(false);
-
-                const processResults = generated.map((item) => {
-                  if (!item.success || !item.shortLink) {
-                    return this.toProcessResult(item);
-                  }
-
-                  return {
-                    originUrl: item.originUrl,
-                    status: 'saved',
-                    shortLink: item.shortLink,
-                    message: 'Shortlink gerado e salvo no historico.'
-                  } satisfies LinkProcessResult;
-                });
-
-                this.processingResults$.next(processResults);
-
-                const savedCount = Array.isArray(links) ? links.length : 0;
-                const failedCount = generated.length - savedCount;
-                this.successMessage$.next(
-                  `${savedCount} link(s) salvo(s) com sucesso.${failedCount > 0 ? ` ${failedCount} com erro.` : ''}`
-                );
-                this.form.controls.originalLinksText.setValue('');
-                this.form.controls.originalLinksText.markAsPristine();
-                this.form.controls.originalLinksText.markAsUntouched();
-                this.form.controls.originalLinksText.updateValueAndValidity();
-                this.selection.clear();
-                this.refresh$.next();
-
-                this.dialog.open(AffiliateLinksResultsDialogComponent, {
-                  width: '780px',
-                  maxWidth: '95vw',
-                  data: {
-                    results: processResults
-                  }
-                });
-              },
-              error: (error) => {
-                this.isSaving$.next(false);
-                this.errorMessage$.next(error?.error?.message || 'Nao foi possivel salvar os shortlinks gerados.');
-              }
-            });
-        },
-        error: (error) => {
+        if (!successItems.length) {
           this.isSaving$.next(false);
           this.errorMessage$.next(
-            this.toShopeeFriendlyError(error?.error?.message || 'Nao foi possivel gerar shortlinks na Shopee.')
+            'Nenhum shortlink foi gerado. Verifique os erros por item abaixo.',
           );
+          return;
         }
-      });
+
+        this.affiliateLinkService
+          .createFromGenerated({
+            generatedLinks: successItems.map((item) => ({
+              originUrl: item.originUrl,
+              shortLink: item.shortLink!,
+            })),
+            subId1: input.subId1,
+          })
+          .subscribe({
+            next: ({ links }) => {
+              this.isSaving$.next(false);
+
+              const processResults = generated.map((item) => {
+                if (!item.success || !item.shortLink) {
+                  return this.toProcessResult(item);
+                }
+
+                return {
+                  originUrl: item.originUrl,
+                  status: 'saved',
+                  shortLink: item.shortLink,
+                  message: 'Shortlink gerado e salvo no historico.',
+                } satisfies LinkProcessResult;
+              });
+
+              this.processingResults$.next(processResults);
+
+              const savedCount = Array.isArray(links) ? links.length : 0;
+              const failedCount = generated.length - savedCount;
+              this.successMessage$.next(
+                `${savedCount} link(s) salvo(s) com sucesso.${failedCount > 0 ? ` ${failedCount} com erro.` : ''}`,
+              );
+              this.form.controls.originalLinksText.setValue('');
+              this.form.controls.originalLinksText.markAsPristine();
+              this.form.controls.originalLinksText.markAsUntouched();
+              this.form.controls.originalLinksText.updateValueAndValidity();
+              this.selection.clear();
+              this.refresh$.next();
+
+              this.dialog.open(AffiliateLinksResultsDialogComponent, {
+                width: '780px',
+                maxWidth: '100vw',
+                maxHeight: '100dvh',
+                panelClass: 'app-responsive-dialog',
+                data: {
+                  results: processResults,
+                },
+              });
+            },
+            error: (error) => {
+              this.isSaving$.next(false);
+              this.errorMessage$.next(
+                error?.error?.message || 'Nao foi possivel salvar os shortlinks gerados.',
+              );
+            },
+          });
+      },
+      error: (error) => {
+        this.isSaving$.next(false);
+        this.errorMessage$.next(
+          this.toShopeeFriendlyError(
+            error?.error?.message || 'Nao foi possivel gerar shortlinks na Shopee.',
+          ),
+        );
+      },
+    });
   }
 
   private toProcessResult(item: ShopeeShortLinkResult): LinkProcessResult {
@@ -558,14 +644,14 @@ export class AffiliateLinksComponent implements OnInit {
         originUrl: item.originUrl,
         status: 'saved',
         shortLink: item.shortLink,
-        message: 'Shortlink gerado.'
+        message: 'Shortlink gerado.',
       };
     }
 
     return {
       originUrl: item.originUrl,
       status: 'error',
-      message: item.error || 'Falha ao gerar shortlink.'
+      message: item.error || 'Falha ao gerar shortlink.',
     };
   }
 
@@ -576,7 +662,11 @@ export class AffiliateLinksComponent implements OnInit {
       return 'A plataforma Shopee selecionada esta inativa. Um ADMIN precisa ativa-la em Plataforma de Compras.';
     }
 
-    if (normalized.includes('credenciais') || normalized.includes('app id') || normalized.includes('secret')) {
+    if (
+      normalized.includes('credenciais') ||
+      normalized.includes('app id') ||
+      normalized.includes('secret')
+    ) {
       return 'A plataforma Shopee esta sem credenciais validas. Um ADMIN precisa cadastrar App ID e Secret.';
     }
 
@@ -608,23 +698,27 @@ export class AffiliateLinksComponent implements OnInit {
       return;
     }
 
-    this.purchasePlatformService.list().subscribe({
-      next: ({ platforms }) => {
+    this.purchasePlatformService.listAll().subscribe({
+      next: (platforms) => {
         this.adminShopeePlatforms = (Array.isArray(platforms) ? platforms : []).filter(
-          (platform) => platform.type === 'SHOPEE' && platform.isActive
+          (platform) => platform.type === 'SHOPEE' && platform.isActive,
         );
 
         const selectedPlatformId = Number(this.form.controls.platformId.value || 0);
-        const selectedExists = this.adminShopeePlatforms.some((platform) => platform.id === selectedPlatformId);
+        const selectedExists = this.adminShopeePlatforms.some(
+          (platform) => platform.id === selectedPlatformId,
+        );
 
         if (!selectedExists) {
-          this.form.controls.platformId.setValue(this.getDefaultAdminPlatformId(), { emitEvent: false });
+          this.form.controls.platformId.setValue(this.getDefaultAdminPlatformId(), {
+            emitEvent: false,
+          });
         }
       },
       error: () => {
         this.adminShopeePlatforms = [];
         this.form.controls.platformId.setValue(null, { emitEvent: false });
-      }
+      },
     });
   }
 
@@ -646,7 +740,9 @@ export class AffiliateLinksComponent implements OnInit {
     }
 
     this.form.controls.subId1.setValue(
-      this.getUsernameFromEmail(this.authService.currentUser()?.username || this.authService.currentUser()?.email || '')
+      this.getUsernameFromEmail(
+        this.authService.currentUser()?.username || this.authService.currentUser()?.email || '',
+      ),
     );
     this.form.controls.subId1.disable();
   }
@@ -659,7 +755,7 @@ export class AffiliateLinksComponent implements OnInit {
 
     return {
       links: parsed.slice(0, MAX_LINKS_PER_BATCH),
-      wasTruncated: parsed.length > MAX_LINKS_PER_BATCH
+      wasTruncated: parsed.length > MAX_LINKS_PER_BATCH,
     };
   }
 
@@ -669,9 +765,13 @@ export class AffiliateLinksComponent implements OnInit {
 
     if (wasTruncated) {
       this.form.controls.originalLinksText.setValue(links.join('\n'), { emitEvent: false });
-      this.snackBar.open(`Voce pode enviar no maximo ${MAX_LINKS_PER_BATCH} links por vez. Mantivemos os primeiros ${MAX_LINKS_PER_BATCH}.`, 'Fechar', {
-        duration: 3500
-      });
+      this.snackBar.open(
+        `Voce pode enviar no maximo ${MAX_LINKS_PER_BATCH} links por vez. Mantivemos os primeiros ${MAX_LINKS_PER_BATCH}.`,
+        'Fechar',
+        {
+          duration: 3500,
+        },
+      );
     }
 
     this.form.controls.originalLinksText.updateValueAndValidity({ emitEvent: false });
@@ -693,69 +793,6 @@ export class AffiliateLinksComponent implements OnInit {
     }
 
     return null;
-  }
-
-  private applyHistoryFilters(
-    links: AffiliateLink[],
-    filters: {
-      dateRange?: { start?: Date | null; end?: Date | null } | null;
-      employeeId?: number | null;
-    },
-    employees: EmployeeOption[]
-  ): AffiliateLink[] {
-    const start = this.startOfDay(filters.dateRange?.start || null);
-    const end = this.endOfDay(filters.dateRange?.end || null);
-    const selectedEmployee = employees.find((employee) => employee.id === Number(filters.employeeId || 0)) || null;
-
-    return links.filter((link) => {
-      if (!this.matchesDateRange(link, start, end)) {
-        return false;
-      }
-
-      if (!filters.employeeId || !this.authService.isOwner()) {
-        return true;
-      }
-
-      if (link.createdByUserId && link.createdByUserId === filters.employeeId) {
-        return true;
-      }
-
-      if (!selectedEmployee) {
-        return false;
-      }
-
-      const createdByName = (link.createdByUser?.fullName || (link as { createdBy?: { name?: string } }).createdBy?.name || '')
-        .trim()
-        .toLowerCase();
-      const createdByEmail = (link.createdByUser?.email || '').trim().toLowerCase();
-      return (
-        (createdByName.length > 0 && createdByName === selectedEmployee.label.trim().toLowerCase()) ||
-        (createdByEmail.length > 0 && createdByEmail === (selectedEmployee.email || '').trim().toLowerCase())
-      );
-    });
-  }
-
-  private matchesDateRange(link: AffiliateLink, start: Date | null, end: Date | null): boolean {
-    if (!start && !end) {
-      return true;
-    }
-
-    const linkDate = new Date(link.createdAt || link.updatedAt);
-    const linkTime = linkDate.getTime();
-
-    if (Number.isNaN(linkTime)) {
-      return false;
-    }
-
-    if (start && linkTime < start.getTime()) {
-      return false;
-    }
-
-    if (end && linkTime > end.getTime()) {
-      return false;
-    }
-
-    return true;
   }
 
   private startOfDay(date: Date | null): Date | null {
@@ -790,17 +827,44 @@ export class AffiliateLinksComponent implements OnInit {
     return end;
   }
 
+  private buildHistoryListParams(pageState: { pageIndex: number; pageSize: number }): {
+    page: number;
+    limit: number;
+    search?: string;
+    createdByUserId?: number;
+    startDate?: string;
+    endDate?: string;
+  } {
+    const filters = this.filtersForm.getRawValue();
+    const start = this.startOfDay(filters.dateRange?.start || null);
+    const end = this.endOfDay(filters.dateRange?.end || null);
+    const search = (this.historySearchControl.value || '').trim();
+    const createdByUserId =
+      this.authService.isOwner() && filters.employeeId ? Number(filters.employeeId) : undefined;
+
+    return {
+      page: pageState.pageIndex + 1,
+      limit: pageState.pageSize,
+      search: search.length ? search : undefined,
+      createdByUserId,
+      startDate: start ? start.toISOString() : undefined,
+      endDate: end ? end.toISOString() : undefined,
+    };
+  }
+
   private toEmployeeOptions(users: User[] | null | undefined): EmployeeOption[] {
     const currentCompanyId = this.authService.currentUser()?.companyId ?? null;
     const safeUsers = Array.isArray(users) ? users : [];
     const companyUsers =
-      currentCompanyId === null ? safeUsers : safeUsers.filter((user) => (user.companyId ?? null) === currentCompanyId);
+      currentCompanyId === null
+        ? safeUsers
+        : safeUsers.filter((user) => (user.companyId ?? null) === currentCompanyId);
 
     return companyUsers
       .map((user) => ({
         id: user.id,
         label: user.fullName?.trim() || user.username || user.email || `user-${user.id}`,
-        email: user.email
+        email: user.email,
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }
@@ -839,6 +903,11 @@ export class AffiliateLinksComponent implements OnInit {
   }
 
   private getSelectedRows(): AffiliateLink[] {
-    return this.visibleFilteredLinks.filter((item) => this.selection.isSelected(item.id));
+    return this.currentFilteredLinks.filter((item) => this.selection.isSelected(item.id));
+  }
+
+  private resetHistoryPage(): void {
+    const current = this.pageState$.getValue();
+    this.pageState$.next({ ...current, pageIndex: 0 });
   }
 }

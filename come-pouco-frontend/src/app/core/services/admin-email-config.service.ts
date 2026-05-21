@@ -14,10 +14,16 @@ export class AdminEmailConfigService {
   }
 
   updateConfig(payload: UpdateSystemEmailConfigPayload): Observable<{ config: SystemEmailConfig }> {
-    return this.http.put<{ config: SystemEmailConfig }>(`${environment.apiUrl}/admin/email-config`, payload);
+    return this.http.put<{ config: SystemEmailConfig }>(
+      `${environment.apiUrl}/admin/email-config`,
+      payload,
+    );
   }
 
   testSend(): Observable<{ ok: boolean; message: string }> {
-    return this.http.post<{ ok: boolean; message: string }>(`${environment.apiUrl}/admin/email-config/test`, {});
+    return this.http.post<{ ok: boolean; message: string }>(
+      `${environment.apiUrl}/admin/email-config/test`,
+      {},
+    );
   }
 }

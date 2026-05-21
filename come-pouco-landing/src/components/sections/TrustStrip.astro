@@ -1,0 +1,45 @@
+---
+import Container from '@components/ui/Container.astro';
+
+const placeholders = ['Aurora', 'Mosaico', 'Pulso', 'Vertex', 'Cardume', 'Norte'];
+---
+
+<section
+  aria-label="Empresas que confiam na Come Pouco"
+  class="cp-hairline border-y bg-[var(--cp-color-muted)]/40 py-10"
+>
+  <Container size="page" class="flex flex-col items-center gap-6">
+    <p
+      class="text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--cp-color-muted-foreground)]"
+    >
+      Times que crescem com a Come Pouco
+    </p>
+    <ul
+      class="grid w-full grid-cols-2 items-center justify-items-center gap-x-8 gap-y-6 sm:grid-cols-3 md:grid-cols-6"
+    >
+      {
+        placeholders.map((name) => (
+          <li class="opacity-60 transition-opacity hover:opacity-100">
+            <div class="flex h-7 items-center gap-2 text-[var(--cp-color-muted-foreground)]">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 3v18M3 12h18" />
+              </svg>
+              <span class="text-[15px] font-bold tracking-tight">{name}</span>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </Container>
+</section>

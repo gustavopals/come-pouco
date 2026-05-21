@@ -1,19 +1,19 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { BehaviorSubject, combineLatest, map } from 'rxjs';
 
 import { ApiErrorResponse } from '../../core/models/auth.model';
 import { AuthService } from '../../core/services/auth.service';
+import { AuthShellComponent } from '../../shared/components/auth-shell/auth-shell.component';
+import { IconComponent } from '../../shared/components/icon/icon.component';
+import { OtpInputComponent } from '../../shared/components/otp-input/otp-input.component';
 
 @Component({
   selector: 'app-login',
@@ -24,15 +24,15 @@ import { AuthService } from '../../core/services/auth.service';
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
-    MatCardModule,
     MatCheckboxModule,
-    MatDividerModule,
     MatFormFieldModule,
-    MatIconModule,
-    MatInputModule
+    MatInputModule,
+    AuthShellComponent,
+    IconComponent,
+    OtpInputComponent,
   ],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.scss'
+  styleUrl: './login.component.scss',
 })
 export class LoginComponent {
   private readonly formBuilder = inject(FormBuilder);
@@ -42,20 +42,36 @@ export class LoginComponent {
   private readonly isSubmitting$ = new BehaviorSubject<boolean>(false);
   private readonly errorMessage$ = new BehaviorSubject<string>('');
   private readonly tempToken$ = new BehaviorSubject<string | null>(null);
+  protected readonly hidePassword = signal(true);
+  protected readonly useBackupCode = signal(false);
 
-  protected readonly vm$ = combineLatest([this.isSubmitting$, this.errorMessage$, this.tempToken$]).pipe(
-    map(([isSubmitting, errorMessage, tempToken]) => ({ isSubmitting, errorMessage, tempToken }))
+  protected readonly vm$ = combineLatest([
+    this.isSubmitting$,
+    this.errorMessage$,
+    this.tempToken$,
+  ]).pipe(
+    map(([isSubmitting, errorMessage, tempToken]) => ({ isSubmitting, errorMessage, tempToken })),
   );
 
   protected readonly loginForm = this.formBuilder.group({
     identifier: ['', [Validators.required]],
-    password: ['', [Validators.required]]
+    password: ['', [Validators.required]],
   });
 
   protected readonly twoFactorForm = this.formBuilder.group({
     code: ['', [Validators.required, Validators.minLength(6)]],
-    trustDevice: [false]
+    trustDevice: [false],
   });
+
+  protected togglePasswordVisibility(): void {
+    this.hidePassword.update((hidden) => !hidden);
+  }
+
+  protected setChallengeMode(useBackupCode: boolean): void {
+    this.useBackupCode.set(useBackupCode);
+    this.twoFactorForm.controls.code.reset('');
+    this.errorMessage$.next('');
+  }
 
   protected submit(vm: { tempToken: string | null; isSubmitting: boolean }): void {
     if (vm.tempToken) {
@@ -86,6 +102,7 @@ export class LoginComponent {
           }
 
           this.tempToken$.next(tempToken);
+          this.useBackupCode.set(false);
           this.twoFactorForm.reset({ code: '', trustDevice: false });
           return;
         }
@@ -96,12 +113,13 @@ export class LoginComponent {
       error: (error) => {
         this.isSubmitting$.next(false);
         this.errorMessage$.next(this.resolveErrorMessage(error?.error));
-      }
+      },
     });
   }
 
   protected backToLogin(): void {
     this.tempToken$.next(null);
+    this.useBackupCode.set(false);
     this.twoFactorForm.reset({ code: '', trustDevice: false });
     this.errorMessage$.next('');
   }
@@ -125,7 +143,7 @@ export class LoginComponent {
       .loginTwoFactor({
         tempToken: vm.tempToken,
         code: code!,
-        trustDevice: Boolean(trustDevice)
+        trustDevice: Boolean(trustDevice),
       })
       .subscribe({
         next: () => {
@@ -135,7 +153,7 @@ export class LoginComponent {
         error: (error) => {
           this.isSubmitting$.next(false);
           this.errorMessage$.next(this.resolveErrorMessage(error?.error));
-        }
+        },
       });
   }
 

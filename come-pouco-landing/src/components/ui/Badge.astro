@@ -1,0 +1,45 @@
+---
+export interface Props {
+  variant?: 'default' | 'success' | 'info' | 'accent' | 'soft';
+  size?: 'sm' | 'md';
+  href?: string;
+  class?: string;
+}
+
+const { variant = 'default', size = 'sm', href, class: extraClass = '' } = Astro.props;
+
+const variants: Record<NonNullable<Props['variant']>, string> = {
+  default:
+    'bg-[var(--cp-color-surface)] text-[var(--cp-color-foreground)] border-[var(--cp-color-border)]',
+  success: 'bg-[var(--cp-color-primary-soft)] text-[var(--cp-color-primary)] border-transparent',
+  info: 'bg-[color-mix(in_oklab,var(--cp-color-info)_15%,transparent)] text-[var(--cp-color-info)] border-transparent',
+  accent:
+    'bg-[color-mix(in_oklab,var(--cp-color-accent)_15%,transparent)] text-[var(--cp-color-accent)] border-transparent',
+  soft: 'bg-[var(--cp-color-muted)] text-[var(--cp-color-muted-foreground)] border-transparent'
+};
+
+const sizes: Record<NonNullable<Props['size']>, string> = {
+  sm: 'text-[12px] px-2.5 py-1',
+  md: 'text-[13px] px-3 py-1.5'
+};
+
+const classList = [
+  'inline-flex items-center gap-1.5 rounded-full border font-medium leading-none',
+  variants[variant],
+  sizes[size],
+  href && 'hover:opacity-80 transition-opacity',
+  extraClass
+];
+---
+
+{
+  href ? (
+    <a href={href} class:list={classList}>
+      <slot />
+    </a>
+  ) : (
+    <span class:list={classList}>
+      <slot />
+    </span>
+  )
+}

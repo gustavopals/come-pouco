@@ -1,0 +1,48 @@
+:host {
+  display: inline-flex;
+}
+
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cp-space-3);
+  color: var(--cp-color-foreground);
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.app-logo-mark {
+  width: 40px;
+  height: 40px;
+  color: var(--cp-color-primary);
+}
+
+.app-logo-mark-bg {
+  fill: var(--cp-color-primary-soft);
+  stroke: color-mix(in srgb, var(--cp-color-primary) 26%, transparent);
+  stroke-width: 1;
+}
+
+.app-logo-mark-link,
+.app-logo-mark-dot {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+}
+
+.app-logo-mark-dot {
+  stroke: var(--cp-color-accent);
+}
+
+.app-logo-text {
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.app-logo-compact .app-logo-mark {
+  width: 36px;
+  height: 36px;
+}

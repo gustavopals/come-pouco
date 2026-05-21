@@ -1,0 +1,19 @@
+<div class="otp-field" role="group" [attr.aria-label]="label()">
+  @for (index of indexes(); track index) {
+    <input
+      #otpInput
+      class="otp-input"
+      type="text"
+      inputmode="numeric"
+      autocomplete="one-time-code"
+      maxlength="1"
+      [attr.aria-label]="label() + ' ' + (index + 1)"
+      [disabled]="isDisabled()"
+      [value]="valueAt(index)"
+      (input)="handleInput($event, index)"
+      (keydown)="handleKeydown($event, index)"
+      (paste)="handlePaste($event, index)"
+      (blur)="handleBlur()"
+    />
+  }
+</div>

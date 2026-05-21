@@ -1,14 +1,38 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { BehaviorSubject, Subject, catchError, finalize, map, merge, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
+import {
+  BehaviorSubject,
+  Subject,
+  catchError,
+  finalize,
+  map,
+  merge,
+  of,
+  shareReplay,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs';
 
-import type { ApiErrorResponse, TrustedDevice, TwoFactorSetupResponse } from '../../core/models/auth.model';
+import type {
+  ApiErrorResponse,
+  TrustedDevice,
+  TwoFactorSetupResponse,
+} from '../../core/models/auth.model';
 import { AuthService } from '../../core/services/auth.service';
+import {
+  EmptyStateComponent,
+  IconComponent,
+  OtpInputComponent,
+  PageHeaderComponent,
+  SkeletonLoaderComponent,
+  StatusChipComponent,
+} from '../../shared/components';
 
 interface ParsedOtpAuthMetadata {
   issuer: string;
@@ -19,11 +43,24 @@ interface ParsedOtpAuthMetadata {
   selector: 'app-security',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    EmptyStateComponent,
+    IconComponent,
+    OtpInputComponent,
+    PageHeaderComponent,
+    SkeletonLoaderComponent,
+    StatusChipComponent,
+  ],
   templateUrl: './security.component.html',
-  styleUrl: './security.component.scss'
+  styleUrl: './security.component.scss',
 })
-export class SecurityComponent implements OnInit {
+export class SecurityComponent {
   private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(FormBuilder);
 
@@ -38,6 +75,8 @@ export class SecurityComponent implements OnInit {
   protected isLoading = false;
   protected errorMessage = '';
   protected successMessage = '';
+  protected readonly currentUser = this.authService.currentUser;
+  protected readonly hideDisablePassword = signal(true);
 
   protected backupCodes: string[] = [];
   protected readonly setup2fa$ = merge(
@@ -50,17 +89,20 @@ export class SecurityComponent implements OnInit {
       switchMap(() =>
         this.authService.setupTwoFactor().pipe(
           catchError((error) => {
-            this.setupError$.next(this.resolveErrorMessage(error?.error, 'Nao foi possivel iniciar o setup do 2FA.'));
+            this.setupError$.next(
+              this.resolveErrorMessage(error?.error, 'Nao foi possivel iniciar o setup do 2FA.'),
+            );
             return of(null);
           }),
-          finalize(() => this.setupLoading$.next(false))
-        )
-      )
+          finalize(() => this.setupLoading$.next(false)),
+        ),
+      ),
     ),
-    this.clearSetup$.pipe(map(() => null))
+    this.clearSetup$.pipe(map(() => null)),
   ).pipe(startWith(null), shareReplay({ bufferSize: 1, refCount: true }));
 
   protected readonly devices$ = this.refresh$.pipe(
+    startWith(void 0),
     tap(() => {
       this.isLoading$.next(true);
       this.error$.next(null);
@@ -72,30 +114,31 @@ export class SecurityComponent implements OnInit {
           this.error$.next('Nao foi possivel carregar dispositivos confiaveis');
           return of([] as TrustedDevice[]);
         }),
-        finalize(() => this.isLoading$.next(false))
-      )
+        finalize(() => this.isLoading$.next(false)),
+      ),
     ),
-    shareReplay({ bufferSize: 1, refCount: true })
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
 
   protected readonly devicesCount$ = this.devices$.pipe(map((list) => list?.length ?? 0));
 
   protected readonly confirmForm = this.formBuilder.group({
-    code: ['', [Validators.required, Validators.minLength(6)]]
+    code: ['', [Validators.required, Validators.minLength(6)]],
   });
 
   protected readonly disableForm = this.formBuilder.group({
-    password: ['', [Validators.required, Validators.minLength(6)]],
-    code: ['', [Validators.required, Validators.minLength(6)]]
+    password: ['', [Validators.required]],
+    code: ['', [Validators.required]],
   });
-
-  ngOnInit(): void {
-    this.refresh$.next();
-  }
 
   protected startSetup(): void {
     this.backupCodes = [];
     this.setupRefresh$.next();
+  }
+
+  protected cancelSetup(): void {
+    this.clearSetup$.next();
+    this.confirmForm.reset({ code: '' });
   }
 
   protected confirmSetup(): void {
@@ -118,8 +161,11 @@ export class SecurityComponent implements OnInit {
       },
       error: (error) => {
         this.isLoading = false;
-        this.errorMessage = this.resolveErrorMessage(error?.error, 'Nao foi possivel confirmar o 2FA.');
-      }
+        this.errorMessage = this.resolveErrorMessage(
+          error?.error,
+          'Nao foi possivel confirmar o 2FA.',
+        );
+      },
     });
   }
 
@@ -145,8 +191,11 @@ export class SecurityComponent implements OnInit {
       },
       error: (error) => {
         this.isLoading = false;
-        this.errorMessage = this.resolveErrorMessage(error?.error, 'Nao foi possivel desativar o 2FA.');
-      }
+        this.errorMessage = this.resolveErrorMessage(
+          error?.error,
+          'Nao foi possivel desativar o 2FA.',
+        );
+      },
     });
   }
 
@@ -163,9 +212,41 @@ export class SecurityComponent implements OnInit {
         this.refreshDevices();
       },
       error: (error) => {
-        this.errorMessage = this.resolveErrorMessage(error?.error, 'Nao foi possivel revogar o dispositivo.');
-      }
+        this.errorMessage = this.resolveErrorMessage(
+          error?.error,
+          'Nao foi possivel revogar o dispositivo.',
+        );
+      },
     });
+  }
+
+  protected toggleDisablePasswordVisibility(): void {
+    this.hideDisablePassword.update((hidden) => !hidden);
+  }
+
+  protected copyBackupCodes(): void {
+    this.copyManualValue(this.backupCodes.join('\n'), 'Codigos de backup copiados.');
+  }
+
+  protected downloadBackupCodes(): void {
+    if (!this.backupCodes.length) {
+      return;
+    }
+
+    const fileContent = ['Come Pouco - codigos de backup 2FA', '', ...this.backupCodes].join('\n');
+    const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+
+    anchor.href = url;
+    anchor.download = 'come-pouco-codigos-backup-2fa.txt';
+    anchor.rel = 'noreferrer';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+
+    this.successMessage = 'Arquivo de codigos de backup gerado.';
   }
 
   protected parseOtpAuthMetadata(otpauthUrl: string): ParsedOtpAuthMetadata | null {
@@ -187,7 +268,7 @@ export class SecurityComponent implements OnInit {
 
       return {
         issuer,
-        account
+        account,
       };
     } catch {
       return null;
@@ -224,7 +305,7 @@ export class SecurityComponent implements OnInit {
   private loadSessionAndDevices(): void {
     this.authService.me().subscribe({
       next: () => this.refreshDevices(),
-      error: () => this.refreshDevices()
+      error: () => this.refreshDevices(),
     });
   }
 
@@ -266,7 +347,10 @@ export class SecurityComponent implements OnInit {
     return copied;
   }
 
-  private resolveErrorMessage(errorPayload: ApiErrorResponse | undefined, fallback: string): string {
+  private resolveErrorMessage(
+    errorPayload: ApiErrorResponse | undefined,
+    fallback: string,
+  ): string {
     const code = errorPayload?.errorCode;
 
     if (code === 'AUTH_INVALID_2FA_CODE') {

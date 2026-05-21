@@ -11,13 +11,27 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { BehaviorSubject, Subject, catchError, combineLatest, finalize, map, merge, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
+import {
+  BehaviorSubject,
+  Subject,
+  catchError,
+  combineLatest,
+  finalize,
+  map,
+  merge,
+  of,
+  shareReplay,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs';
 
 import { Company } from '../../core/models/company.model';
 import {
@@ -25,7 +39,7 @@ import {
   ApiUsageSummary,
   CreatePurchasePlatformPayload,
   PurchasePlatform,
-  UpdatePurchasePlatformPayload
+  UpdatePurchasePlatformPayload,
 } from '../../core/models/purchase-platform.model';
 import { User } from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -33,6 +47,14 @@ import { CompanyService } from '../../core/services/company.service';
 import { PurchasePlatformService } from '../../core/services/purchase-platform.service';
 import { UserService } from '../../core/services/user.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import {
+  EmptyStateComponent,
+  IconComponent,
+  PageHeaderComponent,
+  ResponsiveTableComponent,
+  SkeletonLoaderComponent,
+  StatusChipComponent,
+} from '../../shared/components';
 
 const SHOPEE_API_URL = 'https://open-api.affiliate.shopee.com.br/graphql';
 
@@ -54,15 +76,22 @@ const SHOPEE_API_URL = 'https://open-api.affiliate.shopee.com.br/graphql';
     MatFormFieldModule,
     MatInputModule,
     MatNativeDateModule,
+    MatPaginatorModule,
     MatProgressBarModule,
     MatSelectModule,
     MatSlideToggleModule,
     MatSnackBarModule,
     MatTableModule,
-    MatToolbarModule
+    MatToolbarModule,
+    EmptyStateComponent,
+    IconComponent,
+    PageHeaderComponent,
+    ResponsiveTableComponent,
+    SkeletonLoaderComponent,
+    StatusChipComponent,
   ],
   templateUrl: './purchase-platforms.component.html',
-  styleUrl: './purchase-platforms.component.scss'
+  styleUrl: './purchase-platforms.component.scss',
 })
 export class PurchasePlatformsComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
@@ -75,55 +104,96 @@ export class PurchasePlatformsComponent implements OnInit {
   private readonly refresh$ = new Subject<void>();
   private readonly usageLoading$ = new BehaviorSubject<boolean>(false);
   private readonly usageError$ = new BehaviorSubject<string | null>(null);
+  protected readonly pageSizeOptions = [10, 20, 50, 100];
+  protected readonly pageState$ = new BehaviorSubject<{ pageIndex: number; pageSize: number }>({
+    pageIndex: 0,
+    pageSize: 20,
+  });
+  protected readonly usagePageSizeOptions = [10, 20, 50, 100];
+  protected readonly usagePageState$ = new BehaviorSubject<{ pageIndex: number; pageSize: number }>(
+    {
+      pageIndex: 0,
+      pageSize: 20,
+    },
+  );
 
   protected readonly platformTypes: Array<'SHOPEE'> = ['SHOPEE'];
   protected readonly usageModeOptions: Array<{ label: string; value: 'ALL' | ApiUsageMode }> = [
     { label: 'Todos', value: 'ALL' },
     { label: 'Mock', value: 'MOCK' },
-    { label: 'Real', value: 'REAL' }
+    { label: 'Real', value: 'REAL' },
   ];
-  protected readonly displayedColumns: string[] = ['id', 'name', 'type', 'status', 'mode', 'apiLink', 'secret', 'updatedAt', 'actions'];
+  protected readonly displayedColumns: string[] = [
+    'id',
+    'name',
+    'type',
+    'status',
+    'mode',
+    'apiLink',
+    'secret',
+    'updatedAt',
+    'actions',
+  ];
+  protected readonly usageDisplayedColumns: string[] = [
+    'createdAt',
+    'mode',
+    'companyId',
+    'userId',
+    'endpoint',
+    'success',
+  ];
   protected readonly isLoading$ = new BehaviorSubject<boolean>(false);
   protected readonly error$ = new BehaviorSubject<string | null>(null);
+  protected readonly totalPlatforms$ = new BehaviorSubject<number>(0);
+  protected readonly totalUsageLogs$ = new BehaviorSubject<number>(0);
   protected readonly usageForm = this.formBuilder.group({
     companyId: [null as number | null],
     userId: [null as number | null],
     mode: ['ALL' as 'ALL' | ApiUsageMode],
     startDate: [null as Date | null],
-    endDate: [null as Date | null]
+    endDate: [null as Date | null],
   });
-  protected readonly platforms$ = this.refresh$.pipe(
-    startWith(void 0),
+  protected readonly platforms$ = combineLatest([
+    this.refresh$.pipe(startWith(void 0)),
+    this.pageState$,
+  ]).pipe(
     tap(() => {
       this.isLoading$.next(true);
       this.error$.next(null);
     }),
-    switchMap(() =>
-      this.purchasePlatformService.list().pipe(
-        map((response) => (Array.isArray(response?.platforms) ? response.platforms : [])),
-        catchError((error) => {
-          this.error$.next(error?.error?.message || 'Nao foi possivel carregar as plataformas.');
-          return of([] as PurchasePlatform[]);
-        }),
-        finalize(() => this.isLoading$.next(false))
-      )
+    switchMap(([, pageState]) =>
+      this.purchasePlatformService
+        .list({ page: pageState.pageIndex + 1, limit: pageState.pageSize })
+        .pipe(
+          tap((response) =>
+            this.totalPlatforms$.next(response.meta?.total ?? response.platforms?.length ?? 0),
+          ),
+          map((response) => (Array.isArray(response?.platforms) ? response.platforms : [])),
+          catchError((error) => {
+            this.error$.next(error?.error?.message || 'Nao foi possivel carregar as plataformas.');
+            this.totalPlatforms$.next(0);
+            return of([] as PurchasePlatform[]);
+          }),
+          finalize(() => this.isLoading$.next(false)),
+        ),
     ),
-    shareReplay({ bufferSize: 1, refCount: true })
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
-  protected readonly totalPlatforms$ = this.platforms$.pipe(map((platforms) => platforms.length));
-  protected readonly companies$ = this.companyService.list().pipe(
-    map(({ companies }) => (Array.isArray(companies) ? companies : [])),
+  protected readonly companies$ = this.companyService.listAll().pipe(
+    map((companies) => (Array.isArray(companies) ? companies : [])),
     catchError(() => of([] as Company[])),
-    shareReplay({ bufferSize: 1, refCount: true })
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
-  protected readonly users$ = this.userService.listUsers().pipe(
-    map(({ users }) => (Array.isArray(users) ? users : [])),
+  protected readonly users$ = this.userService.listAllUsers().pipe(
+    map((users) => (Array.isArray(users) ? users : [])),
     catchError(() => of([] as User[])),
-    shareReplay({ bufferSize: 1, refCount: true })
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
   protected readonly filteredEmployees$ = combineLatest([
     this.users$,
-    this.usageForm.controls.companyId.valueChanges.pipe(startWith(this.usageForm.controls.companyId.value))
+    this.usageForm.controls.companyId.valueChanges.pipe(
+      startWith(this.usageForm.controls.companyId.value),
+    ),
   ]).pipe(
     map(([users, companyId]) => {
       if (!companyId) {
@@ -132,24 +202,39 @@ export class PurchasePlatformsComponent implements OnInit {
 
       return users.filter((user) => user.role === 'USER' && user.companyId === companyId);
     }),
-    shareReplay({ bufferSize: 1, refCount: true })
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
-  protected readonly usage$ = merge(this.refresh$, this.usageForm.valueChanges).pipe(
-    startWith(void 0),
+  protected readonly usage$ = combineLatest([
+    merge(this.refresh$, this.usageForm.valueChanges).pipe(startWith(void 0)),
+    this.usagePageState$,
+  ]).pipe(
     tap(() => {
       this.usageLoading$.next(true);
       this.usageError$.next(null);
     }),
-    switchMap(() =>
-      this.purchasePlatformService.getApiUsage(this.buildUsageFilters()).pipe(
+    switchMap(([, pageState]) =>
+      this.purchasePlatformService.getApiUsage(this.buildUsageFilters(pageState)).pipe(
+        tap((response) =>
+          this.totalUsageLogs$.next(response.meta?.total ?? response.totalGeral ?? 0),
+        ),
         catchError((error) => {
-          this.usageError$.next(error?.error?.message || 'Nao foi possivel carregar o monitoramento de API.');
-          return of({ totalMock: 0, totalReal: 0, totalGeral: 0 } satisfies ApiUsageSummary);
+          this.usageError$.next(
+            error?.error?.message || 'Nao foi possivel carregar o monitoramento de API.',
+          );
+          this.totalUsageLogs$.next(0);
+          return of({
+            totalMock: 0,
+            totalReal: 0,
+            totalGeral: 0,
+            logs: [],
+            items: [],
+            data: [],
+          } satisfies ApiUsageSummary);
         }),
-        finalize(() => this.usageLoading$.next(false))
-      )
+        finalize(() => this.usageLoading$.next(false)),
+      ),
     ),
-    shareReplay({ bufferSize: 1, refCount: true })
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
   protected readonly usageLoadingState$ = this.usageLoading$.asObservable();
   protected readonly usageErrorState$ = this.usageError$.asObservable();
@@ -173,7 +258,7 @@ export class PurchasePlatformsComponent implements OnInit {
     apiUrl: [SHOPEE_API_URL, [Validators.required]],
     apiLink: [SHOPEE_API_URL, [Validators.required]],
     accessKey: [''],
-    companySearch: ['']
+    companySearch: [''],
   });
 
   ngOnInit(): void {
@@ -202,27 +287,41 @@ export class PurchasePlatformsComponent implements OnInit {
     this.refresh$.next();
   }
 
+  protected handlePage(event: PageEvent): void {
+    this.pageState$.next({
+      pageIndex: event.pageIndex,
+      pageSize: event.pageSize,
+    });
+  }
+
+  protected handleUsagePage(event: PageEvent): void {
+    this.usagePageState$.next({
+      pageIndex: event.pageIndex,
+      pageSize: event.pageSize,
+    });
+  }
+
   protected resetUsageFilters(): void {
     this.usageForm.reset({
       companyId: null,
       userId: null,
       mode: 'ALL',
       startDate: null,
-      endDate: null
+      endDate: null,
     });
     this.refresh$.next();
   }
 
   protected loadCompanies(): void {
-    this.companyService.list().subscribe({
-      next: ({ companies }) => {
+    this.companyService.listAll().subscribe({
+      next: (companies) => {
         this.companies = Array.isArray(companies) ? companies : [];
         this.applyCompanyFilter(this.form.controls.companySearch.value || '');
       },
       error: () => {
         this.companies = [];
         this.filteredCompanies = [];
-      }
+      },
     });
   }
 
@@ -241,7 +340,7 @@ export class PurchasePlatformsComponent implements OnInit {
       apiUrl: SHOPEE_API_URL,
       apiLink: SHOPEE_API_URL,
       accessKey: '',
-      companySearch: ''
+      companySearch: '',
     });
 
     this.applyCompanyFilter('');
@@ -266,21 +365,23 @@ export class PurchasePlatformsComponent implements OnInit {
       apiUrl: platform.apiUrl || platform.apiLink || SHOPEE_API_URL,
       apiLink: platform.apiLink || platform.apiUrl || SHOPEE_API_URL,
       accessKey: '',
-      companySearch: ''
+      companySearch: '',
     });
 
     this.purchasePlatformService.listCompanies(platform.id).subscribe({
       next: ({ companies }) => {
         const links = Array.isArray(companies) ? companies : [];
         this.selectedCompanyIds = links.map((item) => item.companyId);
-        this.defaultCompanyIds = new Set(links.filter((item) => item.isDefaultForCompany).map((item) => item.companyId));
+        this.defaultCompanyIds = new Set(
+          links.filter((item) => item.isDefaultForCompany).map((item) => item.companyId),
+        );
         this.ensureDefaultWhenSingleSelected();
         this.applyCompanyFilter('');
       },
       error: () => {
         this.selectedCompanyIds = [];
         this.defaultCompanyIds.clear();
-      }
+      },
     });
 
     this.applyTypeValidators();
@@ -296,7 +397,8 @@ export class PurchasePlatformsComponent implements OnInit {
       return;
     }
 
-    const { name, description, type, appId, secret, isActive, mockMode, apiUrl, apiLink } = this.form.getRawValue();
+    const { name, description, type, appId, secret, isActive, mockMode, apiUrl, apiLink } =
+      this.form.getRawValue();
 
     if (!this.isValidUrl(apiUrl!)) {
       this.errorMessage = 'Informe uma URL valida para o link da API.';
@@ -311,7 +413,7 @@ export class PurchasePlatformsComponent implements OnInit {
       this.purchasePlatformService
         .updateCompanies(platformId, {
           companyIds: [...this.selectedCompanyIds],
-          defaultCompanyIds: [...this.defaultCompanyIds]
+          defaultCompanyIds: [...this.defaultCompanyIds],
         })
         .subscribe({
           next: () => {
@@ -322,9 +424,10 @@ export class PurchasePlatformsComponent implements OnInit {
           },
           error: (error) => {
             this.isSaving = false;
-            this.errorMessage = error?.error?.message || 'Plataforma salva, mas falhou ao vincular empresas.';
+            this.errorMessage =
+              error?.error?.message || 'Plataforma salva, mas falhou ao vincular empresas.';
             this.refresh$.next();
-          }
+          },
         });
     };
 
@@ -339,7 +442,7 @@ export class PurchasePlatformsComponent implements OnInit {
         mockMode: Boolean(mockMode),
         apiUrl: apiUrl!,
         apiLink: apiLink || apiUrl!,
-        accessKey: secret!
+        accessKey: secret!,
       };
 
       this.purchasePlatformService.create(payload).subscribe({
@@ -349,7 +452,7 @@ export class PurchasePlatformsComponent implements OnInit {
         error: (error) => {
           this.isSaving = false;
           this.errorMessage = error?.error?.message || 'Nao foi possivel criar a plataforma.';
-        }
+        },
       });
 
       return;
@@ -365,7 +468,7 @@ export class PurchasePlatformsComponent implements OnInit {
       mockMode: Boolean(mockMode),
       apiUrl: apiUrl || undefined,
       apiLink: apiLink || apiUrl || undefined,
-      accessKey: secret || undefined
+      accessKey: secret || undefined,
     };
 
     this.purchasePlatformService.update(this.editingPlatformId!, payload).subscribe({
@@ -375,7 +478,7 @@ export class PurchasePlatformsComponent implements OnInit {
       error: (error) => {
         this.isSaving = false;
         this.errorMessage = error?.error?.message || 'Nao foi possivel atualizar a plataforma.';
-      }
+      },
     });
   }
 
@@ -398,11 +501,19 @@ export class PurchasePlatformsComponent implements OnInit {
       },
       error: (error) => {
         this.errorMessage = error?.error?.message || 'Nao foi possivel remover a plataforma.';
-      }
+      },
     });
   }
 
-  protected selectCompanyById(companyId: number): void {
+  protected selectCompany(company: Company, isUserInput: boolean): void {
+    if (!isUserInput) {
+      return;
+    }
+
+    this.selectCompanyById(company.id);
+  }
+
+  private selectCompanyById(companyId: number): void {
     if (!this.selectedCompanyIds.includes(companyId)) {
       this.selectedCompanyIds = [...this.selectedCompanyIds, companyId];
     }
@@ -442,11 +553,14 @@ export class PurchasePlatformsComponent implements OnInit {
   protected resetMockUsage(): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '430px',
+      maxWidth: '100vw',
+      maxHeight: '100dvh',
+      panelClass: 'app-responsive-dialog',
       data: {
         title: 'Zerar contador Mock',
         message: 'Deseja remover os registros MOCK com os filtros atuais?',
-        confirmText: 'Zerar Mock'
-      }
+        confirmText: 'Zerar Mock',
+      },
     });
 
     dialogRef.afterClosed().subscribe((confirmed) => {
@@ -459,16 +573,20 @@ export class PurchasePlatformsComponent implements OnInit {
         .deleteMockApiUsage({
           companyId: filters.companyId,
           startDate: filters.startDate,
-          endDate: filters.endDate
+          endDate: filters.endDate,
         })
         .subscribe({
           next: ({ deletedCount }) => {
-            this.snackBar.open(`${deletedCount} registro(s) MOCK removido(s).`, 'Fechar', { duration: 3000 });
+            this.snackBar.open(`${deletedCount} registro(s) MOCK removido(s).`, 'Fechar', {
+              duration: 3000,
+            });
             this.refresh$.next();
           },
           error: (error) => {
-            this.snackBar.open(error?.error?.message || 'Falha ao zerar contador MOCK.', 'Fechar', { duration: 3500 });
-          }
+            this.snackBar.open(error?.error?.message || 'Falha ao zerar contador MOCK.', 'Fechar', {
+              duration: 3500,
+            });
+          },
         });
     });
   }
@@ -521,7 +639,9 @@ export class PurchasePlatformsComponent implements OnInit {
     }
 
     const onlyCompanyId = this.selectedCompanyIds[0];
-    const hasDefaultForAnySelected = this.selectedCompanyIds.some((companyId) => this.defaultCompanyIds.has(companyId));
+    const hasDefaultForAnySelected = this.selectedCompanyIds.some((companyId) =>
+      this.defaultCompanyIds.has(companyId),
+    );
 
     if (!hasDefaultForAnySelected) {
       this.defaultCompanyIds.add(onlyCompanyId);
@@ -537,12 +657,14 @@ export class PurchasePlatformsComponent implements OnInit {
     }
   }
 
-  private buildUsageFilters(): {
+  private buildUsageFilters(pageState = this.usagePageState$.getValue()): {
     companyId?: number;
     userId?: number;
     startDate?: string;
     endDate?: string;
     mode?: ApiUsageMode;
+    page?: number;
+    limit?: number;
   } {
     const { companyId, userId, startDate, endDate, mode } = this.usageForm.getRawValue();
     const filters: {
@@ -551,6 +673,8 @@ export class PurchasePlatformsComponent implements OnInit {
       startDate?: string;
       endDate?: string;
       mode?: ApiUsageMode;
+      page?: number;
+      limit?: number;
     } = {};
 
     if (companyId) {
@@ -572,6 +696,9 @@ export class PurchasePlatformsComponent implements OnInit {
     if (mode && mode !== 'ALL') {
       filters.mode = mode;
     }
+
+    filters.page = pageState.pageIndex + 1;
+    filters.limit = pageState.pageSize;
 
     return filters;
   }

@@ -1,0 +1,88 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+import Hero from '@components/sections/Hero.astro';
+import TrustStrip from '@components/sections/TrustStrip.astro';
+import Features from '@components/sections/Features.astro';
+import AlliShowcase from '@components/sections/AlliShowcase.astro';
+import HowItWorks from '@components/sections/HowItWorks.astro';
+import Security from '@components/sections/Security.astro';
+import Pricing from '@components/sections/Pricing.astro';
+import PricingComparison from '@components/sections/PricingComparison.astro';
+import FAQ from '@components/sections/FAQ.astro';
+import FinalCTA from '@components/sections/FinalCTA.astro';
+import LeadForm from '@components/sections/LeadForm.astro';
+import { faq } from '@lib/faq';
+---
+
+<BaseLayout
+  title="Come Pouco — Gestão profissional de afiliados Shopee"
+  description="Gere links de afiliado Shopee no automático, gerencie sua equipe e converta sua audiência com o módulo público Alli. Multi-tenant, seguro e fácil de usar."
+  schemaType="FAQPage"
+  schemaData={{ items: faq }}
+>
+  <Hero />
+  <TrustStrip />
+  <Features />
+  <AlliShowcase />
+  <HowItWorks />
+  <Security />
+  <Pricing />
+  <PricingComparison />
+  <FAQ />
+  <FinalCTA />
+  <LeadForm />
+</BaseLayout>
+
+<script>
+  import { attachEventTracking, trackEvent } from '@lib/analytics';
+
+  attachEventTracking();
+
+  window.addEventListener('lead-form-success', () => trackEvent('lead_form_success'));
+  window.addEventListener('alli-demo-complete', () => trackEvent('alli_demo_interact'));
+
+  function reveal() {
+    const els = document.querySelectorAll<HTMLElement>('[data-cp-reveal]');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach((el) => el.classList.add('is-visible'));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { rootMargin: '-10% 0px -10% 0px', threshold: 0.05 }
+    );
+    els.forEach((el) => io.observe(el));
+  }
+
+  if (document.readyState !== 'loading') reveal();
+  else document.addEventListener('DOMContentLoaded', reveal);
+</script>
+
+<style is:global>
+  [data-cp-reveal] {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 720ms var(--cp-ease-emphasized),
+      transform 720ms var(--cp-ease-emphasized);
+  }
+
+  [data-cp-reveal].is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-cp-reveal] {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+</style>

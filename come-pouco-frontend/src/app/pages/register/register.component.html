@@ -1,65 +1,154 @@
-<section class="page-shell auth-shell">
-  <mat-card class="auth-card" appearance="raised">
-    <mat-card-header>
-      <mat-card-title>Criar Conta</mat-card-title>
-      <mat-card-subtitle>Cadastre-se para acessar os modulos da plataforma.</mat-card-subtitle>
-    </mat-card-header>
+<app-auth-shell
+  title="Criar conta"
+  description="Cadastre o usuario inicial para acessar os modulos da plataforma."
+  featureTitle="Onboarding com seguranca"
+  featureDescription="Dados da conta e credenciais ficam separados para reduzir erro de preenchimento."
+  featureIcon="users"
+>
+  <form [formGroup]="registerForm" (ngSubmit)="submit()" class="auth-form">
+    <section class="form-section">
+      <div class="form-section-heading">
+        <app-icon name="user-round" [size]="18"></app-icon>
+        <h2>Dados da conta</h2>
+      </div>
 
-    <mat-card-content>
-      <form [formGroup]="registerForm" (ngSubmit)="submit()" class="auth-form">
-        <mat-form-field appearance="outline">
-          <mat-label>Nome completo</mat-label>
-          <input matInput type="text" formControlName="fullName" placeholder="Seu nome" />
-          <mat-error *ngIf="registerForm.controls.fullName.touched && registerForm.controls.fullName.invalid">
-            Informe ao menos 3 caracteres.
-          </mat-error>
-        </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Nome completo</mat-label>
+        <input
+          matInput
+          type="text"
+          formControlName="fullName"
+          placeholder="Seu nome"
+          autocomplete="name"
+        />
+        <mat-error
+          *ngIf="registerForm.controls.fullName.touched && registerForm.controls.fullName.invalid"
+        >
+          Informe ao menos 3 caracteres.
+        </mat-error>
+      </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Usuario</mat-label>
-          <input matInput type="text" formControlName="username" placeholder="maria_silva" />
-          <mat-error *ngIf="registerForm.controls.username.touched && registerForm.controls.username.invalid">
-            Use apenas letras, numeros, _ ou -.
-          </mat-error>
-        </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Usuario</mat-label>
+        <input
+          matInput
+          type="text"
+          formControlName="username"
+          placeholder="maria_silva"
+          autocomplete="username"
+        />
+        <mat-error
+          *ngIf="registerForm.controls.username.touched && registerForm.controls.username.invalid"
+        >
+          Use apenas letras, numeros, _ ou -.
+        </mat-error>
+      </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>E-mail (opcional)</mat-label>
-          <input matInput type="email" formControlName="email" placeholder="voce@email.com" />
-          <mat-error *ngIf="registerForm.controls.email.touched && registerForm.controls.email.invalid">
-            Informe um e-mail valido.
-          </mat-error>
-        </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>E-mail (opcional)</mat-label>
+        <input
+          matInput
+          type="email"
+          formControlName="email"
+          placeholder="voce@email.com"
+          autocomplete="email"
+        />
+        <mat-error
+          *ngIf="registerForm.controls.email.touched && registerForm.controls.email.invalid"
+        >
+          Informe um e-mail valido.
+        </mat-error>
+      </mat-form-field>
+    </section>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Senha</mat-label>
-          <input matInput type="password" formControlName="password" placeholder="Minimo 6 caracteres" />
-          <mat-error *ngIf="registerForm.controls.password.touched && registerForm.controls.password.invalid">
-            A senha precisa ter no minimo 6 caracteres.
-          </mat-error>
-        </mat-form-field>
+    <section class="form-section">
+      <div class="form-section-heading">
+        <app-icon name="lock-keyhole" [size]="18"></app-icon>
+        <h2>Senha</h2>
+      </div>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Confirmar senha</mat-label>
-          <input matInput type="password" formControlName="confirmPassword" placeholder="Repita sua senha" />
-          <mat-error
-            *ngIf="registerForm.controls.confirmPassword.touched && registerForm.controls.confirmPassword.invalid"
-          >
-            Confirme a senha.
-          </mat-error>
-        </mat-form-field>
-
-        <button mat-flat-button color="primary" type="submit" [disabled]="isSubmitting">
-          {{ isSubmitting ? 'Criando conta...' : 'Cadastrar' }}
+      <mat-form-field appearance="outline">
+        <mat-label>Senha</mat-label>
+        <input
+          matInput
+          [type]="hidePassword() ? 'password' : 'text'"
+          formControlName="password"
+          placeholder="Minimo 10 caracteres, letra e numero"
+          autocomplete="new-password"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          class="password-toggle"
+          [attr.aria-label]="hidePassword() ? 'Mostrar senha' : 'Ocultar senha'"
+          (click)="togglePasswordVisibility()"
+        >
+          <app-icon [name]="hidePassword() ? 'eye' : 'eye-off'" [size]="18"></app-icon>
         </button>
-      </form>
+        <mat-error
+          *ngIf="registerForm.controls.password.touched && registerForm.controls.password.invalid"
+        >
+          {{ passwordErrorMessage() }}
+        </mat-error>
+      </mat-form-field>
 
-      <p class="status-block status-error" *ngIf="errorMessage">{{ errorMessage }}</p>
-    </mat-card-content>
+      <mat-form-field appearance="outline">
+        <mat-label>Confirmar senha</mat-label>
+        <input
+          matInput
+          [type]="hideConfirmPassword() ? 'password' : 'text'"
+          formControlName="confirmPassword"
+          placeholder="Repita sua senha"
+          autocomplete="new-password"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          class="password-toggle"
+          [attr.aria-label]="hideConfirmPassword() ? 'Mostrar senha' : 'Ocultar senha'"
+          (click)="toggleConfirmPasswordVisibility()"
+        >
+          <app-icon [name]="hideConfirmPassword() ? 'eye' : 'eye-off'" [size]="18"></app-icon>
+        </button>
+        <mat-error
+          *ngIf="
+            registerForm.controls.confirmPassword.touched &&
+            registerForm.controls.confirmPassword.invalid
+          "
+        >
+          Confirme a senha.
+        </mat-error>
+      </mat-form-field>
 
-    <mat-card-actions align="end">
+      <p
+        class="field-error"
+        *ngIf="registerForm.controls.confirmPassword.touched && passwordsMismatch()"
+      >
+        As senhas nao conferem.
+      </p>
+    </section>
+
+    <p class="auth-alert auth-alert-error" role="alert" *ngIf="errorMessage()">
+      <app-icon name="circle-alert" [size]="18"></app-icon>
+      <span>{{ errorMessage() }}</span>
+    </p>
+
+    <button
+      mat-flat-button
+      color="primary"
+      type="submit"
+      class="auth-submit"
+      [disabled]="isSubmitting()"
+    >
+      <app-icon *ngIf="isSubmitting()" name="loader-circle" [size]="18"></app-icon>
+      <span>{{ isSubmitting() ? 'Criando conta...' : 'Cadastrar' }}</span>
+    </button>
+
+    <div class="auth-form-footer">
       <span>Ja tem conta?</span>
-      <a mat-button color="primary" routerLink="/login">Entrar</a>
-    </mat-card-actions>
-  </mat-card>
-</section>
+      <a routerLink="/login">Entrar</a>
+    </div>
+  </form>
+</app-auth-shell>

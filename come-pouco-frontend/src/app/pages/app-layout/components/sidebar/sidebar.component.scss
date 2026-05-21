@@ -1,0 +1,196 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.sidebar {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  min-height: 0;
+  border-right: 1px solid color-mix(in srgb, var(--cp-color-border) 86%, transparent);
+  background: color-mix(in srgb, var(--cp-color-surface) 96%, var(--cp-color-background));
+  color: var(--cp-color-foreground);
+  transition:
+    background var(--cp-duration-short) var(--cp-ease-standard),
+    border-color var(--cp-duration-short) var(--cp-ease-standard);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  min-height: var(--cp-layout-topbar-height);
+  padding: var(--cp-space-4);
+}
+
+.sidebar-logo-link {
+  display: inline-flex;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sidebar-nav {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--cp-space-2) var(--cp-space-3) var(--cp-space-4);
+}
+
+.sidebar-group {
+  display: grid;
+  gap: var(--cp-space-2);
+}
+
+.sidebar-group + .sidebar-group {
+  margin-top: var(--cp-space-5, 20px);
+}
+
+.sidebar-group-label {
+  padding: 0 var(--cp-space-3);
+  color: var(--cp-color-muted-foreground);
+  font-size: var(--cp-text-label-size);
+  font-weight: var(--cp-text-label-weight);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.sidebar-group-items {
+  display: grid;
+  gap: var(--cp-space-1);
+}
+
+.sidebar-link {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4px 22px minmax(0, 1fr);
+  min-height: 44px;
+  align-items: center;
+  gap: var(--cp-space-2);
+  padding: 0 var(--cp-space-3) 0 var(--cp-space-2);
+  overflow: hidden;
+  border-radius: var(--cp-radius-md);
+  color: var(--cp-color-muted-foreground);
+  font-size: var(--cp-text-body-sm-size);
+  font-weight: 720;
+  text-decoration: none;
+  transition:
+    background var(--cp-duration-short) var(--cp-ease-standard),
+    color var(--cp-duration-short) var(--cp-ease-standard),
+    transform var(--cp-duration-short) var(--cp-ease-standard);
+}
+
+.sidebar-link:hover {
+  background: var(--cp-color-muted);
+  color: var(--cp-color-foreground);
+}
+
+.sidebar-link-active {
+  background: var(--cp-color-primary-soft);
+  color: var(--cp-color-primary);
+}
+
+.sidebar-link-indicator {
+  width: 4px;
+  height: 18px;
+  border-radius: var(--cp-radius-full);
+  background: transparent;
+}
+
+.sidebar-link-active .sidebar-link-indicator {
+  background: currentColor;
+}
+
+.sidebar-link-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-footer {
+  padding: var(--cp-space-3);
+  border-top: 1px solid var(--cp-color-border);
+}
+
+.tenant-chip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 48px;
+  align-items: center;
+  gap: var(--cp-space-3);
+  padding: var(--cp-space-2) var(--cp-space-3);
+  border: 1px solid var(--cp-color-border);
+  border-radius: var(--cp-radius-md);
+  background: var(--cp-color-surface);
+}
+
+.tenant-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--cp-radius-full);
+  background: var(--cp-color-success);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cp-color-success) 14%, transparent);
+}
+
+.tenant-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.tenant-copy strong,
+.tenant-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenant-copy strong {
+  color: var(--cp-color-foreground);
+  font-size: var(--cp-text-body-sm-size);
+  line-height: var(--cp-text-body-sm-line-height);
+}
+
+.tenant-copy span {
+  color: var(--cp-color-muted-foreground);
+  font-size: var(--cp-text-caption-size);
+  font-weight: 750;
+  line-height: var(--cp-text-caption-line-height);
+}
+
+.sidebar-collapsed .sidebar-header,
+.sidebar-collapsed .sidebar-nav,
+.sidebar-collapsed .sidebar-footer {
+  padding-inline: var(--cp-space-2);
+}
+
+.sidebar-collapsed .sidebar-header {
+  justify-content: center;
+}
+
+.sidebar-collapsed .sidebar-group {
+  gap: var(--cp-space-1);
+}
+
+.sidebar-collapsed .sidebar-group-label,
+.sidebar-collapsed .sidebar-link-label,
+.sidebar-collapsed .tenant-copy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.sidebar-collapsed .sidebar-link {
+  grid-template-columns: 4px 1fr;
+  justify-items: center;
+  padding-inline: var(--cp-space-2);
+}
+
+.sidebar-collapsed .tenant-chip {
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--cp-space-2);
+}

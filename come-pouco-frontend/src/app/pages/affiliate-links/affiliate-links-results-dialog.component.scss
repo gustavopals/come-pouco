@@ -1,37 +1,58 @@
 .copy-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  gap: var(--cp-space-3);
+  margin-bottom: var(--cp-space-4);
+}
+
+.button-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cp-space-2);
 }
 
 .copied-message {
-  color: #14532d;
-  font-weight: 600;
+  color: var(--cp-color-success);
+  font-weight: 650;
 }
 
 .table-shell {
   overflow: auto;
-  border: 1px solid rgba(123, 58, 13, 0.15);
-  border-radius: 10px;
+  border: 1px solid var(--cp-color-border);
+  border-radius: var(--cp-radius-lg);
+  background: var(--cp-color-surface);
 }
 
 .results-table {
   width: 100%;
-  min-width: 680px;
+  min-width: 760px;
+}
+
+.results-table .mat-mdc-header-row {
+  background: color-mix(in srgb, var(--cp-color-muted) 78%, var(--cp-color-surface));
+}
+
+.results-table .mat-mdc-header-cell {
+  color: var(--cp-color-muted-foreground);
+  font-weight: 700;
+}
+
+.result-error-row {
+  background: color-mix(in srgb, var(--cp-color-danger) 7%, transparent);
 }
 
 .link-text {
   display: inline-block;
   max-width: 100%;
+  color: var(--cp-color-foreground);
   word-break: break-all;
 }
 
 .actions-cell {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  min-width: 96px;
+  gap: var(--cp-space-1);
+  min-width: 104px;
 }
 
 .actions-cell button,
@@ -40,5 +61,13 @@
 }
 
 .error-text {
-  color: #b91c1c;
+  color: var(--cp-color-danger);
+  font-weight: 650;
+}
+
+@media (max-width: 640px) {
+  .copy-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }

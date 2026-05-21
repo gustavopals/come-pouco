@@ -1,0 +1,199 @@
+---
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import Button from '@components/ui/Button.astro';
+import Badge from '@components/ui/Badge.astro';
+import Icon from '@components/ui/Icon.astro';
+import { plans, yearlyDiscountPct } from '@lib/plans';
+
+const formatPrice = (price: number | null, fallback?: string) => {
+  if (price === null) return fallback ?? '—';
+  if (price === 0) return 'R$ 0';
+  return `R$ ${price.toLocaleString('pt-BR')}`;
+};
+---
+
+<Section id="pricing" tone="muted" ariaLabelledby="pricing-title">
+  <Container size="page" class="flex flex-col gap-10">
+    <header class="mx-auto max-w-[var(--cp-mkt-prose-max)] text-center flex flex-col gap-4">
+      <span
+        class="text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--cp-color-primary)]"
+      >
+        Preços
+      </span>
+      <h2
+        id="pricing-title"
+        class="text-[length:var(--cp-text-h2-size)] font-bold leading-[var(--cp-text-h2-line-height)] tracking-[-0.02em]"
+      >
+        Planos pra cada momento.
+      </h2>
+      <p
+        class="text-[length:var(--cp-text-body-lg-size)] leading-[var(--cp-text-body-lg-line-height)] text-[var(--cp-color-muted-foreground)]"
+      >
+        Free pra validar, Pro pra escalar, Enterprise pra operações grandes. Sem fidelidade, sem
+        cartão no Free.
+      </p>
+    </header>
+
+    <div
+      class="mx-auto inline-flex items-center gap-1 rounded-full border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] p-1"
+      role="tablist"
+      aria-label="Periodicidade"
+    >
+      <button
+        type="button"
+        data-pricing-period="monthly"
+        role="tab"
+        aria-selected="true"
+        class="rounded-full px-4 py-2 text-[13px] font-semibold transition-colors data-[active=true]:bg-[var(--cp-color-primary)] data-[active=true]:text-[var(--cp-color-primary-foreground)]"
+        data-active="true"
+      >
+        Mensal
+      </button>
+      <button
+        type="button"
+        data-pricing-period="yearly"
+        role="tab"
+        aria-selected="false"
+        class="rounded-full px-4 py-2 text-[13px] font-semibold transition-colors data-[active=true]:bg-[var(--cp-color-primary)] data-[active=true]:text-[var(--cp-color-primary-foreground)]"
+        data-active="false"
+        data-event="pricing_toggle_yearly"
+      >
+        Anual <span
+          class="ml-1 rounded-full bg-[var(--cp-color-primary-soft)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--cp-color-primary)]"
+          >2 meses grátis</span
+        >
+      </button>
+    </div>
+
+    <ul data-cp-reveal class="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-3 lg:gap-6">
+      {
+        plans.map((plan) => (
+          <li class="flex">
+            <article
+              class:list={[
+                'flex w-full flex-col gap-6 rounded-[var(--cp-radius-lg)] border bg-[var(--cp-color-surface)] p-7 shadow-[var(--cp-shadow-sm)]',
+                plan.highlight
+                  ? 'border-[var(--cp-color-primary)] shadow-[var(--cp-shadow-glow)] ring-1 ring-[var(--cp-color-primary)]/40 lg:scale-[1.02]'
+                  : 'border-[var(--cp-color-border)]'
+              ]}
+            >
+              <header class="flex items-start justify-between gap-3">
+                <div>
+                  <h3 class="text-[20px] font-bold tracking-tight text-[var(--cp-color-foreground)]">
+                    {plan.name}
+                  </h3>
+                  <p class="mt-1 text-[14px] text-[var(--cp-color-muted-foreground)]">
+                    {plan.tagline}
+                  </p>
+                </div>
+                {plan.highlight && (
+                  <Badge variant="success" size="sm">
+                    Mais escolhido
+                  </Badge>
+                )}
+              </header>
+
+              <div class="flex items-end gap-2" data-pricing-amount={plan.id}>
+                {plan.priceLabel ? (
+                  <span class="text-[36px] font-bold leading-none text-[var(--cp-color-foreground)]">
+                    {plan.priceLabel}
+                  </span>
+                ) : (
+                  <>
+                    <span
+                      class="text-[36px] font-bold leading-none text-[var(--cp-color-foreground)]"
+                      data-pricing-monthly={formatPrice(plan.priceMonthly)}
+                      data-pricing-yearly={
+                        plan.priceYearly !== null && plan.priceYearly > 0
+                          ? `R$ ${Math.round(plan.priceYearly / 12).toLocaleString('pt-BR')}`
+                          : formatPrice(plan.priceYearly)
+                      }
+                    >
+                      {formatPrice(plan.priceMonthly)}
+                    </span>
+                    {plan.priceMonthly !== null && plan.priceMonthly > 0 && (
+                      <span class="pb-1 text-[13px] text-[var(--cp-color-muted-foreground)]">
+                        /mês
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {plan.id === 'pro' && (
+                <p
+                  class="-mt-3 text-[12px] text-[var(--cp-color-muted-foreground)]"
+                  data-yearly-note
+                  hidden
+                >
+                  Cobrado anualmente como R$ {plan.priceYearly?.toLocaleString('pt-BR')} (
+                  {yearlyDiscountPct}% off).
+                </p>
+              )}
+
+              <ul class="flex flex-col gap-2.5">
+                {plan.features.map((f) => (
+                  <li class="flex items-start gap-2 text-[14px] text-[var(--cp-color-foreground)]">
+                    <span class="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--cp-color-primary-soft)] text-[var(--cp-color-primary)]">
+                      <Icon name="Check" size={10} strokeWidth={3} />
+                    </span>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                href={plan.ctaHref}
+                variant={plan.highlight ? 'primary' : 'secondary'}
+                size="md"
+                fullWidth
+                dataEvent={plan.ctaEvent}
+              >
+                {plan.ctaLabel}
+              </Button>
+            </article>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="text-center text-[13px] text-[var(--cp-color-muted-foreground)]">
+      Sem cartão necessário no Free. Cancele a qualquer momento. Impostos não inclusos.
+    </p>
+  </Container>
+</Section>
+
+<script>
+  function init() {
+    const buttons = document.querySelectorAll<HTMLButtonElement>('[data-pricing-period]');
+    const amountEls = document.querySelectorAll<HTMLElement>(
+      '[data-pricing-amount] [data-pricing-monthly]'
+    );
+    const yearlyNote = document.querySelector<HTMLElement>('[data-yearly-note]');
+
+    function setPeriod(p: 'monthly' | 'yearly') {
+      buttons.forEach((b) => {
+        const active = b.dataset.pricingPeriod === p;
+        b.dataset.active = String(active);
+        b.setAttribute('aria-selected', String(active));
+      });
+      amountEls.forEach((el) => {
+        const v = p === 'monthly' ? el.dataset.pricingMonthly : el.dataset.pricingYearly;
+        if (v) el.textContent = v;
+      });
+      if (yearlyNote) {
+        yearlyNote.hidden = p !== 'yearly';
+      }
+    }
+
+    buttons.forEach((b) => {
+      b.addEventListener('click', () => {
+        setPeriod(b.dataset.pricingPeriod as 'monthly' | 'yearly');
+      });
+    });
+  }
+
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+</script>

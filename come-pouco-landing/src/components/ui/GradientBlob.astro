@@ -1,0 +1,70 @@
+---
+export interface Props {
+  /** Posição relativa ao container (auto-position com CSS classes) */
+  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'center';
+  /** Cor base do gradiente */
+  color?: 'primary' | 'accent' | 'mixed';
+  /** Tamanho do blob (raio em px) */
+  size?: number;
+  /** Blur em px */
+  blur?: number;
+  /** Opacidade 0-1 */
+  opacity?: number;
+  /** Animar deslocamento sutil (respeita prefers-reduced-motion) */
+  animated?: boolean;
+  class?: string;
+}
+
+const {
+  position = 'top-right',
+  color = 'primary',
+  size = 480,
+  blur = 96,
+  opacity = 0.42,
+  animated = false,
+  class: extraClass = ''
+} = Astro.props;
+
+const positions: Record<NonNullable<Props['position']>, string> = {
+  'top-right': 'top-[-20%] right-[-10%]',
+  'top-left': 'top-[-20%] left-[-10%]',
+  'bottom-right': 'bottom-[-30%] right-[-10%]',
+  'bottom-left': 'bottom-[-30%] left-[-10%]',
+  center: 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
+};
+
+const colors: Record<NonNullable<Props['color']>, string> = {
+  primary: 'bg-[radial-gradient(circle_at_50%_50%,var(--cp-color-primary)_0%,transparent_72%)]',
+  accent: 'bg-[radial-gradient(circle_at_50%_50%,var(--cp-color-accent)_0%,transparent_70%)]',
+  mixed:
+    'bg-[radial-gradient(circle_at_30%_40%,var(--cp-mkt-hero-grad-start)_0%,transparent_55%),radial-gradient(circle_at_70%_70%,var(--cp-mkt-hero-grad-end)_0%,transparent_60%)]'
+};
+---
+
+<div
+  aria-hidden="true"
+  class:list={[
+    'pointer-events-none absolute -z-10 rounded-full',
+    positions[position],
+    colors[color],
+    animated && 'motion-safe:animate-[cp-blob_24s_var(--cp-ease-emphasized)_infinite]',
+    extraClass
+  ]}
+  style={`width:${size}px;height:${size}px;filter:blur(${blur}px);opacity:${opacity};`}
+>
+</div>
+
+<style is:global>
+  @keyframes cp-blob {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    33% {
+      transform: translate3d(2%, -2%, 0) scale(1.05);
+    }
+    66% {
+      transform: translate3d(-2%, 2%, 0) scale(0.95);
+    }
+  }
+</style>

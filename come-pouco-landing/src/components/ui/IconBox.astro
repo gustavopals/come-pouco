@@ -1,0 +1,41 @@
+---
+export interface Props {
+  variant?: 'primary' | 'accent' | 'info' | 'success' | 'soft';
+  size?: 'sm' | 'md' | 'lg';
+  class?: string;
+  /** Rótulo acessível se o ícone for puramente decorativo */
+  label?: string;
+}
+
+const { variant = 'primary', size = 'md', class: extraClass = '', label } = Astro.props;
+
+const variants: Record<NonNullable<Props['variant']>, string> = {
+  primary: 'bg-[var(--cp-color-primary-soft)] text-[var(--cp-color-primary)]',
+  accent:
+    'bg-[color-mix(in_oklab,var(--cp-color-accent)_18%,transparent)] text-[var(--cp-color-accent)]',
+  info: 'bg-[color-mix(in_oklab,var(--cp-color-info)_15%,transparent)] text-[var(--cp-color-info)]',
+  success:
+    'bg-[color-mix(in_oklab,var(--cp-color-success)_18%,transparent)] text-[var(--cp-color-success)]',
+  soft: 'bg-[var(--cp-color-muted)] text-[var(--cp-color-muted-foreground)]'
+};
+
+const sizes: Record<NonNullable<Props['size']>, string> = {
+  sm: 'w-9 h-9 rounded-[var(--cp-radius-sm)] [&_svg]:w-[18px] [&_svg]:h-[18px]',
+  md: 'w-12 h-12 rounded-[var(--cp-radius-md)] [&_svg]:w-[22px] [&_svg]:h-[22px]',
+  lg: 'w-14 h-14 rounded-[var(--cp-radius-lg)] [&_svg]:w-[26px] [&_svg]:h-[26px]'
+};
+---
+
+<span
+  class:list={[
+    'inline-flex items-center justify-center shrink-0',
+    variants[variant],
+    sizes[size],
+    extraClass
+  ]}
+  aria-hidden={label ? undefined : 'true'}
+  aria-label={label}
+  role={label ? 'img' : undefined}
+>
+  <slot />
+</span>

@@ -1,105 +1,201 @@
 <section class="page-shell">
-  <main class="page-main">
-    <mat-card appearance="outlined">
-      <mat-card-header>
-        <mat-card-title>Configuracao de e-mail do sistema</mat-card-title>
-        <mat-card-subtitle>Defina o provedor para envio de e-mails transacionais.</mat-card-subtitle>
+  <main class="page-main email-settings-page">
+    <app-page-header
+      eyebrow="Administracao"
+      title="E-mail do sistema"
+      description="Defina o provedor transacional, remetente padrao e credenciais de envio."
+    >
+      <app-status-chip
+        pageHeaderActions
+        [label]="form.controls.enabled.value ? 'Servico ativo' : 'Servico pausado'"
+        [variant]="form.controls.enabled.value ? 'success' : 'neutral'"
+        icon="mail"
+      />
+    </app-page-header>
+
+    <mat-card appearance="outlined" class="settings-card">
+      <mat-card-header class="settings-heading">
+        <div>
+          <mat-card-title>{{ providerLabel() }}</mat-card-title>
+          <mat-card-subtitle>Provedor selecionado para envios transacionais.</mat-card-subtitle>
+        </div>
+        <button mat-stroked-button type="button" class="button-with-icon" (click)="loadConfig()">
+          <app-icon name="refresh-cw" size="18" />
+          Recarregar
+        </button>
       </mat-card-header>
+
       <mat-card-content>
         <mat-progress-bar mode="indeterminate" *ngIf="isLoading$ | async"></mat-progress-bar>
 
+        <div class="settings-loading" *ngIf="isLoading$ | async">
+          <app-skeleton-loader variant="card" label="Carregando configuracao de e-mail" />
+        </div>
+
         <form [formGroup]="form" (ngSubmit)="save()" class="email-form">
-          <mat-form-field appearance="outline">
-            <mat-label>Provider</mat-label>
-            <mat-select formControlName="provider">
-              <mat-option *ngFor="let provider of providers" [value]="provider.value">{{ provider.label }}</mat-option>
-            </mat-select>
-          </mat-form-field>
+          <section class="form-section">
+            <div class="section-heading">
+              <h2>Provedor</h2>
+              <p>Escolha o servico usado para disparos do sistema.</p>
+            </div>
 
-          <mat-slide-toggle formControlName="enabled">Servico habilitado</mat-slide-toggle>
+            <div class="provider-options" role="radiogroup" aria-label="Provedor de e-mail">
+              <button
+                *ngFor="let provider of providers"
+                type="button"
+                class="provider-option"
+                role="radio"
+                [attr.data-provider-option]="provider.value"
+                [class.provider-option-active]="selectedProvider === provider.value"
+                [attr.aria-checked]="selectedProvider === provider.value"
+                (click)="setProvider(provider.value)"
+                (keydown)="handleProviderKeydown($event, provider.value)"
+              >
+                <span>{{ provider.label }}</span>
+                <app-icon *ngIf="selectedProvider === provider.value" name="check" size="17" />
+              </button>
+            </div>
+          </section>
 
-          <mat-form-field appearance="outline">
-            <mat-label>From Email</mat-label>
-            <input matInput type="email" formControlName="fromEmail" />
-          </mat-form-field>
+          <section class="form-section">
+            <div class="section-heading">
+              <h2>Remetente</h2>
+              <p>Dados exibidos nas mensagens enviadas.</p>
+            </div>
 
-          <mat-form-field appearance="outline">
-            <mat-label>From Name</mat-label>
-            <input matInput type="text" formControlName="fromName" />
-          </mat-form-field>
+            <mat-slide-toggle formControlName="enabled">Servico habilitado</mat-slide-toggle>
 
-          <ng-container *ngIf="selectedProvider === 'smtp'">
-            <mat-form-field appearance="outline">
-              <mat-label>SMTP Host</mat-label>
-              <input matInput type="text" formControlName="smtpHost" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>SMTP Port</mat-label>
-              <input matInput type="number" formControlName="smtpPort" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>SMTP User</mat-label>
-              <input matInput type="text" formControlName="smtpUser" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>SMTP Password</mat-label>
-              <input matInput type="password" formControlName="smtpPassword" />
-            </mat-form-field>
-            <mat-slide-toggle formControlName="smtpSecure">SMTP Secure</mat-slide-toggle>
-          </ng-container>
+            <div class="field-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>From Email</mat-label>
+                <input matInput type="email" formControlName="fromEmail" />
+                <mat-error
+                  *ngIf="
+                    form.controls.fromEmail.touched && form.controls.fromEmail.hasError('required')
+                  "
+                >
+                  Informe o e-mail remetente.
+                </mat-error>
+                <mat-error
+                  *ngIf="
+                    form.controls.fromEmail.touched && form.controls.fromEmail.hasError('email')
+                  "
+                >
+                  Informe um e-mail valido.
+                </mat-error>
+              </mat-form-field>
 
-          <ng-container *ngIf="selectedProvider === 'resend'">
-            <mat-form-field appearance="outline">
-              <mat-label>Resend API Key</mat-label>
-              <input matInput type="password" formControlName="resendApiKey" />
-            </mat-form-field>
-          </ng-container>
+              <mat-form-field appearance="outline">
+                <mat-label>From Name</mat-label>
+                <input matInput type="text" formControlName="fromName" />
+              </mat-form-field>
+            </div>
+          </section>
 
-          <ng-container *ngIf="selectedProvider === 'sendgrid'">
-            <mat-form-field appearance="outline">
-              <mat-label>SendGrid API Key</mat-label>
-              <input matInput type="password" formControlName="sendgridApiKey" />
-            </mat-form-field>
-          </ng-container>
+          <section class="form-section provider-fields">
+            <div class="section-heading">
+              <h2>Credenciais</h2>
+              <p>Campos sensiveis nao sao preenchidos novamente apos salvar.</p>
+            </div>
 
-          <ng-container *ngIf="selectedProvider === 'ses'">
-            <mat-form-field appearance="outline">
-              <mat-label>SES Access Key</mat-label>
-              <input matInput type="password" formControlName="sesAccessKey" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>SES Secret Key</mat-label>
-              <input matInput type="password" formControlName="sesSecretKey" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>SES Region</mat-label>
-              <input matInput type="text" formControlName="sesRegion" />
-            </mat-form-field>
-          </ng-container>
+            <div class="field-grid" *ngIf="selectedProvider === 'smtp'">
+              <mat-form-field appearance="outline">
+                <mat-label>SMTP Host</mat-label>
+                <input matInput type="text" formControlName="smtpHost" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>SMTP Port</mat-label>
+                <input matInput type="number" formControlName="smtpPort" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>SMTP User</mat-label>
+                <input matInput type="text" formControlName="smtpUser" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>SMTP Password</mat-label>
+                <input matInput type="password" formControlName="smtpPassword" />
+              </mat-form-field>
+              <mat-slide-toggle formControlName="smtpSecure">SMTP Secure</mat-slide-toggle>
+            </div>
 
-          <ng-container *ngIf="selectedProvider === 'mailgun'">
-            <mat-form-field appearance="outline">
-              <mat-label>Mailgun API Key</mat-label>
-              <input matInput type="password" formControlName="mailgunApiKey" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Mailgun Domain</mat-label>
-              <input matInput type="text" formControlName="mailgunDomain" />
-            </mat-form-field>
-          </ng-container>
+            <div class="field-grid" *ngIf="selectedProvider === 'resend'">
+              <mat-form-field appearance="outline">
+                <mat-label>Resend API Key</mat-label>
+                <input matInput type="password" formControlName="resendApiKey" />
+              </mat-form-field>
+            </div>
+
+            <div class="field-grid" *ngIf="selectedProvider === 'sendgrid'">
+              <mat-form-field appearance="outline">
+                <mat-label>SendGrid API Key</mat-label>
+                <input matInput type="password" formControlName="sendgridApiKey" />
+              </mat-form-field>
+            </div>
+
+            <div class="field-grid" *ngIf="selectedProvider === 'ses'">
+              <mat-form-field appearance="outline">
+                <mat-label>SES Access Key</mat-label>
+                <input matInput type="password" formControlName="sesAccessKey" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>SES Secret Key</mat-label>
+                <input matInput type="password" formControlName="sesSecretKey" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>SES Region</mat-label>
+                <input matInput type="text" formControlName="sesRegion" />
+              </mat-form-field>
+            </div>
+
+            <div class="field-grid" *ngIf="selectedProvider === 'mailgun'">
+              <mat-form-field appearance="outline">
+                <mat-label>Mailgun API Key</mat-label>
+                <input matInput type="password" formControlName="mailgunApiKey" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Mailgun Domain</mat-label>
+                <input matInput type="text" formControlName="mailgunDomain" />
+              </mat-form-field>
+            </div>
+          </section>
 
           <div class="email-actions">
-            <button mat-flat-button color="primary" type="submit" [disabled]="isSaving$ | async">
+            <button
+              mat-flat-button
+              color="primary"
+              type="submit"
+              class="button-with-icon"
+              [disabled]="isSaving$ | async"
+            >
+              <app-icon [name]="(isSaving$ | async) ? 'loader-circle' : 'check'" size="18" />
               {{ (isSaving$ | async) ? 'Salvando...' : 'Salvar' }}
             </button>
-            <button mat-stroked-button type="button" (click)="testSend()" [disabled]="isTesting$ | async">
+            <button
+              mat-stroked-button
+              type="button"
+              class="button-with-icon"
+              (click)="testSend()"
+              [disabled]="isTesting$ | async"
+            >
+              <app-icon [name]="(isTesting$ | async) ? 'loader-circle' : 'mail-check'" size="18" />
               {{ (isTesting$ | async) ? 'Testando...' : 'Testar envio' }}
             </button>
           </div>
         </form>
 
-        <p class="status-block status-success" *ngIf="message$ | async as message">{{ message }}</p>
-        <p class="status-block status-error" *ngIf="error$ | async as error">{{ error }}</p>
+        <p
+          class="status-block status-success"
+          role="status"
+          aria-live="polite"
+          *ngIf="message$ | async as message"
+        >
+          <app-icon name="circle-check" size="18" />
+          {{ message }}
+        </p>
+        <p class="status-block status-error" role="alert" *ngIf="error$ | async as error">
+          <app-icon name="circle-alert" size="18" />
+          {{ error }}
+        </p>
       </mat-card-content>
     </mat-card>
   </main>

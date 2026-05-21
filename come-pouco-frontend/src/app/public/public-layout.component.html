@@ -1,0 +1,29 @@
+<div class="public-shell">
+  <header class="public-header">
+    <a
+      class="brand-link"
+      [href]="'/p/' + (company()?.publicSlug || '')"
+      aria-label="Inicio da landing"
+    >
+      <span class="brand-mark" *ngIf="!config()?.logoUrl">{{
+        company()?.name?.charAt(0) || 'C'
+      }}</span>
+      <img
+        class="brand-logo"
+        *ngIf="config()?.logoUrl as logoUrl"
+        [src]="logoUrl"
+        [alt]="company()?.name || 'Logo'"
+      />
+      <span class="brand-name">{{ company()?.name || 'Come Pouco' }}</span>
+    </a>
+  </header>
+
+  <main id="public-content" class="public-main">
+    <router-outlet></router-outlet>
+  </main>
+
+  <footer class="public-footer">
+    <span>{{ company()?.name || 'Come Pouco' }}</span>
+    <span>Powered by Come Pouco</span>
+  </footer>
+</div>

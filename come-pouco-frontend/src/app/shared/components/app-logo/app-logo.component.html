@@ -1,0 +1,12 @@
+<div class="app-logo" [class.app-logo-compact]="compact()" [attr.aria-label]="label()">
+  <svg class="app-logo-mark" viewBox="0 0 40 40" role="img" aria-hidden="true">
+    <rect class="app-logo-mark-bg" x="3" y="3" width="34" height="34" rx="10" />
+    <path class="app-logo-mark-link" d="M14.5 21.5h11a4.5 4.5 0 0 0 0-9h-4" />
+    <path class="app-logo-mark-link" d="M25.5 18.5h-11a4.5 4.5 0 1 0 0 9h4" />
+    <path class="app-logo-mark-dot" d="M18 20h4" />
+  </svg>
+
+  @if (!compact()) {
+    <span class="app-logo-text">Come Pouco</span>
+  }
+</div>

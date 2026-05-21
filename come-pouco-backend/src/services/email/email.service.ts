@@ -2,6 +2,7 @@ import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import nodemailer from 'nodemailer';
 
 import { getRawEmailConfig } from '../system-email-config.service';
+import { logger } from '../../lib/logger';
 import HttpError from '../../utils/httpError';
 
 type SendEmailInput = {
@@ -10,6 +11,8 @@ type SendEmailInput = {
   html: string;
   text?: string;
 };
+
+const emailLogger = logger.child({ scope: 'email' });
 
 const buildFromHeader = (fromEmail: string, fromName: string | null): string => {
   if (!fromName || !fromName.trim().length) {
@@ -27,7 +30,10 @@ const requireValue = (value: string | null, fieldName: string): string => {
   return value.trim();
 };
 
-const sendWithSmtp = async (config: Awaited<ReturnType<typeof getRawEmailConfig>>, payload: SendEmailInput): Promise<void> => {
+const sendWithSmtp = async (
+  config: Awaited<ReturnType<typeof getRawEmailConfig>>,
+  payload: SendEmailInput
+): Promise<void> => {
   const host = requireValue(config.smtpHost, 'smtpHost');
   const port = config.smtpPort;
   const user = requireValue(config.smtpUser, 'smtpUser');
@@ -53,7 +59,10 @@ const sendWithSmtp = async (config: Awaited<ReturnType<typeof getRawEmailConfig>
   });
 };
 
-const sendWithResend = async (config: Awaited<ReturnType<typeof getRawEmailConfig>>, payload: SendEmailInput): Promise<void> => {
+const sendWithResend = async (
+  config: Awaited<ReturnType<typeof getRawEmailConfig>>,
+  payload: SendEmailInput
+): Promise<void> => {
   const apiKey = requireValue(config.resendApiKey, 'resendApiKey');
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -75,7 +84,10 @@ const sendWithResend = async (config: Awaited<ReturnType<typeof getRawEmailConfi
   }
 };
 
-const sendWithSendgrid = async (config: Awaited<ReturnType<typeof getRawEmailConfig>>, payload: SendEmailInput): Promise<void> => {
+const sendWithSendgrid = async (
+  config: Awaited<ReturnType<typeof getRawEmailConfig>>,
+  payload: SendEmailInput
+): Promise<void> => {
   const apiKey = requireValue(config.sendgridApiKey, 'sendgridApiKey');
   const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
@@ -99,7 +111,10 @@ const sendWithSendgrid = async (config: Awaited<ReturnType<typeof getRawEmailCon
   }
 };
 
-const sendWithSes = async (config: Awaited<ReturnType<typeof getRawEmailConfig>>, payload: SendEmailInput): Promise<void> => {
+const sendWithSes = async (
+  config: Awaited<ReturnType<typeof getRawEmailConfig>>,
+  payload: SendEmailInput
+): Promise<void> => {
   const accessKeyId = requireValue(config.sesAccessKey, 'sesAccessKey');
   const secretAccessKey = requireValue(config.sesSecretKey, 'sesSecretKey');
   const region = requireValue(config.sesRegion, 'sesRegion');
@@ -124,7 +139,10 @@ const sendWithSes = async (config: Awaited<ReturnType<typeof getRawEmailConfig>>
   );
 };
 
-const sendWithMailgun = async (config: Awaited<ReturnType<typeof getRawEmailConfig>>, payload: SendEmailInput): Promise<void> => {
+const sendWithMailgun = async (
+  config: Awaited<ReturnType<typeof getRawEmailConfig>>,
+  payload: SendEmailInput
+): Promise<void> => {
   const apiKey = requireValue(config.mailgunApiKey, 'mailgunApiKey');
   const domain = requireValue(config.mailgunDomain, 'mailgunDomain');
   const params = new URLSearchParams();
@@ -154,11 +172,11 @@ const sendEmail = async (payload: SendEmailInput): Promise<void> => {
   const provider = config.provider.toLowerCase();
 
   if (!config.enabled) {
-    console.warn('[email] envio bloqueado: servico de e-mail desabilitado.');
+    emailLogger.warn({ eventType: 'email_send_blocked', reason: 'disabled' }, 'email send blocked');
     throw new HttpError(400, 'Servico de e-mail desabilitado pelo administrador.');
   }
 
-  console.info(`[email] provider selecionado: ${provider}`);
+  emailLogger.info({ eventType: 'email_provider_selected', provider }, 'email provider selected');
 
   try {
     if (provider === 'smtp') {
@@ -188,7 +206,15 @@ const sendEmail = async (payload: SendEmailInput): Promise<void> => {
 
     throw new HttpError(400, `Provider de e-mail nao suportado: ${provider}.`);
   } catch (error) {
-    console.error(`[email] falha no envio com provider=${provider}:`, error instanceof Error ? error.message : 'erro desconhecido');
+    emailLogger.error(
+      {
+        eventType: 'email_send_failed',
+        provider,
+        err: error instanceof Error ? error : undefined,
+        errorMessage: error instanceof Error ? error.message : 'erro desconhecido'
+      },
+      'email send failed'
+    );
     throw error;
   }
 };

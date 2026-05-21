@@ -1,0 +1,392 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - labeled
+      - unlabeled
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.12.0'
+  DATABASE_URL: postgresql://come_pouco_user:come_pouco_pass@127.0.0.1:5432/come_pouco_db
+  APP_ENV: development
+  LOG_LEVEL: warn
+  LOG_FORMAT: json
+  JWT_SECRET: ci-jwt-secret-change-me
+  TWOFA_ENCRYPTION_KEY: ci-twofa-encryption-key-change-me
+  PUBLIC_IP_HASH_SALT: ci-public-ip-hash-salt-change-me
+  SHOPEE_MOCK: 'true'
+  SENTRY_RELEASE: ci
+
+jobs:
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Production security audit
+        run: npm run audit:prod
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Prettier and optional ESLint
+        run: npm run lint
+
+  type-check:
+    name: type-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            come-pouco-backend/package-lock.json
+            come-pouco-frontend/package-lock.json
+            come-pouco-landing/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix come-pouco-backend
+          npm ci --prefix come-pouco-frontend
+          npm ci --prefix come-pouco-landing
+
+      - name: Type-check packages
+        run: npm run check
+
+  test-backend:
+    name: test-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            come-pouco-backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix come-pouco-backend
+
+      - name: Backend Vitest coverage
+        run: npm run test:backend:cov
+
+      - name: Prepare backend coverage artifact
+        if: always()
+        run: |
+          mkdir -p coverage-artifacts/backend
+          if [ -f come-pouco-backend/coverage/coverage-summary.json ]; then
+            cp come-pouco-backend/coverage/coverage-summary.json coverage-artifacts/backend/coverage-summary.json
+          else
+            printf 'Backend coverage was not generated.\n' > coverage-artifacts/backend/README.md
+          fi
+          if [ -f come-pouco-backend/coverage/lcov.info ]; then
+            cp come-pouco-backend/coverage/lcov.info coverage-artifacts/backend/lcov.info
+          fi
+
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-backend
+          path: coverage-artifacts/backend
+          retention-days: 14
+
+  test-frontend:
+    name: test-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            come-pouco-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix come-pouco-frontend
+
+      - name: Frontend Vitest coverage
+        run: npm run test:frontend:cov
+
+      - name: Prepare frontend coverage artifact
+        if: always()
+        run: |
+          mkdir -p coverage-artifacts/frontend
+          if [ -f come-pouco-frontend/coverage/come-pouco-frontend/coverage-summary.json ]; then
+            cp come-pouco-frontend/coverage/come-pouco-frontend/coverage-summary.json coverage-artifacts/frontend/coverage-summary.json
+          else
+            printf 'Frontend coverage was not generated.\n' > coverage-artifacts/frontend/README.md
+          fi
+          if [ -f come-pouco-frontend/coverage/come-pouco-frontend/lcov.info ]; then
+            cp come-pouco-frontend/coverage/come-pouco-frontend/lcov.info coverage-artifacts/frontend/lcov.info
+          fi
+
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frontend
+          path: coverage-artifacts/frontend
+          retention-days: 14
+
+  test-landing:
+    name: test-landing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            come-pouco-landing/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefix come-pouco-landing --ignore-scripts
+
+      - name: Landing Vitest coverage
+        run: npm run test:landing:cov
+
+      - name: Prepare landing coverage artifact
+        if: always()
+        run: |
+          mkdir -p coverage-artifacts/landing
+          if [ -f come-pouco-landing/coverage/coverage-summary.json ]; then
+            cp come-pouco-landing/coverage/coverage-summary.json coverage-artifacts/landing/coverage-summary.json
+          else
+            printf 'Landing coverage was not generated.\n' > coverage-artifacts/landing/README.md
+          fi
+          if [ -f come-pouco-landing/coverage/lcov.info ]; then
+            cp come-pouco-landing/coverage/lcov.info coverage-artifacts/landing/lcov.info
+          fi
+
+      - name: Upload landing coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-landing
+          path: coverage-artifacts/landing
+          retention-days: 14
+
+  coverage-comment:
+    name: coverage-comment
+    runs-on: ubuntu-latest
+    needs:
+      - test-backend
+      - test-frontend
+      - test-landing
+    if: github.event_name == 'pull_request' && always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download backend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-backend
+          path: coverage-artifacts/backend
+
+      - name: Download frontend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-frontend
+          path: coverage-artifacts/frontend
+
+      - name: Download landing coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-landing
+          path: coverage-artifacts/landing
+
+      - name: Comment coverage summary
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run coverage:comment
+
+      - name: Generate coverage badges
+        run: npm run coverage:badges
+
+      - name: Upload combined coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage-artifacts/coverage-comment.md
+            .github/badges/coverage-*.svg
+          retention-days: 14
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            come-pouco-backend/package-lock.json
+            come-pouco-frontend/package-lock.json
+            come-pouco-landing/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix come-pouco-backend
+          npm ci --prefix come-pouco-frontend
+          npm ci --prefix come-pouco-landing
+
+      - name: Build packages
+        run: npm run build:ci
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'e2e')
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: come_pouco_db
+          POSTGRES_USER: come_pouco_user
+          POSTGRES_PASSWORD: come_pouco_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U come_pouco_user -d come_pouco_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mailpit:
+        image: axllent/mailpit:latest
+        env:
+          MP_SMTP_AUTH_ACCEPT_ANY: '1'
+          MP_SMTP_AUTH_ALLOW_INSECURE: '1'
+        ports:
+          - 1025:1025
+          - 8025:8025
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            come-pouco-backend/package-lock.json
+            come-pouco-frontend/package-lock.json
+            come-pouco-landing/package-lock.json
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix come-pouco-backend
+          npm ci --prefix come-pouco-frontend
+          npm ci --prefix come-pouco-landing
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E
+        env:
+          E2E_BACKEND_URL: http://127.0.0.1:3001
+          E2E_FRONTEND_URL: http://127.0.0.1:4200
+          E2E_LANDING_URL: http://127.0.0.1:4321
+          E2E_MAILPIT_URL: http://127.0.0.1:8025
+        run: npm run e2e:test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

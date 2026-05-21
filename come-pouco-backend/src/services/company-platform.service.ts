@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 import prisma from '../config/prisma';
+import { decryptSecret } from '../utils/encryption';
 import HttpError from '../utils/httpError';
 
 interface PlatformCompanyLinkRow {
@@ -41,7 +42,9 @@ const normalizeDistinctPositiveIds = (ids: number[]): number[] => {
   return Array.from(set.values());
 };
 
-const listCompaniesByPlatform = async (platformId: number): Promise<PlatformCompanyLinkOutput[]> => {
+const listCompaniesByPlatform = async (
+  platformId: number
+): Promise<PlatformCompanyLinkOutput[]> => {
   const rows = await prisma.$queryRaw<PlatformCompanyLinkRow[]>(Prisma.sql`
     SELECT
       cp.company_id,
@@ -92,7 +95,9 @@ const replaceCompaniesByPlatform = async (
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw(Prisma.sql`DELETE FROM company_platforms WHERE platform_id = ${platformId}`);
+    await tx.$executeRaw(
+      Prisma.sql`DELETE FROM company_platforms WHERE platform_id = ${platformId}`
+    );
 
     if (normalizedCompanyIds.length) {
       await Promise.all(
@@ -141,32 +146,34 @@ const mapPlatformRow = (row: {
   description: row.description,
   type: row.type,
   appId: row.app_id,
-  secret: row.secret,
+  secret: decryptSecret(row.secret),
   isActive: row.is_active,
   mockMode: row.mock_mode,
   apiUrl: row.api_url,
   apiLink: row.api_link,
-  accessKey: row.access_key,
+  accessKey: decryptSecret(row.access_key),
   createdAt: row.created_at,
   updatedAt: row.updated_at
 });
 
 const getShopeePlatformForCompany = async (companyId: number) => {
-  const defaultRows = await prisma.$queryRaw<Array<{
-    id: number;
-    name: string;
-    description: string;
-    type: 'SHOPEE';
-    app_id: string;
-    secret: string;
-    is_active: boolean;
-    mock_mode: boolean;
-    api_url: string;
-    api_link: string;
-    access_key: string;
-    created_at: Date;
-    updated_at: Date;
-  }>>(Prisma.sql`
+  const defaultRows = await prisma.$queryRaw<
+    Array<{
+      id: number;
+      name: string;
+      description: string;
+      type: 'SHOPEE';
+      app_id: string;
+      secret: string;
+      is_active: boolean;
+      mock_mode: boolean;
+      api_url: string;
+      api_link: string;
+      access_key: string;
+      created_at: Date;
+      updated_at: Date;
+    }>
+  >(Prisma.sql`
     SELECT
       pp.id,
       pp.name,
@@ -194,21 +201,23 @@ const getShopeePlatformForCompany = async (companyId: number) => {
     return mapPlatformRow(defaultRows[0]);
   }
 
-  const linkedRows = await prisma.$queryRaw<Array<{
-    id: number;
-    name: string;
-    description: string;
-    type: 'SHOPEE';
-    app_id: string;
-    secret: string;
-    is_active: boolean;
-    mock_mode: boolean;
-    api_url: string;
-    api_link: string;
-    access_key: string;
-    created_at: Date;
-    updated_at: Date;
-  }>>(Prisma.sql`
+  const linkedRows = await prisma.$queryRaw<
+    Array<{
+      id: number;
+      name: string;
+      description: string;
+      type: 'SHOPEE';
+      app_id: string;
+      secret: string;
+      is_active: boolean;
+      mock_mode: boolean;
+      api_url: string;
+      api_link: string;
+      access_key: string;
+      created_at: Date;
+      updated_at: Date;
+    }>
+  >(Prisma.sql`
     SELECT
       pp.id,
       pp.name,

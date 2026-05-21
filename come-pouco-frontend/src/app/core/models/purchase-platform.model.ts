@@ -1,3 +1,5 @@
+import { PaginationMeta } from './pagination.model';
+
 export interface PurchasePlatform {
   id: number;
   name: string;
@@ -58,4 +60,19 @@ export interface ApiUsageSummary {
   totalMock: number;
   totalReal: number;
   totalGeral: number;
+  logs?: ApiUsageLog[];
+  data?: ApiUsageLog[];
+  items?: ApiUsageLog[];
+  meta?: PaginationMeta;
+}
+
+export interface ApiUsageLog {
+  id: string;
+  companyId: number;
+  userId: number;
+  platformId: number;
+  mode: ApiUsageMode;
+  endpoint: string | null;
+  success: boolean;
+  createdAt: string;
 }

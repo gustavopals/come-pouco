@@ -1,0 +1,117 @@
+---
+export interface Props {
+  class?: string;
+}
+
+const { class: extraClass = '' } = Astro.props;
+---
+
+<button
+  type="button"
+  data-theme-toggle
+  aria-label="Alternar tema"
+  title="Alternar tema (claro / escuro / sistema)"
+  class:list={[
+    'inline-flex h-10 w-10 items-center justify-center rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] text-[var(--cp-color-foreground)] transition-colors hover:bg-[var(--cp-color-muted)]',
+    extraClass
+  ]}
+>
+  <span data-theme-icon="light" class="hidden">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="4"></circle>
+      <path
+        d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+      ></path>
+    </svg>
+  </span>
+  <span data-theme-icon="dark" class="hidden">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
+    </svg>
+  </span>
+  <span data-theme-icon="system" class="hidden">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+      <path d="M8 20h8M12 16v4"></path>
+    </svg>
+  </span>
+</button>
+
+<script>
+  type Theme = 'light' | 'dark' | 'system';
+  const KEY = 'come_pouco_theme';
+  const order: Theme[] = ['light', 'dark', 'system'];
+
+  function resolve(theme: Theme): 'light' | 'dark' {
+    if (theme === 'system') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return theme;
+  }
+
+  function apply(theme: Theme) {
+    const root = document.documentElement;
+    const effective = resolve(theme);
+    root.classList.remove('light', 'dark');
+    root.classList.add(effective);
+    root.style.colorScheme = effective;
+    document.querySelectorAll<HTMLElement>('[data-theme-icon]').forEach((el) => {
+      el.classList.toggle('hidden', el.dataset.themeIcon !== theme);
+    });
+  }
+
+  function getStored(): Theme {
+    const v = localStorage.getItem(KEY);
+    return v === 'light' || v === 'dark' || v === 'system' ? v : 'system';
+  }
+
+  function init() {
+    const current = getStored();
+    apply(current);
+
+    document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const next = order[(order.indexOf(getStored()) + 1) % order.length]!;
+        localStorage.setItem(KEY, next);
+        apply(next);
+      });
+    });
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (getStored() === 'system') apply('system');
+    });
+  }
+
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+</script>

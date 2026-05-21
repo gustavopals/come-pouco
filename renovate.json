@@ -1,0 +1,89 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":timezone(America/Sao_Paulo)"
+  ],
+  "timezone": "America/Sao_Paulo",
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "prConcurrentLimit": 6,
+  "prHourlyLimit": 2,
+  "schedule": ["after 6am on monday"],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "schedule": ["at any time"],
+    "prCreation": "immediate",
+    "commitMessagePrefix": "security"
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["after 6am on the first day of the month"],
+    "commitMessageAction": "lock file maintenance",
+    "automerge": false
+  },
+  "packageRules": [
+    {
+      "description": "Root minor and patch updates are grouped weekly.",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["package.json", "package-lock.json"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "root npm minor and patch",
+      "addLabels": ["workspace:root"]
+    },
+    {
+      "description": "Backend minor and patch updates are grouped weekly.",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["come-pouco-backend/package.json", "come-pouco-backend/package-lock.json"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "backend npm minor and patch",
+      "addLabels": ["workspace:backend"]
+    },
+    {
+      "description": "Frontend minor and patch updates are grouped weekly.",
+      "matchManagers": ["npm"],
+      "matchFileNames": [
+        "come-pouco-frontend/package.json",
+        "come-pouco-frontend/package-lock.json"
+      ],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "frontend npm minor and patch",
+      "addLabels": ["workspace:frontend"]
+    },
+    {
+      "description": "Landing minor and patch updates are grouped weekly.",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["come-pouco-landing/package.json", "come-pouco-landing/package-lock.json"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "landing npm minor and patch",
+      "addLabels": ["workspace:landing"]
+    },
+    {
+      "description": "Major updates are monthly and stay as individual PRs.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "schedule": ["after 6am on the first day of the month"],
+      "addLabels": ["major"]
+    },
+    {
+      "description": "Core runtime and framework dependencies require explicit review.",
+      "matchPackageNames": [
+        "@angular/**",
+        "@astrojs/**",
+        "@prisma/**",
+        "@sentry/**",
+        "astro",
+        "express",
+        "nodemailer",
+        "prisma",
+        "tailwindcss",
+        "typescript"
+      ],
+      "addLabels": ["core-dependency"],
+      "reviewersFromCodeOwners": true
+    }
+  ]
+}

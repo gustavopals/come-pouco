@@ -1,0 +1,38 @@
+const AUDIT_EVENT_TYPES = [
+  'AUTH_LOGIN_SUCCESS',
+  'AUTH_LOGIN_FAIL',
+  'AUTH_LOGIN_2FA_SUCCESS',
+  'AUTH_LOGIN_2FA_FAIL',
+  'AUTH_PASSWORD_RESET',
+  'AUTH_2FA_SETUP',
+  'AUTH_2FA_DISABLE',
+  'AUTH_TRUSTED_DEVICE_REVOKE',
+  'ADMIN_USER_CREATE',
+  'ADMIN_USER_UPDATE',
+  'ADMIN_USER_DELETE',
+  'ADMIN_COMPANY_CREATE',
+  'ADMIN_COMPANY_UPDATE',
+  'ADMIN_COMPANY_DELETE',
+  'ADMIN_PLATFORM_CREATE',
+  'ADMIN_PLATFORM_UPDATE',
+  'ADMIN_PLATFORM_DELETE',
+  'ADMIN_EMAIL_CONFIG_UPDATE',
+  'ADMIN_INCIDENT_CREATE',
+  'ADMIN_INCIDENT_UPDATE',
+  'ADMIN_INCIDENT_DELETE',
+  'ADMIN_RESET_2FA',
+  'PUBLIC_RATE_LIMIT_HIT'
+] as const;
+
+type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
+
+const AUDIT_EVENTS = AUDIT_EVENT_TYPES.reduce(
+  (accumulator, eventType) => ({
+    ...accumulator,
+    [eventType]: eventType
+  }),
+  {} as Record<AuditEventType, AuditEventType>
+);
+
+export { AUDIT_EVENTS, AUDIT_EVENT_TYPES };
+export type { AuditEventType };

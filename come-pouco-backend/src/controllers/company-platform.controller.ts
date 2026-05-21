@@ -1,23 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
 
+import { AUDIT_EVENTS } from '../constants/audit-events';
+import type { UpdatePlatformCompaniesBody } from '../schemas/purchase-platforms.schema';
+import { logEventFromRequest } from '../services/audit.service';
 import * as companyPlatformService from '../services/company-platform.service';
 import * as purchasePlatformService from '../services/purchase-platform.service';
 import HttpError from '../utils/httpError';
-
-interface UpdatePlatformCompaniesBody {
-  companyIds?: number[];
-  defaultCompanyIds?: number[];
-}
-
-const parsePlatformId = (value: string): number => {
-  const id = Number(value);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new HttpError(400, 'ID da plataforma invalido.');
-  }
-
-  return id;
-};
 
 const ensureAdmin = (req: Request): void => {
   if (req.userRole !== 'ADMIN') {
@@ -25,21 +13,15 @@ const ensureAdmin = (req: Request): void => {
   }
 };
 
-const normalizeIds = (ids: unknown): number[] => {
-  if (!Array.isArray(ids)) {
-    return [];
-  }
-
-  return ids
-    .map((id) => Number(id))
-    .filter((id) => Number.isInteger(id) && id > 0);
-};
-
-const listPlatformCompanies = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
+const listPlatformCompanies = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     ensureAdmin(req);
 
-    const platformId = parsePlatformId(req.params.id);
+    const platformId = Number(req.params.id);
     const platform = await purchasePlatformService.getPurchasePlatformById(platformId);
 
     if (!platform) {
@@ -62,13 +44,23 @@ const updatePlatformCompanies = async (
   try {
     ensureAdmin(req);
 
-    const platformId = parsePlatformId(req.params.id);
-    const companyIds = normalizeIds(req.body.companyIds);
-    const defaultCompanyIds = normalizeIds(req.body.defaultCompanyIds);
+    const platformId = Number(req.params.id);
+    const { companyIds, defaultCompanyIds } = req.body;
 
     const companies = await companyPlatformService.replaceCompaniesByPlatform(platformId, {
       companyIds,
       defaultCompanyIds
+    });
+
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.ADMIN_PLATFORM_UPDATE,
+      entityType: 'PURCHASE_PLATFORM',
+      entityId: platformId,
+      metadata: {
+        changedFields: ['companyLinks'],
+        companyIds,
+        defaultCompanyIds
+      }
     });
 
     res.status(200).json({ companies });

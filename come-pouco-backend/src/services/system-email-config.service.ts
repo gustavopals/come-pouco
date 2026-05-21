@@ -1,6 +1,12 @@
 import type { Prisma } from '@prisma/client';
 
 import prisma from '../config/prisma';
+import {
+  decryptNullableSecret,
+  encryptSecret,
+  isMaskedSecretValue,
+  maskSecret
+} from '../utils/encryption';
 import HttpError from '../utils/httpError';
 
 type EmailProvider = 'smtp' | 'resend' | 'sendgrid' | 'ses' | 'mailgun';
@@ -24,7 +30,7 @@ type EmailConfigUpdateInput = {
   mailgunDomain?: string | null;
 };
 
-const SECRET_KEYS = [
+const RETAINED_SECRET_KEYS = [
   'smtpPassword',
   'resendApiKey',
   'sendgridApiKey',
@@ -32,6 +38,15 @@ const SECRET_KEYS = [
   'sesSecretKey',
   'mailgunApiKey'
 ] as const;
+
+const ENCRYPTED_SECRET_KEYS = [
+  'smtpPassword',
+  'resendApiKey',
+  'sendgridApiKey',
+  'sesSecretKey',
+  'mailgunApiKey'
+] as const;
+const encryptedSecretKeySet = new Set<string>(ENCRYPTED_SECRET_KEYS);
 
 const DEFAULT_CONFIG: Prisma.SystemEmailConfigUncheckedCreateInput = {
   id: 1,
@@ -41,16 +56,13 @@ const DEFAULT_CONFIG: Prisma.SystemEmailConfigUncheckedCreateInput = {
   enabled: false
 };
 
-const EMAIL_PROVIDER_LIST: ReadonlyArray<EmailProvider> = ['smtp', 'resend', 'sendgrid', 'ses', 'mailgun'];
-
-const maskSecret = (value: string | null): string | null => {
-  if (!value) {
-    return null;
-  }
-
-  const visible = value.slice(-4);
-  return `****${visible}`;
-};
+const EMAIL_PROVIDER_LIST: ReadonlyArray<EmailProvider> = [
+  'smtp',
+  'resend',
+  'sendgrid',
+  'ses',
+  'mailgun'
+];
 
 const ensureConfig = async () => {
   const existing = await prisma.systemEmailConfig.findUnique({ where: { id: 1 } });
@@ -61,8 +73,17 @@ const ensureConfig = async () => {
   return prisma.systemEmailConfig.create({ data: DEFAULT_CONFIG });
 };
 
+const decryptEmailConfig = (config: Awaited<ReturnType<typeof ensureConfig>>) => ({
+  ...config,
+  smtpPassword: decryptNullableSecret(config.smtpPassword),
+  resendApiKey: decryptNullableSecret(config.resendApiKey),
+  sendgridApiKey: decryptNullableSecret(config.sendgridApiKey),
+  sesSecretKey: decryptNullableSecret(config.sesSecretKey),
+  mailgunApiKey: decryptNullableSecret(config.mailgunApiKey)
+});
+
 const getEmailConfig = async () => {
-  const config = await ensureConfig();
+  const config = decryptEmailConfig(await ensureConfig());
 
   return {
     ...config,
@@ -88,7 +109,8 @@ const normalizeOptional = (value: string | null | undefined): string | null | un
   return normalized.length ? normalized : null;
 };
 
-const isProvider = (provider: string): provider is EmailProvider => EMAIL_PROVIDER_LIST.includes(provider as EmailProvider);
+const isProvider = (provider: string): provider is EmailProvider =>
+  EMAIL_PROVIDER_LIST.includes(provider as EmailProvider);
 
 const validateConfigByProvider = (
   provider: EmailProvider,
@@ -114,7 +136,11 @@ const validateConfigByProvider = (
 
   requiredFields.forEach((field) => {
     const value = data[field];
-    if (value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0)) {
+    if (
+      value === undefined ||
+      value === null ||
+      (typeof value === 'string' && value.trim().length === 0)
+    ) {
       throw new HttpError(400, `Campo obrigatorio para provider ${provider}: ${field}.`);
     }
   });
@@ -127,7 +153,10 @@ const validateConfigByProvider = (
   }
 };
 
-const buildUpdateData = (payload: EmailConfigUpdateInput, current: Awaited<ReturnType<typeof ensureConfig>>) => {
+const buildUpdateData = (
+  payload: EmailConfigUpdateInput,
+  current: Awaited<ReturnType<typeof ensureConfig>>
+) => {
   const data: Prisma.SystemEmailConfigUncheckedUpdateInput = {
     provider: payload.provider,
     fromEmail: payload.fromEmail.trim().toLowerCase(),
@@ -141,7 +170,7 @@ const buildUpdateData = (payload: EmailConfigUpdateInput, current: Awaited<Retur
     mailgunDomain: normalizeOptional(payload.mailgunDomain) ?? null
   };
 
-  SECRET_KEYS.forEach((key) => {
+  RETAINED_SECRET_KEYS.forEach((key) => {
     const incoming = payload[key];
 
     if (incoming === undefined || incoming === null || incoming.trim().length === 0) {
@@ -149,7 +178,14 @@ const buildUpdateData = (payload: EmailConfigUpdateInput, current: Awaited<Retur
       return;
     }
 
-    data[key] = incoming.trim();
+    const normalized = incoming.trim();
+
+    if (isMaskedSecretValue(normalized) && current[key]) {
+      data[key] = current[key];
+      return;
+    }
+
+    data[key] = encryptedSecretKeySet.has(key) ? encryptSecret(normalized) : normalized;
   });
 
   return data;
@@ -167,7 +203,7 @@ const updateEmailConfig = async (payload: EmailConfigUpdateInput) => {
   return getEmailConfig();
 };
 
-const getRawEmailConfig = async () => ensureConfig();
+const getRawEmailConfig = async () => decryptEmailConfig(await ensureConfig());
 
 export { EMAIL_PROVIDER_LIST, getEmailConfig, getRawEmailConfig, isProvider, updateEmailConfig };
 export type { EmailConfigUpdateInput, EmailProvider };

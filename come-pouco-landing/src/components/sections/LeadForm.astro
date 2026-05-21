@@ -1,0 +1,210 @@
+---
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import Card from '@components/ui/Card.astro';
+import Button from '@components/ui/Button.astro';
+import Icon from '@components/ui/Icon.astro';
+
+const endpoint =
+  import.meta.env.PUBLIC_LEAD_API_URL ??
+  (import.meta.env.PUBLIC_APP_URL ?? 'https://app.come-pouco.com.br') + '/api/public/leads';
+---
+
+<Section id="lead" tone="muted" spacing="sm" ariaLabelledby="lead-title">
+  <Container size="narrow">
+    <div class="grid items-center gap-10 lg:grid-cols-[1fr_1.2fr] lg:gap-14">
+      <div class="flex flex-col gap-4">
+        <span
+          class="text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--cp-color-primary)]"
+        >
+          Fale com a gente
+        </span>
+        <h2
+          id="lead-title"
+          class="text-[length:var(--cp-text-h2-size)] font-bold leading-[var(--cp-text-h2-line-height)] tracking-[-0.02em]"
+        >
+          Tem um caso específico? Vamos conversar.
+        </h2>
+        <p
+          class="text-[length:var(--cp-text-body-lg-size)] leading-[var(--cp-text-body-lg-line-height)] text-[var(--cp-color-muted-foreground)]"
+        >
+          Volume alto, integração customizada, white-label ou só quer entender se Come Pouco serve
+          pro seu caso — deixe seus dados que retornamos em 1 dia útil.
+        </p>
+        <ul class="mt-2 flex flex-col gap-2 text-[14px] text-[var(--cp-color-muted-foreground)]">
+          <li class="flex items-center gap-2">
+            <Icon name="Check" size={16} strokeWidth={2.5} class="text-[var(--cp-color-primary)]" />
+            Nada de spam — só respondemos sobre seu pedido
+          </li>
+          <li class="flex items-center gap-2">
+            <Icon name="Check" size={16} strokeWidth={2.5} class="text-[var(--cp-color-primary)]" />
+            Retorno em 1 dia útil
+          </li>
+        </ul>
+      </div>
+
+      <Card tone="raised" class="flex flex-col gap-5">
+        <form data-lead-form action={endpoint} method="post" novalidate class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label
+              for="lead-name"
+              class="text-[13px] font-semibold text-[var(--cp-color-foreground)]"
+            >
+              Nome
+            </label>
+            <input
+              id="lead-name"
+              name="name"
+              type="text"
+              required
+              maxlength={120}
+              autocomplete="name"
+              class="h-11 rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] px-3 text-[15px] text-[var(--cp-color-foreground)] outline-none focus:border-[var(--cp-color-primary)] focus:ring-2 focus:ring-[var(--cp-color-primary)]/30"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label
+              for="lead-email"
+              class="text-[13px] font-semibold text-[var(--cp-color-foreground)]"
+            >
+              Email
+            </label>
+            <input
+              id="lead-email"
+              name="email"
+              type="email"
+              required
+              maxlength={200}
+              autocomplete="email"
+              class="h-11 rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] px-3 text-[15px] text-[var(--cp-color-foreground)] outline-none focus:border-[var(--cp-color-primary)] focus:ring-2 focus:ring-[var(--cp-color-primary)]/30"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label
+              for="lead-volume"
+              class="text-[13px] font-semibold text-[var(--cp-color-foreground)]"
+            >
+              Volume mensal aproximado <span class="text-[var(--cp-color-muted-foreground)]"
+                >(opcional)</span
+              >
+            </label>
+            <select
+              id="lead-volume"
+              name="volume"
+              class="h-11 rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] px-3 text-[15px] text-[var(--cp-color-foreground)] outline-none focus:border-[var(--cp-color-primary)]"
+            >
+              <option value="">Selecionar...</option>
+              <option value="ate-500">Até 500 links/mês</option>
+              <option value="500-5k">500 a 5.000 links/mês</option>
+              <option value="5k-50k">5.000 a 50.000 links/mês</option>
+              <option value="50k-plus">Mais de 50.000 links/mês</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label
+              for="lead-message"
+              class="text-[13px] font-semibold text-[var(--cp-color-foreground)]"
+            >
+              Mensagem <span class="text-[var(--cp-color-muted-foreground)]">(opcional)</span>
+            </label>
+            <textarea
+              id="lead-message"
+              name="message"
+              rows={3}
+              maxlength={1000}
+              class="rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] px-3 py-2.5 text-[15px] text-[var(--cp-color-foreground)] outline-none focus:border-[var(--cp-color-primary)] focus:ring-2 focus:ring-[var(--cp-color-primary)]/30"
+            ></textarea>
+          </div>
+
+          <input
+            type="text"
+            name="website"
+            tabindex={-1}
+            autocomplete="off"
+            class="absolute h-px w-px overflow-hidden opacity-0"
+            aria-hidden="true"
+          />
+
+          <Button type="submit" variant="primary" size="md" fullWidth dataEvent="lead_form_submit">
+            <span data-lead-submit-label>Enviar pedido</span>
+            <span data-lead-submit-spinner class="hidden">
+              <Icon name="Loader2" size={16} />
+            </span>
+          </Button>
+
+          <p data-lead-status class="hidden text-[13px]" role="status" aria-live="polite"></p>
+        </form>
+      </Card>
+    </div>
+  </Container>
+</Section>
+
+<script>
+  function init() {
+    const form = document.querySelector<HTMLFormElement>('[data-lead-form]');
+    if (!form) return;
+    const status = form.querySelector<HTMLElement>('[data-lead-status]');
+    const label = form.querySelector<HTMLElement>('[data-lead-submit-label]');
+    const spinner = form.querySelector<HTMLElement>('[data-lead-submit-spinner]');
+
+    function setStatus(message: string, tone: 'success' | 'error' | 'info') {
+      if (!status) return;
+      status.classList.remove('hidden');
+      status.textContent = message;
+      status.style.color =
+        tone === 'success'
+          ? 'var(--cp-color-success)'
+          : tone === 'error'
+            ? 'var(--cp-color-danger)'
+            : 'var(--cp-color-muted-foreground)';
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      if (data.get('website')) {
+        setStatus('Não foi possível enviar agora. Tente novamente.', 'error');
+        return;
+      }
+
+      const payload = {
+        name: String(data.get('name') ?? '').trim(),
+        email: String(data.get('email') ?? '').trim(),
+        volume: String(data.get('volume') ?? '').trim() || undefined,
+        message: String(data.get('message') ?? '').trim() || undefined
+      };
+
+      if (!payload.name || !payload.email || !payload.email.includes('@')) {
+        setStatus('Confira seu nome e email.', 'error');
+        return;
+      }
+
+      label?.classList.add('opacity-0');
+      spinner?.classList.remove('hidden');
+      setStatus('Enviando...', 'info');
+
+      try {
+        const res = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        setStatus('Obrigado! Entraremos em contato em até 1 dia útil.', 'success');
+        form.reset();
+        window.dispatchEvent(new CustomEvent('lead-form-success'));
+      } catch (_err) {
+        setStatus(
+          'Não conseguimos enviar agora. Tente novamente em alguns minutos ou nos chame por email.',
+          'error'
+        );
+      } finally {
+        label?.classList.remove('opacity-0');
+        spinner?.classList.add('hidden');
+      }
+    });
+  }
+
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+</script>

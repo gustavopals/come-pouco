@@ -1,0 +1,69 @@
+services:
+  openobserve:
+    image: ${OPENOBSERVE_IMAGE:-public.ecr.aws/zinclabs/openobserve:latest}
+    container_name: come-pouco-openobserve
+    restart: unless-stopped
+    environment:
+      ZO_DATA_DIR: /data
+      ZO_ROOT_USER_EMAIL: ${OPENOBSERVE_ROOT_USER_EMAIL:-root@example.com}
+      ZO_ROOT_USER_PASSWORD: ${OPENOBSERVE_ROOT_USER_PASSWORD:-Complexpass#123}
+      ZO_LOCAL_MODE: 'true'
+    ports:
+      - '${OPENOBSERVE_PORT:-5080}:5080'
+    volumes:
+      - openobserve_data:/data
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: come-pouco-prometheus
+    restart: unless-stopped
+    depends_on:
+      - alertmanager
+      - blackbox-exporter
+      - openobserve
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-24h}'
+      - '--web.enable-lifecycle'
+    ports:
+      - '${PROMETHEUS_PORT:-9090}:9090'
+    volumes:
+      - ./infra/openobserve/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+
+  alertmanager:
+    image: ${ALERTMANAGER_IMAGE:-prom/alertmanager:v0.28.1}
+    container_name: come-pouco-alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:${ALERTMANAGER_PORT:-9093}'
+      - '--cluster.listen-address='
+    ports:
+      - '${ALERTMANAGER_PORT:-9093}:9093'
+    volumes:
+      - ./infra/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./infra/alertmanager/templates:/etc/alertmanager/templates:ro
+      - ${ALERT_DISCORD_WEBHOOK_FILE:-./infra/alertmanager/secrets/discord_webhook_url.example}:/etc/alertmanager/secrets/discord_webhook_url:ro
+      - alertmanager_data:/alertmanager
+
+  blackbox-exporter:
+    image: ${BLACKBOX_EXPORTER_IMAGE:-prom/blackbox-exporter:v0.27.0}
+    container_name: come-pouco-blackbox-exporter
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/blackbox_exporter/config.yml'
+    ports:
+      - '${BLACKBOX_EXPORTER_PORT:-9115}:9115'
+    volumes:
+      - ./infra/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+
+volumes:
+  openobserve_data:
+  prometheus_data:
+  alertmanager_data:

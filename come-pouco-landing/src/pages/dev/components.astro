@@ -1,0 +1,107 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import Button from '@components/ui/Button.astro';
+import Badge from '@components/ui/Badge.astro';
+import Card from '@components/ui/Card.astro';
+import IconBox from '@components/ui/IconBox.astro';
+import GradientBlob from '@components/ui/GradientBlob.astro';
+import BrowserFrame from '@components/ui/BrowserFrame.astro';
+import PhoneFrame from '@components/ui/PhoneFrame.astro';
+import Icon from '@components/ui/Icon.astro';
+
+if (!import.meta.env.DEV) {
+  return Astro.redirect('/404');
+}
+---
+
+<BaseLayout
+  title="Componentes (dev)"
+  description="Galeria de componentes do design system da landing."
+  bare
+>
+  <Container size="page" class="flex flex-col gap-12 py-12">
+    <header class="flex flex-col gap-2">
+      <h1 class="text-[28px] font-bold tracking-tight">/dev/components</h1>
+      <p class="text-[14px] text-[var(--cp-color-muted-foreground)]">
+        Página visível só em <code>import.meta.env.DEV</code>.
+      </p>
+    </header>
+
+    <Section spacing="sm">
+      <h2 class="mb-4 text-[18px] font-semibold">Botões</h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <Button variant="primary" size="sm">Primary sm</Button>
+        <Button variant="primary" size="md">Primary md</Button>
+        <Button variant="primary" size="lg">Primary lg</Button>
+        <Button variant="secondary">Secondary</Button>
+        <Button variant="ghost">Ghost</Button>
+        <Button variant="link">Link</Button>
+      </div>
+    </Section>
+
+    <Section spacing="sm">
+      <h2 class="mb-4 text-[18px] font-semibold">Badges</h2>
+      <div class="flex flex-wrap items-center gap-2">
+        <Badge>Default</Badge>
+        <Badge variant="success">Success</Badge>
+        <Badge variant="info">Info</Badge>
+        <Badge variant="accent">Accent</Badge>
+        <Badge variant="soft">Soft</Badge>
+      </div>
+    </Section>
+
+    <Section spacing="sm">
+      <h2 class="mb-4 text-[18px] font-semibold">Cards</h2>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Card tone="default"><strong>Default</strong> com sombra leve.</Card>
+        <Card tone="raised"><strong>Raised</strong> com sombra mais forte.</Card>
+        <Card tone="highlight"><strong>Highlight</strong> com borda primária e glow.</Card>
+      </div>
+    </Section>
+
+    <Section spacing="sm">
+      <h2 class="mb-4 text-[18px] font-semibold">IconBox</h2>
+      <div class="flex flex-wrap items-center gap-4">
+        <IconBox variant="primary"><Icon name="Zap" /></IconBox>
+        <IconBox variant="accent"><Icon name="Sparkles" /></IconBox>
+        <IconBox variant="info"><Icon name="BarChart3" /></IconBox>
+        <IconBox variant="success"><Icon name="ShieldCheck" /></IconBox>
+        <IconBox variant="soft"><Icon name="Lock" /></IconBox>
+      </div>
+    </Section>
+
+    <Section spacing="sm">
+      <h2 class="mb-4 text-[18px] font-semibold">BrowserFrame</h2>
+      <BrowserFrame url="app.come-pouco.com.br">
+        <div
+          class="grid h-full place-items-center bg-[var(--cp-color-muted)] text-[var(--cp-color-muted-foreground)]"
+        >
+          Screenshot aqui
+        </div>
+      </BrowserFrame>
+    </Section>
+
+    <Section spacing="sm">
+      <h2 class="mb-4 text-[18px] font-semibold">PhoneFrame</h2>
+      <PhoneFrame>
+        <div
+          class="grid h-full place-items-center bg-[var(--cp-color-muted)] text-[var(--cp-color-muted-foreground)]"
+        >
+          Mobile mock
+        </div>
+      </PhoneFrame>
+    </Section>
+
+    <Section spacing="sm">
+      <h2 class="mb-4 text-[18px] font-semibold">GradientBlob</h2>
+      <div
+        class="relative h-[300px] overflow-hidden rounded-[var(--cp-radius-lg)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)]"
+      >
+        <GradientBlob position="top-right" color="primary" />
+        <GradientBlob position="bottom-left" color="accent" />
+      </div>
+    </Section>
+  </Container>
+</BaseLayout>

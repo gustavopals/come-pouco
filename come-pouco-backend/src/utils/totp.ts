@@ -2,7 +2,8 @@ import crypto from 'crypto';
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
-const normalizeBase32 = (value: string): string => value.toUpperCase().replace(/=+$/g, '').replace(/\s+/g, '');
+const normalizeBase32 = (value: string): string =>
+  value.toUpperCase().replace(/=+$/g, '').replace(/\s+/g, '');
 
 const base32ToBuffer = (base32: string): Buffer => {
   const normalized = normalizeBase32(base32);
@@ -46,7 +47,15 @@ const generateBase32Secret = (length = 20): string => {
   return output;
 };
 
-const buildOtpAuthUrl = ({ issuer, label, secret }: { issuer: string; label: string; secret: string }): string => {
+const buildOtpAuthUrl = ({
+  issuer,
+  label,
+  secret
+}: {
+  issuer: string;
+  label: string;
+  secret: string;
+}): string => {
   const encodedIssuer = encodeURIComponent(issuer);
   const encodedLabel = encodeURIComponent(`${issuer}:${label}`);
 

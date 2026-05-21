@@ -7,9 +7,26 @@
   gap: var(--panel-grid-gap);
   grid-template-columns: minmax(var(--panel-form-col-min), var(--panel-form-col-max)) 1fr;
   grid-template-areas:
+    'header header'
     'form monitor'
     'form table';
   align-items: start;
+}
+
+.grid-header {
+  grid-area: header;
+}
+
+.button-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cp-space-2);
+}
+
+.table-loading {
+  display: grid;
+  gap: var(--cp-space-2);
+  margin-top: var(--cp-space-3);
 }
 
 .form-card,
@@ -251,6 +268,7 @@ mat-card-header {
   .purchase-platforms-layout {
     grid-template-columns: 1fr;
     grid-template-areas:
+      'header'
       'monitor'
       'table'
       'form';

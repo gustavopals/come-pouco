@@ -31,8 +31,8 @@
               }
             ],
             "styles": [
-              "node_modules/@angular/material/prebuilt-themes/azure-blue.css",
               "node_modules/@fontsource-variable/manrope/index.css",
+              "src/styles/tailwind.css",
               "src/styles.scss"
             ]
           },
@@ -48,6 +48,12 @@
                 "scripts": true,
                 "styles": true,
                 "fonts": false
+              },
+              "sourceMap": {
+                "scripts": true,
+                "styles": true,
+                "hidden": true,
+                "sourcesContent": false
               },
               "budgets": [
                 {
@@ -74,9 +80,7 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "allowedHosts": [
-              "hypophyseal-lorita-unnihilistic.ngrok-free.dev"
-            ]
+            "allowedHosts": ["hypophyseal-lorita-unnihilistic.ngrok-free.dev"]
           },
           "configurations": {
             "production": {
@@ -89,7 +93,16 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runnerConfig": "vitest.config.ts",
+            "coverageWatermarks": {
+              "statements": [45, 80],
+              "branches": [45, 80],
+              "functions": [45, 80],
+              "lines": [45, 80]
+            }
+          }
         }
       }
     }

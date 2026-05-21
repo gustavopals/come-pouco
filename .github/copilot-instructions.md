@@ -12,6 +12,7 @@ Monorepo: Angular 21 frontend + Node.js/Express 5/TypeScript backend, Prisma ORM
 ## Commands
 
 ### Root (monorepo)
+
 ```bash
 npm run db:up           # start PostgreSQL via Docker
 npm run db:down         # stop PostgreSQL
@@ -21,6 +22,7 @@ npm run check:backend   # TypeScript type-check backend (no emit)
 ```
 
 ### Backend (`come-pouco-backend/`)
+
 ```bash
 npm run dev             # ts-node-dev watch mode
 npm run check           # tsc --noEmit (type check only, no linter)
@@ -31,6 +33,7 @@ npm run prisma:generate # regenerate Prisma client
 ```
 
 ### Frontend (`come-pouco-frontend/`)
+
 ```bash
 npm start               # ng serve
 npm run build           # ng build
@@ -42,6 +45,7 @@ No single-test command is configured; vitest supports `--reporter` and `--testNa
 ## Architecture
 
 ### Backend request flow
+
 Routes (`src/routes/`) → Controllers (`src/controllers/`) → Services (`src/services/`) → Prisma client (`src/config/prisma.ts`).
 
 - **Controllers** are thin: validate inputs, call services, call `next(error)` on failure.
@@ -50,11 +54,13 @@ Routes (`src/routes/`) → Controllers (`src/controllers/`) → Services (`src/s
 - `req.userId` and `req.userRole` are injected by `authMiddleware` and consumed by controllers/middlewares downstream.
 
 ### Auth flow
+
 1. `authMiddleware` validates the JWT, fetches the user role from DB, and attaches `req.userId` / `req.userRole`.
 2. `roleMiddleware` checks `req.userRole` against allowed roles.
 3. Protected routes compose both: `[authMiddleware, roleMiddleware(['ADMIN'])]`.
 
 ### Frontend architecture
+
 - **Angular signals** are used for reactive state in services (e.g., `currentUserSignal` in `AuthService`).
 - **Functional guards** (`authGuard`, `adminGuard`, `guestGuard`) protect routes in `app.routes.ts`.
 - **`authInterceptor`** automatically attaches `Authorization: Bearer <token>` to all requests matching `environment.apiUrl`, and redirects to `/login` on 401.
@@ -64,12 +70,14 @@ Routes (`src/routes/`) → Controllers (`src/controllers/`) → Services (`src/s
 ## Key Conventions
 
 ### Backend
+
 - All errors thrown in controllers/services must be `HttpError` instances for proper HTTP responses. Generic `Error` throws result in 500.
 - Prisma schema uses `@map` to bridge snake_case DB columns to camelCase TypeScript fields. Always define both when adding columns.
 - Environment config is centralized in `src/config/env.ts`. Add new env vars there and to `.env.example`.
 - `DATABASE_URL` is auto-built from individual `DB_*` vars if not explicitly set.
 
 ### Frontend
+
 - Services are `providedIn: 'root'` (singleton). Use Angular signals for state that multiple components consume.
 - Prettier config: `printWidth: 100`, `singleQuote: true`, Angular parser for HTML templates.
 - No separate linting script; use `tsc --noEmit` for type checking.

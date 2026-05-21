@@ -3,21 +3,42 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { PaginatedResponse, PaginationParams } from '../models/pagination.model';
 import { CreateUserPayload, UpdateUserPayload, User } from '../models/user.model';
+import { buildPaginationParams, collectPaginatedItems } from './pagination-params';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
   constructor(private readonly http: HttpClient) {}
 
-  listUsers(): Observable<{ users: User[] }> {
-    return this.http.get<{ users: User[] }>(`${environment.apiUrl}/users`);
+  listUsers(
+    pagination?: PaginationParams,
+  ): Observable<{ users: User[] } & PaginatedResponse<User>> {
+    return this.http.get<{ users: User[] } & PaginatedResponse<User>>(
+      `${environment.apiUrl}/users`,
+      {
+        params: buildPaginationParams(pagination),
+      },
+    );
+  }
+
+  listAllUsers(): Observable<User[]> {
+    return collectPaginatedItems(
+      (page, limit) => this.listUsers({ page, limit }),
+      (response) => (Array.isArray(response.users) ? response.users : (response.items ?? [])),
+    );
   }
 
   createUser(payload: CreateUserPayload): Observable<{ user: User }> {
     return this.http.post<{ user: User }>(`${environment.apiUrl}/users`, payload);
   }
 
-  createEmployee(payload: { fullName: string; username: string; email?: string | null; password: string }): Observable<{ user: User }> {
+  createEmployee(payload: {
+    fullName: string;
+    username: string;
+    email?: string | null;
+    password: string;
+  }): Observable<{ user: User }> {
     return this.http.post<{ user: User }>(`${environment.apiUrl}/users/employees`, payload);
   }
 

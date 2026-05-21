@@ -1,0 +1,79 @@
+---
+export interface Props {
+  variant?: 'primary' | 'secondary' | 'ghost' | 'link';
+  size?: 'sm' | 'md' | 'lg';
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';
+  /** Renderiza como elemento simples se href ausente (usa <button>) */
+  fullWidth?: boolean;
+  external?: boolean;
+  class?: string;
+  dataEvent?: string;
+  disabled?: boolean;
+  ariaLabel?: string;
+}
+
+const {
+  variant = 'primary',
+  size = 'md',
+  href,
+  type = 'button',
+  fullWidth = false,
+  external = false,
+  class: extraClass = '',
+  dataEvent,
+  disabled = false,
+  ariaLabel
+} = Astro.props;
+
+const base =
+  'inline-flex items-center justify-center gap-2 font-semibold transition-all duration-150 ease-[var(--cp-ease-standard)] rounded-[var(--cp-radius-md)] select-none whitespace-nowrap focus-visible:outline-2 focus-visible:outline-[var(--cp-color-focus)] focus-visible:outline-offset-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none';
+
+const variants: Record<NonNullable<Props['variant']>, string> = {
+  primary:
+    'bg-[var(--cp-color-primary)] text-[var(--cp-color-primary-foreground)] shadow-[var(--cp-shadow-md)] hover:-translate-y-px hover:shadow-[var(--cp-shadow-glow)] active:translate-y-0 active:shadow-[var(--cp-shadow-sm)]',
+  secondary:
+    'bg-[var(--cp-color-surface)] text-[var(--cp-color-foreground)] border border-[var(--cp-color-border)] shadow-[var(--cp-shadow-sm)] hover:bg-[var(--cp-color-muted)] hover:-translate-y-px',
+  ghost: 'bg-transparent text-[var(--cp-color-foreground)] hover:bg-[var(--cp-color-muted)]',
+  link: 'bg-transparent text-[var(--cp-color-primary)] underline-offset-4 hover:underline px-0 py-0 h-auto'
+};
+
+const sizes: Record<NonNullable<Props['size']>, string> = {
+  sm: 'h-9 px-4 text-[14px]',
+  md: 'h-11 px-6 text-[15px]',
+  lg: 'h-13 px-8 text-[16px] gap-3'
+};
+
+const sizeClass = variant === 'link' ? '' : sizes[size];
+
+const classList = [base, variants[variant], sizeClass, fullWidth && 'w-full', extraClass];
+
+const dataAttrs = dataEvent ? { 'data-event': dataEvent } : {};
+const rel = external ? 'noopener noreferrer' : undefined;
+const target = external ? '_blank' : undefined;
+---
+
+{
+  href ? (
+    <a
+      href={href}
+      class:list={classList}
+      rel={rel}
+      target={target}
+      aria-label={ariaLabel}
+      {...dataAttrs}
+    >
+      <slot />
+    </a>
+  ) : (
+    <button
+      type={type}
+      class:list={classList}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      {...dataAttrs}
+    >
+      <slot />
+    </button>
+  )
+}

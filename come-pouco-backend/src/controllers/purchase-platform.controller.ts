@@ -1,9 +1,16 @@
 import { NextFunction, Request, Response } from 'express';
 
+import type {
+  CreatePurchasePlatformBody,
+  PurchasePlatformQuery,
+  UpdatePurchasePlatformBody
+} from '../schemas/purchase-platforms.schema';
+import { AUDIT_EVENTS } from '../constants/audit-events';
+import { logEventFromRequest } from '../services/audit.service';
 import * as purchasePlatformService from '../services/purchase-platform.service';
+import { isMaskedSecretValue } from '../utils/encryption';
 import HttpError from '../utils/httpError';
 
-const SHOPEE_DEFAULT_API_URL = 'https://open-api.affiliate.shopee.com.br/graphql';
 type PurchasePlatformType = 'SHOPEE';
 
 const ensureAdmin = (req: Request): void => {
@@ -12,82 +19,11 @@ const ensureAdmin = (req: Request): void => {
   }
 };
 
-interface CreatePurchasePlatformBody {
-  name?: string;
-  description?: string;
-  type?: PurchasePlatformType;
-  appId?: string;
-  secret?: string;
-  isActive?: boolean;
-  mockMode?: boolean;
-  apiUrl?: string;
-  apiLink?: string;
-  accessKey?: string;
-}
-
-interface UpdatePurchasePlatformBody {
-  name?: string;
-  description?: string;
-  type?: PurchasePlatformType;
-  appId?: string;
-  secret?: string;
-  isActive?: boolean;
-  mockMode?: boolean;
-  apiUrl?: string;
-  apiLink?: string;
-  accessKey?: string;
-}
-
-const parseId = (value: string): number => {
-  const id = Number(value);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new HttpError(400, 'ID invalido.');
-  }
-
-  return id;
-};
-
-const isValidUrl = (value: string): boolean => {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
-
-const validateStringField = (value: string | undefined, fieldLabel: string): void => {
-  if (value !== undefined && value.trim().length === 0) {
-    throw new HttpError(400, `${fieldLabel} invalido(a).`);
-  }
-};
-
-const validateApiUrl = (apiUrl: string | undefined): void => {
-  if (apiUrl !== undefined && !isValidUrl(apiUrl)) {
-    throw new HttpError(400, 'Link da API invalido.');
-  }
-};
-
-const validateIsActive = (isActive: boolean | undefined): void => {
-  if (isActive !== undefined && typeof isActive !== 'boolean') {
-    throw new HttpError(400, 'Campo Ativo? invalido.');
-  }
-};
-
-const validateMockMode = (mockMode: boolean | undefined): void => {
-  if (mockMode !== undefined && typeof mockMode !== 'boolean') {
-    throw new HttpError(400, 'Campo Modo Sandbox (Mock) invalido.');
-  }
-};
-
-const validateType = (type: PurchasePlatformType | undefined): void => {
-  if (type !== undefined && type !== 'SHOPEE') {
-    throw new HttpError(400, 'Tipo de plataforma invalido.');
-  }
-};
-
-const requireShopeeCredentials = (type: PurchasePlatformType, appId: string | undefined, secret: string | undefined): void => {
+const requireShopeeCredentials = (
+  type: PurchasePlatformType,
+  appId: string | undefined,
+  secret: string | undefined
+): void => {
   if (type !== 'SHOPEE') {
     return;
   }
@@ -101,10 +37,37 @@ const requireShopeeCredentials = (type: PurchasePlatformType, appId: string | un
   }
 };
 
-const listPurchasePlatforms = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+const toPlatformChangedFields = (body: UpdatePurchasePlatformBody): string[] =>
+  Object.entries(body)
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => {
+      if (key === 'secret') {
+        return 'secretChanged';
+      }
+
+      if (key === 'accessKey') {
+        return 'accessKeyChanged';
+      }
+
+      return key;
+    });
+
+const listPurchasePlatforms = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    const platforms = await purchasePlatformService.listPurchasePlatforms();
-    res.status(200).json({ platforms });
+    const query = req.query as unknown as PurchasePlatformQuery;
+    const result = await purchasePlatformService.listPurchasePlatforms({
+      pagination: {
+        page: query.page,
+        limit: query.limit
+      }
+    });
+    res
+      .status(200)
+      .json({ platforms: result.items, data: result.data, items: result.items, meta: result.meta });
   } catch (error) {
     next(error);
   }
@@ -117,38 +80,42 @@ const createPurchasePlatform = async (
 ): Promise<void> => {
   try {
     ensureAdmin(req);
-    const { name, description, type, appId, secret, isActive, mockMode, apiUrl, apiLink, accessKey } = req.body;
-
-    if (!name || !description) {
-      throw new HttpError(400, 'Nome e descricao sao obrigatorios.');
-    }
-
-    const normalizedType: PurchasePlatformType = type ?? 'SHOPEE';
-    const normalizedApiUrl = (apiUrl ?? apiLink ?? SHOPEE_DEFAULT_API_URL).trim();
-
-    validateType(normalizedType);
-    validateStringField(name, 'Nome');
-    validateStringField(description, 'Descricao');
-    validateStringField(appId, 'App ID');
-    validateStringField(secret, 'Secret');
-    validateApiUrl(normalizedApiUrl);
-    validateApiUrl(apiLink);
-    validateIsActive(isActive);
-    validateMockMode(mockMode);
-
-    requireShopeeCredentials(normalizedType, appId, secret);
+    const {
+      name,
+      description,
+      type,
+      appId,
+      secret,
+      isActive,
+      mockMode,
+      apiUrl,
+      apiLink,
+      accessKey
+    } = req.body;
 
     const platform = await purchasePlatformService.createPurchasePlatform({
       name,
       description,
-      type: normalizedType,
-      appId: appId!,
-      secret: secret!,
-      isActive: isActive ?? true,
-      mockMode: normalizedType === 'SHOPEE' ? Boolean(mockMode) : false,
-      apiUrl: normalizedApiUrl,
+      type,
+      appId,
+      secret,
+      isActive,
+      mockMode: type === 'SHOPEE' ? mockMode : false,
+      apiUrl,
       apiLink,
       accessKey
+    });
+
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.ADMIN_PLATFORM_CREATE,
+      entityType: 'PURCHASE_PLATFORM',
+      entityId: platform.id,
+      metadata: {
+        name: platform.name,
+        type: platform.type,
+        isActive: platform.isActive,
+        mockMode: platform.mockMode
+      }
     });
 
     res.status(201).json({ platform });
@@ -164,18 +131,21 @@ const updatePurchasePlatform = async (
 ): Promise<void> => {
   try {
     ensureAdmin(req);
-    const id = parseId(req.params.id);
-    const { name, description, type, appId, secret, isActive, mockMode, apiUrl, apiLink, accessKey } = req.body;
-
-    validateType(type);
-    validateStringField(name, 'Nome');
-    validateStringField(description, 'Descricao');
-    validateStringField(appId, 'App ID');
-    validateStringField(secret, 'Secret');
-    validateApiUrl(apiUrl);
-    validateApiUrl(apiLink);
-    validateIsActive(isActive);
-    validateMockMode(mockMode);
+    const id = Number(req.params.id);
+    const {
+      name,
+      description,
+      type,
+      appId,
+      secret,
+      isActive,
+      mockMode,
+      apiUrl,
+      apiLink,
+      accessKey
+    } = req.body;
+    const normalizedSecret = isMaskedSecretValue(secret) ? undefined : secret;
+    const normalizedAccessKey = isMaskedSecretValue(accessKey) ? undefined : accessKey;
 
     const current = await purchasePlatformService.getPurchasePlatformById(id);
 
@@ -185,7 +155,7 @@ const updatePurchasePlatform = async (
 
     const effectiveType = type ?? current.type;
     const effectiveAppId = appId ?? current.appId;
-    const effectiveSecret = secret ?? current.secret;
+    const effectiveSecret = normalizedSecret ?? current.secret;
 
     requireShopeeCredentials(effectiveType, effectiveAppId, effectiveSecret);
 
@@ -194,12 +164,25 @@ const updatePurchasePlatform = async (
       description,
       type,
       appId,
-      secret,
+      secret: normalizedSecret,
       isActive,
       mockMode: effectiveType === 'SHOPEE' ? mockMode : false,
       apiUrl,
       apiLink,
-      accessKey
+      accessKey: normalizedAccessKey
+    });
+
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.ADMIN_PLATFORM_UPDATE,
+      entityType: 'PURCHASE_PLATFORM',
+      entityId: platform.id,
+      metadata: {
+        changedFields: toPlatformChangedFields(req.body),
+        name: platform.name,
+        type: platform.type,
+        isActive: platform.isActive,
+        mockMode: platform.mockMode
+      }
     });
 
     res.status(200).json({ platform });
@@ -208,15 +191,35 @@ const updatePurchasePlatform = async (
   }
 };
 
-const deletePurchasePlatform = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
+const deletePurchasePlatform = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     ensureAdmin(req);
-    const id = parseId(req.params.id);
+    const id = Number(req.params.id);
+    const current = await purchasePlatformService.getPurchasePlatformById(id);
+
     await purchasePlatformService.deletePurchasePlatform(id);
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.ADMIN_PLATFORM_DELETE,
+      entityType: 'PURCHASE_PLATFORM',
+      entityId: id,
+      metadata: {
+        name: current?.name ?? null,
+        type: current?.type ?? null
+      }
+    });
     res.status(204).send();
   } catch (error) {
     next(error);
   }
 };
 
-export { createPurchasePlatform, deletePurchasePlatform, listPurchasePlatforms, updatePurchasePlatform };
+export {
+  createPurchasePlatform,
+  deletePurchasePlatform,
+  listPurchasePlatforms,
+  updatePurchasePlatform
+};

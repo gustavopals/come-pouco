@@ -1,0 +1,89 @@
+:host {
+  display: block;
+}
+
+.confirm-dialog {
+  --dialog-tone: var(--cp-color-danger);
+  --dialog-tone-bg: color-mix(in srgb, var(--cp-color-danger) 12%, var(--cp-color-surface));
+  --dialog-tone-border: color-mix(in srgb, var(--cp-color-danger) 28%, transparent);
+
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: var(--cp-space-4);
+  padding: var(--cp-space-6) var(--cp-space-6) var(--cp-space-2);
+}
+
+.confirm-dialog-warning {
+  --dialog-tone: var(--cp-color-warning);
+  --dialog-tone-bg: color-mix(in srgb, var(--cp-color-warning) 14%, var(--cp-color-surface));
+  --dialog-tone-border: color-mix(in srgb, var(--cp-color-warning) 30%, transparent);
+}
+
+.confirm-dialog-info {
+  --dialog-tone: var(--cp-color-info);
+  --dialog-tone-bg: color-mix(in srgb, var(--cp-color-info) 12%, var(--cp-color-surface));
+  --dialog-tone-border: color-mix(in srgb, var(--cp-color-info) 28%, transparent);
+}
+
+.confirm-dialog-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--dialog-tone-border);
+  border-radius: var(--cp-radius-lg);
+  background: var(--dialog-tone-bg);
+  color: var(--dialog-tone);
+}
+
+.confirm-dialog-copy {
+  min-width: 0;
+}
+
+h2[mat-dialog-title] {
+  margin: 0;
+  padding: 0;
+  color: var(--cp-color-foreground);
+  font-size: var(--cp-text-h4-size);
+  font-weight: var(--cp-text-h4-weight);
+  line-height: var(--cp-text-h4-line-height);
+}
+
+mat-dialog-content {
+  padding: var(--cp-space-2) 0 0;
+  color: var(--cp-color-muted-foreground);
+}
+
+mat-dialog-content p {
+  margin: 0;
+  font-size: var(--cp-text-body-size);
+  line-height: var(--cp-text-body-line-height);
+}
+
+.confirm-dialog-actions {
+  gap: var(--cp-space-2);
+  padding: var(--cp-space-4) var(--cp-space-6) var(--cp-space-6);
+}
+
+.confirm-dialog-confirm {
+  --mdc-filled-button-container-color: var(--dialog-tone);
+  --mdc-filled-button-label-text-color: var(--cp-color-surface);
+}
+
+.confirm-dialog-cancel {
+  color: var(--cp-color-muted-foreground);
+}
+
+@media (max-width: 520px) {
+  .confirm-dialog {
+    grid-template-columns: 1fr;
+  }
+
+  .confirm-dialog-actions {
+    align-items: stretch;
+  }
+
+  .confirm-dialog-actions .mat-mdc-button-base {
+    width: 100%;
+  }
+}

@@ -1,0 +1,41 @@
+---
+export interface Props {
+  tone?: 'default' | 'raised' | 'outline' | 'highlight';
+  interactive?: boolean;
+  href?: string;
+  as?: keyof HTMLElementTagNameMap;
+  class?: string;
+}
+
+const {
+  tone = 'default',
+  interactive = false,
+  href,
+  as = 'div',
+  class: extraClass = ''
+} = Astro.props;
+
+const tones: Record<NonNullable<Props['tone']>, string> = {
+  default:
+    'bg-[var(--cp-color-surface)] border-[var(--cp-color-border)] shadow-[var(--cp-shadow-sm)]',
+  raised:
+    'bg-[var(--cp-color-surface-raised)] border-[var(--cp-color-border)] shadow-[var(--cp-shadow-md)]',
+  outline: 'bg-transparent border-[var(--cp-color-border)] shadow-none',
+  highlight:
+    'bg-[var(--cp-color-surface-raised)] border-[var(--cp-color-primary)] shadow-[var(--cp-shadow-glow)]'
+};
+
+const classList = [
+  'block rounded-[var(--cp-radius-lg)] border p-6 md:p-8',
+  tones[tone],
+  interactive &&
+    'transition-all duration-200 ease-[var(--cp-ease-emphasized)] hover:-translate-y-0.5 hover:shadow-[var(--cp-shadow-lg)] hover:border-[var(--cp-color-primary)]',
+  extraClass
+];
+
+const Tag = href ? 'a' : as;
+---
+
+<Tag class:list={classList} href={href}>
+  <slot />
+</Tag>

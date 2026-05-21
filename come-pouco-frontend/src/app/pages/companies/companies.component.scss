@@ -8,6 +8,22 @@
   grid-template-columns: minmax(var(--panel-form-col-min), var(--panel-form-col-max)) 1fr;
 }
 
+.grid-header {
+  grid-column: 1 / -1;
+}
+
+.button-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cp-space-2);
+}
+
+.table-loading {
+  display: grid;
+  gap: var(--cp-space-2);
+  margin-top: var(--cp-space-3);
+}
+
 .form-card,
 .table-card {
   border-radius: var(--panel-card-radius);

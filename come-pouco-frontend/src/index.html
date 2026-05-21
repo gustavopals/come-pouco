@@ -1,14 +1,38 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Painel</title>
-  <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-</head>
-<body>
-  <app-root></app-root>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <title>Painel</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      (() => {
+        try {
+          const key = 'come_pouco_theme';
+          const storedTheme = localStorage.getItem(key);
+          const preference =
+            storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system'
+              ? storedTheme
+              : 'system';
+          const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+          const resolvedTheme =
+            preference === 'system' ? (prefersDark ? 'dark' : 'light') : preference;
+
+          document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
+          document.documentElement.classList.toggle('light', resolvedTheme === 'light');
+          document.documentElement.dataset.theme = preference;
+          document.documentElement.dataset.resolvedTheme = resolvedTheme;
+          document.documentElement.style.colorScheme = resolvedTheme;
+        } catch {
+          document.documentElement.classList.add('light');
+          document.documentElement.style.colorScheme = 'light';
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
 </html>

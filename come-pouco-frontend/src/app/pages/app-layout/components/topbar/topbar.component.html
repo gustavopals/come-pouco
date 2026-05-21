@@ -1,0 +1,72 @@
+<header class="topbar">
+  <div class="topbar-context">
+    @if (isMobile()) {
+      <button
+        mat-icon-button
+        type="button"
+        class="topbar-icon-button"
+        aria-label="Abrir menu"
+        (click)="openMobileMenu.emit()"
+      >
+        <app-icon name="menu" [size]="20"></app-icon>
+      </button>
+    } @else {
+      <button
+        mat-icon-button
+        type="button"
+        class="topbar-icon-button"
+        [matTooltip]="sidebarCollapsed() ? 'Expandir sidebar' : 'Recolher sidebar'"
+        [attr.aria-label]="sidebarCollapsed() ? 'Expandir sidebar' : 'Recolher sidebar'"
+        (click)="toggleSidebar.emit()"
+      >
+        <app-icon
+          [name]="sidebarCollapsed() ? 'panel-left-open' : 'panel-left-close'"
+          [size]="20"
+        ></app-icon>
+      </button>
+    }
+
+    <div class="topbar-breadcrumbs">
+      <ng-content select="[topbar-breadcrumbs]"></ng-content>
+    </div>
+  </div>
+
+  <div class="topbar-actions">
+    <app-theme-toggle></app-theme-toggle>
+
+    <button
+      mat-button
+      type="button"
+      class="user-trigger"
+      [matMenuTriggerFor]="userMenu"
+      aria-label="Abrir menu do usuario"
+    >
+      <span class="user-avatar">{{ initials() }}</span>
+      <span class="user-copy">
+        <strong>{{ userName() }}</strong>
+        <small>{{ roleLabel() }}</small>
+      </span>
+      <app-icon name="chevron-down" [size]="16"></app-icon>
+    </button>
+  </div>
+</header>
+
+<mat-menu #userMenu="matMenu" class="user-menu">
+  <div class="menu-user-summary">
+    <span class="user-avatar">{{ initials() }}</span>
+    <div>
+      <strong>{{ userName() }}</strong>
+      <small>{{ user()?.email || user()?.username }}</small>
+    </div>
+  </div>
+
+  <a mat-menu-item routerLink="/security">
+    <app-icon name="shield-check" [size]="17"></app-icon>
+    <span>Seguranca</span>
+  </a>
+
+  <button mat-menu-item type="button" (click)="logoutRequested.emit()">
+    <app-icon name="log-out" [size]="17"></app-icon>
+    <span>Sair</span>
+  </button>
+</mat-menu>

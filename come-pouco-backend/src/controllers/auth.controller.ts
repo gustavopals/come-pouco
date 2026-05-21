@@ -1,49 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
 
 import env from '../config/env';
+import { AUDIT_EVENTS } from '../constants/audit-events';
+import type {
+  ConfirmTwoFactorBody,
+  DisableTwoFactorBody,
+  ForgotPasswordBody,
+  LoginBody,
+  LoginTwoFactorBody,
+  RegisterBody,
+  ResetPasswordBody
+} from '../schemas/auth.schema';
+import { logEventFromRequest } from '../services/audit.service';
 import * as authService from '../services/auth.service';
 import HttpError from '../utils/httpError';
-
-interface LoginBody {
-  identifier?: string;
-  password?: string;
-}
-
-interface LoginTwoFactorBody {
-  tempToken?: string;
-  challengeId?: string;
-  code?: string;
-  trustDevice?: boolean;
-}
-
-interface RegisterBody {
-  fullName?: string;
-  username?: string;
-  email?: string;
-  password?: string;
-}
-
-interface ConfirmTwoFactorBody {
-  code?: string;
-}
-
-interface DisableTwoFactorBody {
-  password?: string;
-  code?: string;
-}
-
-interface ForgotPasswordBody {
-  email?: string;
-}
-
-interface ResetPasswordBody {
-  token?: string;
-  newPassword?: string;
-}
-
-const FORGOT_PASSWORD_RATE_LIMIT_MAX = 5;
-const FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
-const forgotPasswordBuckets = new Map<string, number[]>();
 
 const trustedDeviceCookieOptions = {
   httpOnly: true,
@@ -61,35 +31,26 @@ const ensureAuthenticatedUserId = (req: Request): number => {
   return req.userId;
 };
 
-const parsePositiveId = (idRaw: string): number => {
-  const id = Number(idRaw);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new HttpError(400, 'ID invalido.');
+const normalizeIdentifierForAudit = (identifier: string | undefined): string | null => {
+  if (!identifier) {
+    return null;
   }
 
-  return id;
+  const normalized = identifier.trim().toLowerCase();
+  return normalized.length ? normalized : null;
 };
 
-const buildForgotRateLimitKey = (req: Request, email: string): string => {
-  const ip = req.ip || req.headers['x-forwarded-for']?.toString().split(',')[0]?.trim() || 'unknown';
-  return `${ip}::${email.trim().toLowerCase()}`;
-};
-
-const isForgotRateLimited = (key: string): boolean => {
-  const now = Date.now();
-  const windowStart = now - FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS;
-  const existing = forgotPasswordBuckets.get(key) ?? [];
-  const inWindow = existing.filter((timestamp) => timestamp >= windowStart);
-
-  if (inWindow.length >= FORGOT_PASSWORD_RATE_LIMIT_MAX) {
-    forgotPasswordBuckets.set(key, inWindow);
-    return true;
+const getErrorAuditMetadata = (error: unknown) => {
+  if (error instanceof HttpError) {
+    return {
+      statusCode: error.statusCode,
+      errorCode: error.errorCode ?? null
+    };
   }
 
-  inWindow.push(now);
-  forgotPasswordBuckets.set(key, inWindow);
-  return false;
+  return {
+    errorName: error instanceof Error ? error.name : 'UnknownError'
+  };
 };
 
 const login = async (
@@ -100,18 +61,32 @@ const login = async (
   try {
     const { identifier, password } = req.body;
 
-    if (!identifier || !password) {
-      throw new HttpError(400, 'Usuario/e-mail e senha sao obrigatorios.', 'AUTH_INVALID_REQUEST');
-    }
-
     const response = await authService.login({
       identifier,
       password,
       cookieHeader: req.headers.cookie
     });
 
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.AUTH_LOGIN_SUCCESS,
+      userId: 'user' in response ? response.user.id : null,
+      success: true,
+      metadata: {
+        identifier: normalizeIdentifierForAudit(identifier),
+        twoFactorRequired: 'twoFactorRequired' in response || 'requires2fa' in response
+      }
+    });
+
     res.status(200).json(response);
   } catch (error) {
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.AUTH_LOGIN_FAIL,
+      success: false,
+      metadata: {
+        identifier: normalizeIdentifierForAudit(req.body.identifier),
+        ...getErrorAuditMetadata(error)
+      }
+    });
     next(error);
   }
 };
@@ -125,12 +100,8 @@ const loginTwoFactor = async (
     const { tempToken, challengeId, code, trustDevice } = req.body;
     const effectiveTempToken = tempToken || challengeId;
 
-    if (!effectiveTempToken || !code) {
-      throw new HttpError(400, 'tempToken/challengeId e code sao obrigatorios.', 'AUTH_INVALID_REQUEST');
-    }
-
     const response = await authService.loginWithTwoFactor({
-      tempToken: effectiveTempToken,
+      tempToken: effectiveTempToken!,
       code,
       trustDevice: Boolean(trustDevice),
       userAgent: req.headers['user-agent'],
@@ -138,11 +109,32 @@ const loginTwoFactor = async (
     });
 
     if (response.trustedDeviceToken) {
-      res.cookie(authService.TRUSTED_DEVICE_COOKIE_NAME, response.trustedDeviceToken, trustedDeviceCookieOptions);
+      res.cookie(
+        authService.TRUSTED_DEVICE_COOKIE_NAME,
+        response.trustedDeviceToken,
+        trustedDeviceCookieOptions
+      );
     }
+
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.AUTH_LOGIN_2FA_SUCCESS,
+      userId: response.user.id,
+      success: true,
+      metadata: {
+        trustDevice: Boolean(trustDevice)
+      }
+    });
 
     res.status(200).json({ token: response.token, user: response.user });
   } catch (error) {
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.AUTH_LOGIN_2FA_FAIL,
+      success: false,
+      metadata: {
+        trustDevice: Boolean(req.body.trustDevice),
+        ...getErrorAuditMetadata(error)
+      }
+    });
     next(error);
   }
 };
@@ -156,20 +148,25 @@ const register = async (
     ensureAuthenticatedUserId(req);
 
     if (req.userRole !== 'ADMIN') {
-      throw new HttpError(403, 'Somente ADMIN pode registrar usuarios por este endpoint.', 'AUTH_FORBIDDEN');
+      throw new HttpError(
+        403,
+        'Somente ADMIN pode registrar usuarios por este endpoint.',
+        'AUTH_FORBIDDEN'
+      );
     }
 
     const { fullName, username, email, password } = req.body;
 
-    if (!fullName || !username || !password) {
-      throw new HttpError(400, 'Nome, username e senha sao obrigatorios.', 'AUTH_INVALID_REQUEST');
-    }
-
-    if (String(password).length < 6) {
-      throw new HttpError(400, 'A senha deve ter no minimo 6 caracteres.', 'AUTH_INVALID_PASSWORD');
-    }
-
     const response = await authService.register({ fullName, username, email, password });
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.ADMIN_USER_CREATE,
+      entityType: 'USER',
+      entityId: response.user.id,
+      metadata: {
+        username: response.user.username,
+        role: response.user.role
+      }
+    });
     res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -182,20 +179,7 @@ const forgotPassword = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const normalizedEmail = (req.body.email || '').trim().toLowerCase();
-
-    if (!normalizedEmail.length) {
-      throw new HttpError(400, 'E-mail e obrigatorio.', 'AUTH_INVALID_REQUEST');
-    }
-
-    const key = buildForgotRateLimitKey(req, normalizedEmail);
-
-    if (isForgotRateLimited(key)) {
-      res.status(429).json({ message: 'Se o e-mail estiver cadastrado, enviaremos instrucoes.' });
-      return;
-    }
-
-    await authService.forgotPassword({ email: normalizedEmail, requesterIp: req.ip });
+    await authService.forgotPassword({ email: req.body.email, requesterIp: req.ip });
     res.status(200).json({ message: 'Se o e-mail estiver cadastrado, enviaremos instrucoes.' });
   } catch (error) {
     next(error);
@@ -208,14 +192,15 @@ const resetPassword = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const token = (req.body.token || '').trim();
-    const newPassword = req.body.newPassword || '';
+    const { token, newPassword } = req.body;
 
-    if (!token || !newPassword) {
-      throw new HttpError(400, 'token e newPassword sao obrigatorios.', 'AUTH_INVALID_REQUEST');
-    }
-
-    await authService.resetPassword({ token, newPassword });
+    const result = await authService.resetPassword({ token, newPassword });
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.AUTH_PASSWORD_RESET,
+      userId: result.userId,
+      entityType: 'USER',
+      entityId: result.userId
+    });
     res.status(200).json({ message: 'Senha redefinida com sucesso.' });
   } catch (error) {
     next(error);
@@ -241,7 +226,9 @@ const me = async (req: Request, res: Response, next: NextFunction): Promise<void
         companyRole: user.companyRole,
         company: user.company,
         twoFactorEnabled: user.twoFactorEnabled,
-        twoFactorConfirmedAt: user.twoFactorConfirmedAt ? user.twoFactorConfirmedAt.toISOString() : null
+        twoFactorConfirmedAt: user.twoFactorConfirmedAt
+          ? user.twoFactorConfirmedAt.toISOString()
+          : null
       }
     });
   } catch (error) {
@@ -264,11 +251,15 @@ const confirmTwoFactor = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!req.body.code) {
-      throw new HttpError(400, 'Codigo e obrigatorio.', 'AUTH_INVALID_REQUEST');
-    }
-
-    const response = await authService.confirmTwoFactor(ensureAuthenticatedUserId(req), req.body.code);
+    const response = await authService.confirmTwoFactor(
+      ensureAuthenticatedUserId(req),
+      req.body.code
+    );
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.AUTH_2FA_SETUP,
+      entityType: 'USER',
+      entityId: req.userId
+    });
     res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -283,19 +274,24 @@ const disableTwoFactor = async (
   try {
     const { password, code } = req.body;
 
-    if (!password || !code) {
-      throw new HttpError(400, 'Senha e codigo sao obrigatorios.', 'AUTH_INVALID_REQUEST');
-    }
-
     await authService.disableTwoFactor({ userId: ensureAuthenticatedUserId(req), password, code });
     res.clearCookie(authService.TRUSTED_DEVICE_COOKIE_NAME, trustedDeviceCookieOptions);
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.AUTH_2FA_DISABLE,
+      entityType: 'USER',
+      entityId: req.userId
+    });
     res.status(200).json({ ok: true });
   } catch (error) {
     next(error);
   }
 };
 
-const listTrustedDevices = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const listTrustedDevices = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const devices = await authService.listTrustedDevices(ensureAuthenticatedUserId(req));
     res.status(200).json({ devices });
@@ -304,22 +300,40 @@ const listTrustedDevices = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-const revokeTrustedDevice = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
+const revokeTrustedDevice = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    const deviceId = parsePositiveId(req.params.id);
+    const deviceId = Number(req.params.id);
     await authService.revokeTrustedDevice(ensureAuthenticatedUserId(req), deviceId);
 
     res.clearCookie(authService.TRUSTED_DEVICE_COOKIE_NAME, trustedDeviceCookieOptions);
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.AUTH_TRUSTED_DEVICE_REVOKE,
+      entityType: 'TRUSTED_DEVICE',
+      entityId: deviceId
+    });
     res.status(204).send();
   } catch (error) {
     next(error);
   }
 };
 
-const adminResetTwoFactor = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
+const adminResetTwoFactor = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    const targetUserId = parsePositiveId(req.params.id);
+    const targetUserId = Number(req.params.id);
     await authService.adminResetTwoFactor(targetUserId);
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.ADMIN_RESET_2FA,
+      entityType: 'USER',
+      entityId: targetUserId
+    });
     res.status(200).json({ ok: true });
   } catch (error) {
     next(error);

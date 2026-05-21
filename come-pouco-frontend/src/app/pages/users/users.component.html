@@ -1,8 +1,28 @@
 <section class="page-shell">
   <main class="page-main admin-grid">
+    <app-page-header
+      class="grid-header"
+      eyebrow="Administracao"
+      title="Usuarios"
+      description="Gerencie acesso, vinculo de empresa, papeis internos e recuperacao de 2FA."
+    >
+      <button
+        pageHeaderActions
+        mat-stroked-button
+        type="button"
+        class="button-with-icon"
+        (click)="loadUsers()"
+      >
+        <app-icon name="refresh-cw" size="18" />
+        Atualizar
+      </button>
+    </app-page-header>
+
     <mat-card appearance="outlined" class="form-card">
       <mat-card-header>
-        <mat-card-title>{{ isCreateMode() ? 'Cadastrar usuario' : 'Editar usuario' }}</mat-card-title>
+        <mat-card-title>{{
+          isCreateMode() ? 'Cadastrar usuario' : 'Editar usuario'
+        }}</mat-card-title>
         <mat-card-subtitle>Gerencie credenciais e vinculo de empresa da equipe.</mat-card-subtitle>
       </mat-card-header>
 
@@ -15,7 +35,12 @@
 
           <mat-form-field appearance="outline">
             <mat-label>Username</mat-label>
-            <input matInput type="text" formControlName="username" placeholder="usuario_sem_espacos" />
+            <input
+              matInput
+              type="text"
+              formControlName="username"
+              placeholder="usuario_sem_espacos"
+            />
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -24,14 +49,26 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Senha {{ isCreateMode() ? '(obrigatoria)' : '(opcional para alterar)' }}</mat-label>
-            <input matInput type="password" formControlName="password" placeholder="Minimo 6 caracteres" />
+            <mat-label
+              >Senha {{ isCreateMode() ? '(obrigatoria)' : '(opcional para alterar)' }}</mat-label
+            >
+            <input
+              matInput
+              type="password"
+              formControlName="password"
+              placeholder="Minimo 10 caracteres, letra e numero"
+            />
+            <mat-error *ngIf="form.controls.password.touched && form.controls.password.invalid">
+              {{ passwordErrorMessage() }}
+            </mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
             <mat-label>Perfil global</mat-label>
             <mat-select formControlName="role">
-              <mat-option *ngFor="let role of roleOptions" [value]="role">{{ roleLabel(role) }}</mat-option>
+              <mat-option *ngFor="let role of roleOptions" [value]="role">{{
+                roleLabel(role)
+              }}</mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -44,13 +81,24 @@
               placeholder="Pesquisar empresa..."
               [matAutocomplete]="companyAuto"
             />
-            <mat-autocomplete #companyAuto="matAutocomplete" (optionSelected)="onCompanySelected($event.option.value)">
-              <mat-option *ngFor="let company of filteredCompanies" [value]="company.id">{{ company.name }}</mat-option>
+            <mat-autocomplete #companyAuto="matAutocomplete">
+              <mat-option
+                *ngFor="let company of filteredCompanies"
+                [value]="company.name"
+                (onSelectionChange)="onCompanySelected(company, $event.isUserInput)"
+              >
+                {{ company.name }}
+              </mat-option>
             </mat-autocomplete>
             <mat-hint>Digite para pesquisar empresas.</mat-hint>
           </mat-form-field>
 
-          <button mat-stroked-button type="button" *ngIf="form.controls.role.value === 'USER'" (click)="clearSelectedCompany()">
+          <button
+            mat-stroked-button
+            type="button"
+            *ngIf="form.controls.role.value === 'USER'"
+            (click)="clearSelectedCompany()"
+          >
             Limpar empresa selecionada
           </button>
 
@@ -65,7 +113,7 @@
 
           <div class="entity-actions">
             <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
-              {{ isSaving ? 'Salvando...' : (isCreateMode() ? 'Cadastrar' : 'Salvar alteracoes') }}
+              {{ isSaving ? 'Salvando...' : isCreateMode() ? 'Cadastrar' : 'Salvar alteracoes' }}
             </button>
             <button mat-stroked-button type="button" *ngIf="!isCreateMode()" (click)="cancelEdit()">
               Cancelar edicao
@@ -73,8 +121,21 @@
           </div>
         </form>
 
-        <p class="status-block status-error" *ngIf="(errorMessage$ | async) as errorMessage">{{ errorMessage }}</p>
-        <p class="status-block status-success" *ngIf="(successMessage$ | async) as successMessage">{{ successMessage }}</p>
+        <p
+          class="status-block status-error"
+          role="alert"
+          *ngIf="errorMessage$ | async as errorMessage"
+        >
+          {{ errorMessage }}
+        </p>
+        <p
+          class="status-block status-success"
+          role="status"
+          aria-live="polite"
+          *ngIf="successMessage$ | async as successMessage"
+        >
+          {{ successMessage }}
+        </p>
       </mat-card-content>
     </mat-card>
 
@@ -85,53 +146,184 @@
           <mat-card-subtitle>{{ (totalUsers$ | async) || 0 }} registro(s)</mat-card-subtitle>
         </div>
         <div class="toolbar-spacer"></div>
-        <button mat-stroked-button type="button" class="header-refresh-btn" (click)="loadUsers()">Atualizar</button>
+        <button mat-stroked-button type="button" class="header-refresh-btn" (click)="loadUsers()">
+          Atualizar
+        </button>
       </mat-card-header>
 
       <mat-card-content>
-        <mat-progress-bar mode="indeterminate" *ngIf="(isLoading$ | async)"></mat-progress-bar>
+        <mat-progress-bar mode="indeterminate" *ngIf="isLoading$ | async"></mat-progress-bar>
+        <div class="table-loading" *ngIf="isLoading$ | async">
+          <app-skeleton-loader variant="table-row" label="Carregando usuarios" />
+          <app-skeleton-loader variant="table-row" label="Carregando usuarios" />
+        </div>
 
-        <ng-container *ngIf="(users$ | async) as users">
-          <div class="table-shell" *ngIf="!(isLoading$ | async) && users.length">
-            <table mat-table [dataSource]="users" class="data-table">
-              <ng-container matColumnDef="id">
-                <th mat-header-cell *matHeaderCellDef>ID</th>
-                <td mat-cell *matCellDef="let user"><span class="id-pill">#{{ user.id }}</span></td>
-              </ng-container>
+        <ng-container *ngIf="users$ | async as users">
+          <app-responsive-table
+            *ngIf="!(isLoading$ | async) && users.length"
+            label="Usuarios cadastrados"
+          >
+            <div responsiveTableDesktop class="table-shell">
+              <table mat-table [dataSource]="users" class="data-table">
+                <ng-container matColumnDef="id">
+                  <th mat-header-cell *matHeaderCellDef>ID</th>
+                  <td mat-cell *matCellDef="let user">
+                    <span class="id-pill">#{{ user.id }}</span>
+                  </td>
+                </ng-container>
 
-              <ng-container matColumnDef="fullName">
-                <th mat-header-cell *matHeaderCellDef>Nome</th>
-                <td mat-cell *matCellDef="let user" class="strong-cell">{{ user.fullName }}</td>
-              </ng-container>
+                <ng-container matColumnDef="fullName">
+                  <th mat-header-cell *matHeaderCellDef>Nome</th>
+                  <td mat-cell *matCellDef="let user" class="strong-cell">{{ user.fullName }}</td>
+                </ng-container>
 
-              <ng-container matColumnDef="email">
-                <th mat-header-cell *matHeaderCellDef>E-mail</th>
-                <td mat-cell *matCellDef="let user">{{ user.email || '-' }}</td>
-              </ng-container>
+                <ng-container matColumnDef="email">
+                  <th mat-header-cell *matHeaderCellDef>E-mail</th>
+                  <td mat-cell *matCellDef="let user">{{ user.email || '-' }}</td>
+                </ng-container>
 
-              <ng-container matColumnDef="username">
-                <th mat-header-cell *matHeaderCellDef>Username</th>
-                <td mat-cell *matCellDef="let user">{{ user.username }}</td>
-              </ng-container>
+                <ng-container matColumnDef="username">
+                  <th mat-header-cell *matHeaderCellDef>Username</th>
+                  <td mat-cell *matCellDef="let user">{{ user.username }}</td>
+                </ng-container>
 
-              <ng-container matColumnDef="role">
-                <th mat-header-cell *matHeaderCellDef>Perfil</th>
-                <td mat-cell *matCellDef="let user">{{ roleLabel(user.role) }} / {{ companyRoleLabel(user.companyRole) }}</td>
-              </ng-container>
+                <ng-container matColumnDef="role">
+                  <th mat-header-cell *matHeaderCellDef>Perfil</th>
+                  <td mat-cell *matCellDef="let user">
+                    <div class="role-cell">
+                      <app-status-chip
+                        [label]="roleLabel(user.role)"
+                        [variant]="user.role === 'ADMIN' ? 'warning' : 'info'"
+                      />
+                      <span>{{ companyRoleLabel(user.companyRole) }}</span>
+                    </div>
+                  </td>
+                </ng-container>
 
-              <ng-container matColumnDef="company">
-                <th mat-header-cell *matHeaderCellDef>Empresa</th>
-                <td mat-cell *matCellDef="let user">{{ companyLabel(user.companyId) }}</td>
-              </ng-container>
+                <ng-container matColumnDef="company">
+                  <th mat-header-cell *matHeaderCellDef>Empresa</th>
+                  <td mat-cell *matCellDef="let user">{{ companyLabel(user.companyId) }}</td>
+                </ng-container>
 
-              <ng-container matColumnDef="createdAt">
-                <th mat-header-cell *matHeaderCellDef>Criado em</th>
-                <td mat-cell *matCellDef="let user">{{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
-              </ng-container>
+                <ng-container matColumnDef="publicSlug">
+                  <th mat-header-cell *matHeaderCellDef>Slug publico</th>
+                  <td mat-cell *matCellDef="let user">
+                    <div
+                      class="slug-inline"
+                      *ngIf="editingSlugUserId === user.id; else slugDisplay"
+                    >
+                      <input
+                        class="slug-input"
+                        type="text"
+                        [value]="slugDraft"
+                        (input)="slugDraft = $any($event.target).value"
+                        aria-label="Slug publico do usuario"
+                      />
+                      <button
+                        mat-flat-button
+                        color="primary"
+                        type="button"
+                        (click)="saveUserPublicSlug(user)"
+                        [disabled]="slugSavingUserId === user.id"
+                      >
+                        Salvar
+                      </button>
+                      <button mat-stroked-button type="button" (click)="cancelSlugEdit()">
+                        Cancelar
+                      </button>
+                    </div>
+                    <ng-template #slugDisplay>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="slug-display"
+                        (click)="startSlugEdit(user)"
+                      >
+                        {{ user.publicSlug || 'Definir slug' }}
+                      </button>
+                    </ng-template>
+                  </td>
+                </ng-container>
 
-              <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef>Acoes</th>
-                <td mat-cell *matCellDef="let user" class="row-actions">
+                <ng-container matColumnDef="createdAt">
+                  <th mat-header-cell *matHeaderCellDef>Criado em</th>
+                  <td mat-cell *matCellDef="let user">
+                    {{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef>Acoes</th>
+                  <td mat-cell *matCellDef="let user" class="row-actions">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      color="primary"
+                      matTooltip="Resetar 2FA"
+                      (click)="resetTwoFactor(user)"
+                      aria-label="Resetar 2FA"
+                    >
+                      <mat-icon>restart_alt</mat-icon>
+                    </button>
+                    <button mat-stroked-button type="button" (click)="startEdit(user)">
+                      Editar
+                    </button>
+                    <button mat-flat-button color="warn" type="button" (click)="removeUser(user)">
+                      Excluir
+                    </button>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+              </table>
+            </div>
+
+            <div responsiveTableMobile class="mobile-users-list">
+              <article class="user-card" *ngFor="let user of users">
+                <header class="user-card-header">
+                  <span class="id-pill">#{{ user.id }}</span>
+                  <span class="user-created-at">{{
+                    user.createdAt | date: 'dd/MM/yyyy HH:mm'
+                  }}</span>
+                </header>
+
+                <p class="user-name">{{ user.fullName }}</p>
+
+                <div class="user-meta-grid">
+                  <p><strong>Username:</strong> {{ user.username }}</p>
+                  <p><strong>E-mail:</strong> {{ user.email || '-' }}</p>
+                  <p>
+                    <strong>Perfil:</strong> {{ roleLabel(user.role) }} /
+                    {{ companyRoleLabel(user.companyRole) }}
+                  </p>
+                  <p><strong>Empresa:</strong> {{ companyLabel(user.companyId) }}</p>
+                  <p><strong>Slug publico:</strong> {{ user.publicSlug || '-' }}</p>
+                </div>
+
+                <div class="slug-inline mobile-slug-editor" *ngIf="editingSlugUserId === user.id">
+                  <input
+                    class="slug-input"
+                    type="text"
+                    [value]="slugDraft"
+                    (input)="slugDraft = $any($event.target).value"
+                    aria-label="Slug publico do usuario"
+                  />
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    (click)="saveUserPublicSlug(user)"
+                    [disabled]="slugSavingUserId === user.id"
+                  >
+                    Salvar
+                  </button>
+                  <button mat-stroked-button type="button" (click)="cancelSlugEdit()">
+                    Cancelar
+                  </button>
+                </div>
+
+                <div class="mobile-row-actions">
                   <button
                     mat-icon-button
                     type="button"
@@ -142,54 +334,57 @@
                   >
                     <mat-icon>restart_alt</mat-icon>
                   </button>
-                  <button mat-stroked-button type="button" (click)="startEdit(user)">Editar</button>
-                  <button mat-flat-button color="warn" type="button" (click)="removeUser(user)">Excluir</button>
-                </td>
-              </ng-container>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    color="primary"
+                    matTooltip="Editar slug publico"
+                    (click)="startSlugEdit(user)"
+                    aria-label="Editar slug publico"
+                  >
+                    <mat-icon>alternate_email</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    color="primary"
+                    matTooltip="Editar usuario"
+                    (click)="startEdit(user)"
+                    aria-label="Editar usuario"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    color="warn"
+                    matTooltip="Excluir usuario"
+                    (click)="removeUser(user)"
+                    aria-label="Excluir usuario"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </article>
+            </div>
+          </app-responsive-table>
 
-              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-            </table>
-          </div>
+          <app-empty-state
+            *ngIf="!(isLoading$ | async) && !users.length"
+            icon="users"
+            title="Nenhum usuario cadastrado"
+            description="Crie o primeiro usuario para liberar acesso ao painel."
+          />
 
-          <div class="mobile-users-list" *ngIf="!(isLoading$ | async) && users.length">
-            <article class="user-card" *ngFor="let user of users">
-              <header class="user-card-header">
-                <span class="id-pill">#{{ user.id }}</span>
-                <span class="user-created-at">{{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
-              </header>
-
-              <p class="user-name">{{ user.fullName }}</p>
-
-              <div class="user-meta-grid">
-                <p><strong>Username:</strong> {{ user.username }}</p>
-                <p><strong>E-mail:</strong> {{ user.email || '-' }}</p>
-                <p><strong>Perfil:</strong> {{ roleLabel(user.role) }} / {{ companyRoleLabel(user.companyRole) }}</p>
-                <p><strong>Empresa:</strong> {{ companyLabel(user.companyId) }}</p>
-              </div>
-
-              <div class="mobile-row-actions">
-                <button
-                  mat-icon-button
-                  type="button"
-                  color="primary"
-                  matTooltip="Resetar 2FA"
-                  (click)="resetTwoFactor(user)"
-                  aria-label="Resetar 2FA"
-                >
-                  <mat-icon>restart_alt</mat-icon>
-                </button>
-                <button mat-icon-button type="button" color="primary" matTooltip="Editar usuario" (click)="startEdit(user)" aria-label="Editar usuario">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button mat-icon-button type="button" color="warn" matTooltip="Excluir usuario" (click)="removeUser(user)" aria-label="Excluir usuario">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-            </article>
-          </div>
-
-          <p class="empty-state" *ngIf="!(isLoading$ | async) && !users.length">Nenhum usuario cadastrado.</p>
+          <mat-paginator
+            [length]="(totalUsers$ | async) || 0"
+            [pageIndex]="(pageState$ | async)?.pageIndex || 0"
+            [pageSize]="(pageState$ | async)?.pageSize || 20"
+            [pageSizeOptions]="pageSizeOptions"
+            showFirstLastButtons
+            (page)="handlePage($event)"
+          >
+          </mat-paginator>
         </ng-container>
       </mat-card-content>
     </mat-card>

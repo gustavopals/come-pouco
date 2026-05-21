@@ -9,6 +9,7 @@ export interface User {
   role: UserRole;
   companyId: number | null;
   companyRole: CompanyRole | null;
+  publicSlug: string | null;
   twoFactorEnabled: boolean;
   createdAt: string;
 }
@@ -21,6 +22,7 @@ export interface CreateUserPayload {
   role: UserRole;
   companyId?: number | null;
   companyRole?: CompanyRole | null;
+  publicSlug?: string | null;
 }
 
 export interface UpdateUserPayload {
@@ -31,4 +33,5 @@ export interface UpdateUserPayload {
   role?: UserRole;
   companyId?: number | null;
   companyRole?: CompanyRole | null;
+  publicSlug?: string | null;
 }

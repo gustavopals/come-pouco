@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 
 import env from '../config/env';
 import prisma from '../config/prisma';
+import { recordShopeeApiCall } from '../lib/metrics';
 import HttpError from '../utils/httpError';
 import { postGraphql } from './shopee-affiliate-client.service';
 
@@ -11,9 +12,10 @@ interface ShopeeGenerateShortLinksInput {
   apiUrl: string;
   originUrls: string[];
   companyId?: number;
-  userId: number;
+  userId?: number;
   platformId: number;
   subId1?: string;
+  subIds?: string[];
   forceMock?: boolean;
 }
 
@@ -43,7 +45,10 @@ const GENERATE_SHORT_LINK_MUTATION = `
   }
 `;
 
-const normalizeShortLink = (input: GenerateShortLinkGraphqlData | undefined, fallbackOriginUrl: string): string => {
+const normalizeShortLink = (
+  input: GenerateShortLinkGraphqlData | undefined,
+  _fallbackOriginUrl: string
+): string => {
   const payload = input?.generateShortLink;
   const shortLink = payload?.shortLink || payload?.shortUrl || payload?.short_link;
 
@@ -75,13 +80,13 @@ const registerApiRequestLogs = async ({
   results
 }: {
   companyId?: number;
-  userId: number;
+  userId?: number;
   platformId: number;
   mode: 'MOCK' | 'REAL';
   endpoint: string;
   results: ShopeeShortLinkResult[];
 }): Promise<void> => {
-  if (!companyId || !results.length) {
+  if (!companyId || !userId || !results.length) {
     return;
   }
 
@@ -106,16 +111,38 @@ const generateShopeeShortLinks = async ({
   userId,
   platformId,
   subId1,
+  subIds,
   forceMock
 }: ShopeeGenerateShortLinksInput): Promise<ShopeeShortLinkResult[]> => {
+  const normalizedSubIds =
+    subIds
+      ?.map((subId) => subId.trim())
+      .filter(Boolean)
+      .slice(0, 3) ?? (subId1?.trim() ? [subId1.trim()] : undefined);
+
   if (forceMock || env.shopeeMock) {
     const now = Date.now().toString();
     const results = originUrls.map((originUrl) => {
+      const startedAt = Date.now();
+      const forcedFailure = shouldForceMockFailure(originUrl);
+
+      if (forcedFailure) {
+        recordShopeeApiCall({ mode: 'MOCK', success: false, durationMs: Date.now() - startedAt });
+
+        return {
+          originUrl,
+          success: false,
+          error: 'SHOPEE_MOCK_FORCED_FAILURE'
+        };
+      }
+
       const hash = crypto
         .createHash('sha256')
-        .update(`${originUrl}|${subId1 || ''}|${now}`)
+        .update(`${originUrl}|${normalizedSubIds?.join('|') || ''}|${now}`)
         .digest('hex')
         .slice(0, 12);
+
+      recordShopeeApiCall({ mode: 'MOCK', success: true, durationMs: Date.now() - startedAt });
 
       return {
         originUrl,
@@ -136,10 +163,9 @@ const generateShopeeShortLinks = async ({
     return results;
   }
 
-  const normalizedSubIds = subId1?.trim() ? [subId1.trim()] : undefined;
-
   const results = await Promise.all(
     originUrls.map(async (originUrl) => {
+      const startedAt = Date.now();
       try {
         const response = await postGraphql<GenerateShortLinkGraphqlData>({
           appId,
@@ -155,6 +181,7 @@ const generateShopeeShortLinks = async ({
         });
 
         const shortLink = normalizeShortLink(response.data, originUrl);
+        recordShopeeApiCall({ mode: 'REAL', success: true, durationMs: Date.now() - startedAt });
 
         return {
           originUrl,
@@ -162,6 +189,7 @@ const generateShopeeShortLinks = async ({
           shortLink
         } satisfies ShopeeShortLinkResult;
       } catch (error) {
+        recordShopeeApiCall({ mode: 'REAL', success: false, durationMs: Date.now() - startedAt });
         return {
           originUrl,
           success: false,
@@ -182,6 +210,9 @@ const generateShopeeShortLinks = async ({
 
   return results;
 };
+
+const shouldForceMockFailure = (originUrl: string): boolean =>
+  Boolean(env.shopeeMockFailurePattern && originUrl.includes(env.shopeeMockFailurePattern));
 
 export { generateShopeeShortLinks };
 export type { ShopeeGenerateShortLinksInput, ShopeeShortLinkResult };

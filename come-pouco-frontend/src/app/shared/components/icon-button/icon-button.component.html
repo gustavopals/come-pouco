@@ -1,0 +1,17 @@
+<button
+  class="icon-button"
+  [class.icon-button-sm]="size() === 'sm'"
+  [class.icon-button-md]="size() === 'md'"
+  [class.icon-button-lg]="size() === 'lg'"
+  [class.icon-button-ghost]="variant() === 'ghost'"
+  [class.icon-button-soft]="variant() === 'soft'"
+  [class.icon-button-primary]="variant() === 'primary'"
+  [class.icon-button-danger]="variant() === 'danger'"
+  [attr.type]="type()"
+  [disabled]="disabled()"
+  [attr.aria-label]="label()"
+  [matTooltip]="tooltip() || label()"
+  (click)="handleClick($event)"
+>
+  <app-icon [name]="icon()" [size]="iconSize()" [strokeWidth]="2"></app-icon>
+</button>

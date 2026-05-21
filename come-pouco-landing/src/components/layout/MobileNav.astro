@@ -1,0 +1,138 @@
+---
+import { primaryNav, getAppUrl } from '@lib/navigation';
+import Button from '@components/ui/Button.astro';
+import Logo from '@components/brand/Logo.astro';
+import ThemeToggle from './ThemeToggle.astro';
+---
+
+<button
+  type="button"
+  data-mobile-nav-trigger
+  aria-label="Abrir menu"
+  aria-expanded="false"
+  aria-controls="cp-mobile-nav"
+  class="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] text-[var(--cp-color-foreground)] transition-colors hover:bg-[var(--cp-color-muted)]"
+>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <line x1="3" y1="6" x2="21" y2="6"></line>
+    <line x1="3" y1="12" x2="21" y2="12"></line>
+    <line x1="3" y1="18" x2="21" y2="18"></line>
+  </svg>
+</button>
+
+<dialog
+  id="cp-mobile-nav"
+  data-mobile-nav-dialog
+  class="m-0 max-h-screen max-w-none p-0 backdrop:bg-black/40 backdrop:backdrop-blur-sm md:hidden"
+  aria-label="Menu principal"
+>
+  <div
+    class="fixed inset-y-0 right-0 flex h-full w-full max-w-sm flex-col bg-[var(--cp-color-surface)] shadow-[var(--cp-shadow-xl)]"
+  >
+    <div
+      class="flex items-center justify-between border-b border-[var(--cp-color-border)] px-5 py-4"
+    >
+      <Logo />
+      <button
+        type="button"
+        data-mobile-nav-close
+        aria-label="Fechar menu"
+        class="inline-flex h-10 w-10 items-center justify-center rounded-[var(--cp-radius-md)] hover:bg-[var(--cp-color-muted)]"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto px-5 py-6">
+      <ul class="flex flex-col gap-1">
+        {
+          primaryNav.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                class="block rounded-[var(--cp-radius-md)] px-3 py-3 text-[16px] font-medium text-[var(--cp-color-foreground)] hover:bg-[var(--cp-color-muted)]"
+              >
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="flex flex-col gap-3 border-t border-[var(--cp-color-border)] p-5">
+      <div class="flex items-center justify-between">
+        <span class="text-[13px] text-[var(--cp-color-muted-foreground)]">Tema</span>
+        <ThemeToggle />
+      </div>
+      <Button href={getAppUrl('/login')} variant="secondary" fullWidth>Entrar</Button>
+      <Button
+        href={getAppUrl('/register')}
+        variant="primary"
+        fullWidth
+        dataEvent="cta_click_mobile_register"
+      >
+        Começar grátis
+      </Button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  function init() {
+    const trigger = document.querySelector<HTMLButtonElement>('[data-mobile-nav-trigger]');
+    const dialog = document.querySelector<HTMLDialogElement>('[data-mobile-nav-dialog]');
+    const closeBtn = document.querySelector<HTMLButtonElement>('[data-mobile-nav-close]');
+
+    if (!trigger || !dialog) return;
+
+    trigger.addEventListener('click', () => {
+      if (typeof dialog.showModal === 'function') {
+        dialog.showModal();
+      } else {
+        dialog.setAttribute('open', '');
+      }
+      trigger.setAttribute('aria-expanded', 'true');
+    });
+
+    const close = () => {
+      if (typeof dialog.close === 'function') dialog.close();
+      else dialog.removeAttribute('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    };
+
+    closeBtn?.addEventListener('click', close);
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) close();
+    });
+    dialog.querySelectorAll('a[href]').forEach((link) => {
+      link.addEventListener('click', close);
+    });
+  }
+
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+</script>

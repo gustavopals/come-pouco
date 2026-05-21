@@ -1,0 +1,31 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.responsive-table {
+  min-width: 0;
+}
+
+.responsive-table-desktop,
+.responsive-table-mobile {
+  min-width: 0;
+}
+
+.responsive-table-desktop {
+  display: block;
+}
+
+.responsive-table-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .responsive-table-desktop {
+    display: none;
+  }
+
+  .responsive-table-mobile {
+    display: block;
+  }
+}

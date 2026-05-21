@@ -1,0 +1,184 @@
+---
+import Container from '@components/ui/Container.astro';
+import Section from '@components/ui/Section.astro';
+import Badge from '@components/ui/Badge.astro';
+import Button from '@components/ui/Button.astro';
+import PhoneFrame from '@components/ui/PhoneFrame.astro';
+import GradientBlob from '@components/ui/GradientBlob.astro';
+import Icon from '@components/ui/Icon.astro';
+import { alliBenefits } from '@lib/features';
+import { getAppUrl } from '@lib/navigation';
+---
+
+<Section id="alli" tone="muted" ariaLabelledby="alli-title">
+  <GradientBlob position="center" color="mixed" size={520} blur={160} opacity={0.18} />
+
+  <Container size="page" class="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+    <div data-cp-reveal class="flex flex-col gap-6">
+      <Badge variant="accent" size="md">Exclusivo Come Pouco</Badge>
+      <h2
+        id="alli-title"
+        class="text-[length:var(--cp-text-h2-size)] font-bold leading-[var(--cp-text-h2-line-height)] tracking-[-0.02em]"
+      >
+        Sua audiência converte sozinha. <span class="cp-grad-text">Direto da Shopee.</span>
+      </h2>
+      <p
+        class="text-[length:var(--cp-text-body-lg-size)] leading-[var(--cp-text-body-lg-line-height)] text-[var(--cp-color-muted-foreground)]"
+      >
+        Cada empresa tem uma URL pública (<code
+          class="rounded bg-[var(--cp-color-code-bg)] px-1.5 py-0.5 font-mono text-[14px] text-[var(--cp-color-primary)]"
+          >/p/sua-loja</code
+        >) onde seus seguidores colam qualquer link Shopee e voltam pra Shopee com seu link de
+        afiliado aplicado.
+      </p>
+
+      <ul class="flex flex-col gap-3">
+        {
+          alliBenefits.map((benefit) => (
+            <li class="flex items-start gap-3 text-[15px] text-[var(--cp-color-foreground)]">
+              <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--cp-color-primary-soft)] text-[var(--cp-color-primary)]">
+                <Icon name="Check" size={14} strokeWidth={2.5} />
+              </span>
+              <span>{benefit.text}</span>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="flex flex-wrap gap-3">
+        <Button
+          href={`${getAppUrl('')}/p/demo`}
+          variant="primary"
+          size="lg"
+          dataEvent="alli_demo_interact"
+          external
+        >
+          Ver demo ao vivo
+          <Icon name="ExternalLink" size={16} strokeWidth={2} />
+        </Button>
+        <Button href={getAppUrl('/register?plan=free')} variant="secondary" size="lg">
+          Criar minha URL Alli
+        </Button>
+      </div>
+    </div>
+
+    <div data-cp-reveal class="relative flex items-center justify-center">
+      <PhoneFrame bezel="dark" class="rotate-[-1.5deg]">
+        <div
+          class="flex h-full flex-col bg-gradient-to-b from-[var(--cp-color-primary-soft)] to-[var(--cp-color-surface)] p-5"
+        >
+          <div class="flex items-center gap-2">
+            <span
+              class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--cp-color-primary)] text-[10px] font-bold text-[var(--cp-color-primary-foreground)]"
+              >CP</span
+            >
+            <span class="text-[13px] font-semibold text-[var(--cp-color-foreground)]"
+              >come-pouco.com.br/p/lojinha-da-ju</span
+            >
+          </div>
+
+          <div class="mt-6 flex flex-col gap-3">
+            <h3 class="text-[20px] font-bold leading-tight text-[var(--cp-color-foreground)]">
+              Cole o link da Shopee e ganhe o melhor cupom 🔥
+            </h3>
+            <p class="text-[12px] leading-relaxed text-[var(--cp-color-muted-foreground)]">
+              Funciona com shope.ee e link longo. Você é redirecionado direto pra Shopee.
+            </p>
+          </div>
+
+          <div
+            class="mt-5 flex flex-col gap-2 rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] p-3"
+          >
+            <label
+              class="text-[10px] font-semibold uppercase tracking-wider text-[var(--cp-color-muted-foreground)]"
+              for="alli-demo-url"
+            >
+              Link Shopee
+            </label>
+            <input
+              id="alli-demo-url"
+              type="text"
+              value="https://shopee.com.br/produto/12345"
+              readonly
+              class="w-full bg-transparent text-[12px] text-[var(--cp-color-foreground)] outline-none"
+            />
+            <button
+              type="button"
+              data-alli-demo-trigger
+              class="mt-1 inline-flex h-9 w-full items-center justify-center gap-2 rounded-[var(--cp-radius-md)] bg-[var(--cp-color-primary)] text-[12px] font-semibold text-[var(--cp-color-primary-foreground)]"
+            >
+              <span data-alli-demo-label>Buscar cupom</span>
+              <span data-alli-demo-spinner class="hidden">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <div
+            data-alli-demo-status
+            class="mt-4 hidden rounded-[var(--cp-radius-md)] bg-[var(--cp-color-primary-soft)] p-3 text-[12px] text-[var(--cp-color-primary)]"
+          >
+            <span data-alli-demo-step></span>
+          </div>
+
+          <div class="mt-auto text-center text-[10px] text-[var(--cp-color-muted-foreground)]">
+            Powered by <span class="font-semibold text-[var(--cp-color-primary)]">Come Pouco</span>
+          </div>
+        </div>
+      </PhoneFrame>
+    </div>
+  </Container>
+</Section>
+
+<script>
+  const STEPS = ['Validando link...', 'Aplicando cupom...', 'Pronto! Redirecionando 🎉'];
+
+  function init() {
+    const triggers = document.querySelectorAll<HTMLButtonElement>('[data-alli-demo-trigger]');
+    triggers.forEach((trigger) => {
+      const root = trigger.closest('div')?.parentElement?.parentElement;
+      const status = root?.querySelector<HTMLElement>('[data-alli-demo-status]');
+      const stepEl = status?.querySelector<HTMLElement>('[data-alli-demo-step]');
+      const spinner = trigger.querySelector<HTMLElement>('[data-alli-demo-spinner]');
+      const label = trigger.querySelector<HTMLElement>('[data-alli-demo-label]');
+      let running = false;
+
+      trigger.addEventListener('click', async () => {
+        if (running || !status || !stepEl || !spinner || !label) return;
+        running = true;
+        trigger.disabled = true;
+        spinner.classList.remove('hidden');
+        label.textContent = 'Buscando...';
+        status.classList.remove('hidden');
+
+        for (const step of STEPS) {
+          stepEl.textContent = step;
+          await new Promise((r) => setTimeout(r, 900));
+        }
+
+        spinner.classList.add('hidden');
+        label.textContent = 'Buscar cupom';
+        trigger.disabled = false;
+        running = false;
+
+        if (window.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('alli-demo-complete'));
+        }
+      });
+    });
+  }
+
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+</script>

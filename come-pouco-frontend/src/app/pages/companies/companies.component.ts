@@ -5,15 +5,36 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
-import { BehaviorSubject, Subject, catchError, finalize, map, of, shareReplay, startWith, switchMap, tap } from 'rxjs';
+import {
+  BehaviorSubject,
+  Subject,
+  catchError,
+  combineLatest,
+  finalize,
+  map,
+  of,
+  shareReplay,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs';
 
 import { Company } from '../../core/models/company.model';
 import { PurchasePlatform } from '../../core/models/purchase-platform.model';
 import { CompanyService } from '../../core/services/company.service';
 import { PurchasePlatformService } from '../../core/services/purchase-platform.service';
+import {
+  EmptyStateComponent,
+  IconComponent,
+  PageHeaderComponent,
+  ResponsiveTableComponent,
+  SkeletonLoaderComponent,
+  StatusChipComponent,
+} from '../../shared/components';
 
 @Component({
   selector: 'app-companies',
@@ -27,12 +48,19 @@ import { PurchasePlatformService } from '../../core/services/purchase-platform.s
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
+    MatPaginatorModule,
     MatProgressBarModule,
     MatSelectModule,
-    MatTableModule
+    MatTableModule,
+    EmptyStateComponent,
+    IconComponent,
+    PageHeaderComponent,
+    ResponsiveTableComponent,
+    SkeletonLoaderComponent,
+    StatusChipComponent,
   ],
   templateUrl: './companies.component.html',
-  styleUrl: './companies.component.scss'
+  styleUrl: './companies.component.scss',
 })
 export class CompaniesComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
@@ -40,38 +68,50 @@ export class CompaniesComponent implements OnInit {
   private readonly purchasePlatformService = inject(PurchasePlatformService);
 
   private readonly refresh$ = new Subject<void>();
+  protected readonly pageSizeOptions = [10, 20, 50, 100];
+  protected readonly pageState$ = new BehaviorSubject<{ pageIndex: number; pageSize: number }>({
+    pageIndex: 0,
+    pageSize: 20,
+  });
 
   protected readonly displayedColumns = ['id', 'name', 'platform', 'createdAt', 'actions'];
   protected shopeePlatforms: PurchasePlatform[] = [];
   protected readonly isLoading$ = new BehaviorSubject<boolean>(false);
   protected readonly errorMessage$ = new BehaviorSubject<string | null>(null);
+  protected readonly totalCompanies$ = new BehaviorSubject<number>(0);
   protected isLoadingPlatforms = false;
   protected isSaving = false;
   protected successMessage = '';
   protected editingCompanyId: number | null = null;
 
-  protected readonly companies$ = this.refresh$.pipe(
-    startWith(void 0),
+  protected readonly companies$ = combineLatest([
+    this.refresh$.pipe(startWith(void 0)),
+    this.pageState$,
+  ]).pipe(
     tap(() => {
       this.isLoading$.next(true);
       this.errorMessage$.next(null);
     }),
-    switchMap(() =>
-      this.companyService.list().pipe(
-        map(({ companies }) => (Array.isArray(companies) ? companies : [])),
+    switchMap(([, pageState]) =>
+      this.companyService.list({ page: pageState.pageIndex + 1, limit: pageState.pageSize }).pipe(
+        tap((response) =>
+          this.totalCompanies$.next(response.meta?.total ?? response.companies?.length ?? 0),
+        ),
+        map((response) => (Array.isArray(response?.companies) ? response.companies : [])),
         catchError((error) => {
           this.errorMessage$.next(error?.error?.message || 'Nao foi possivel carregar empresas.');
+          this.totalCompanies$.next(0);
           return of([] as Company[]);
         }),
-        finalize(() => this.isLoading$.next(false))
-      )
+        finalize(() => this.isLoading$.next(false)),
+      ),
     ),
-    shareReplay({ bufferSize: 1, refCount: true })
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
 
   protected readonly form = this.formBuilder.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
-    shopeePlatformId: [null as number | null]
+    shopeePlatformId: [null as number | null],
   });
 
   ngOnInit(): void {
@@ -82,20 +122,27 @@ export class CompaniesComponent implements OnInit {
     this.refresh$.next();
   }
 
+  protected handlePage(event: PageEvent): void {
+    this.pageState$.next({
+      pageIndex: event.pageIndex,
+      pageSize: event.pageSize,
+    });
+  }
+
   protected loadShopeePlatforms(): void {
     this.isLoadingPlatforms = true;
 
     this.purchasePlatformService
-      .list()
+      .listAll()
       .pipe(finalize(() => (this.isLoadingPlatforms = false)))
       .subscribe({
-        next: ({ platforms }) => {
+        next: (platforms) => {
           const all = Array.isArray(platforms) ? platforms : [];
           this.shopeePlatforms = all.filter((item) => item.type === 'SHOPEE' && item.isActive);
         },
         error: () => {
           this.shopeePlatforms = [];
-        }
+        },
       });
   }
 
@@ -108,7 +155,7 @@ export class CompaniesComponent implements OnInit {
     this.editingCompanyId = company.id;
     this.form.reset({
       name: company.name,
-      shopeePlatformId: company.shopeePlatformId ?? null
+      shopeePlatformId: company.shopeePlatformId ?? null,
     });
   }
 
@@ -136,7 +183,7 @@ export class CompaniesComponent implements OnInit {
         error: (error) => {
           this.isSaving = false;
           this.errorMessage$.next(error?.error?.message || 'Nao foi possivel criar empresa.');
-        }
+        },
       });
 
       return;
@@ -152,7 +199,7 @@ export class CompaniesComponent implements OnInit {
       error: (error) => {
         this.isSaving = false;
         this.errorMessage$.next(error?.error?.message || 'Nao foi possivel atualizar empresa.');
-      }
+      },
     });
   }
 

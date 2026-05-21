@@ -1,5 +1,11 @@
 # Come Pouco Monorepo
 
+[![CI](https://github.com/gustavopals/come-pouco/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gustavopals/come-pouco/actions/workflows/ci.yml)
+![Backend coverage](.github/badges/coverage-backend.svg)
+![Frontend coverage](.github/badges/coverage-frontend.svg)
+![Landing coverage](.github/badges/coverage-landing.svg)
+![License](.github/badges/license.svg)
+
 Estrutura com frontend Angular, backend Node.js + Express + TypeScript, Prisma ORM e PostgreSQL em Docker.
 
 ## Estrutura
@@ -14,6 +20,12 @@ Estrutura com frontend Angular, backend Node.js + Express + TypeScript, Prisma O
 - Node.js 22+
 - npm 10+
 - Docker + Docker Compose
+
+## Docs para desenvolvimento
+
+- [Como rodar e escrever testes](docs/testing.md)
+- [Guia de contribuição e onboarding](docs/contributing.md)
+- [Política de dependências](docs/dependencies.md)
 
 ## Banco de dados
 
@@ -126,6 +138,9 @@ Variaveis suportadas:
 - `POST_DEPLOY_SMOKE_COMPANY_NAME` (padrao: `Smoke Test Company`)
 - `POST_DEPLOY_SMOKE_OWNER_PASSWORD`
 - `POST_DEPLOY_SMOKE_EMPLOYEE_PASSWORD`
+- `POST_DEPLOY_SMOKE_PUBLIC_SLUG`
+- `POST_DEPLOY_SMOKE_PUBLIC_FALLBACK_URL`
+- `POST_DEPLOY_SMOKE_PUBLIC_CONVERSION_URL`
 - `POST_DEPLOY_SMOKE_KEEP_DATA=true` (mantem dados criados)
 
 Cobertura principal do smoke:
@@ -212,6 +227,9 @@ Observacao: `platformId` continua opcional para ADMIN (override manual). Para OW
 9. Faca login como EMPLOYEE1:
    - verifique que nao enxerga os links do EMPLOYEE2.
 10. Volte como ADMIN e desligue `Modo Sandbox (Mock)` na plataforma:
-   - com credenciais reais validas, o fluxo passa a usar chamada real da Shopee.
+
+- com credenciais reais validas, o fluxo passa a usar chamada real da Shopee.
+
 11. Faca login como ADMIN:
-   - verifique que enxerga todos os links.
+
+- verifique que enxerga todos os links.

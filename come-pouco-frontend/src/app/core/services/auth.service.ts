@@ -4,7 +4,15 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { AuthResponse, AuthUser, LoginResponse, RegisterPayload, TrustedDevice, TwoFactorSetupResponse } from '../models/auth.model';
+import { setSentryUser } from '../monitoring/sentry';
+import {
+  AuthResponse,
+  AuthUser,
+  LoginResponse,
+  RegisterPayload,
+  TrustedDevice,
+  TwoFactorSetupResponse,
+} from '../models/auth.model';
 import type { CompanyRole } from '../models/company-role.model';
 import type { UserRole } from '../models/user-role.model';
 
@@ -17,8 +25,10 @@ export class AuthService {
 
   constructor(
     private readonly http: HttpClient,
-    private readonly router: Router
-  ) {}
+    private readonly router: Router,
+  ) {
+    setSentryUser(this.currentUserSignal());
+  }
 
   get currentUser() {
     return this.currentUserSignal.asReadonly();
@@ -28,13 +38,19 @@ export class AuthService {
     return this.http.post<LoginResponse>(
       `${environment.apiUrl}/auth/login`,
       { identifier, password },
-      { withCredentials: true }
+      { withCredentials: true },
     );
   }
 
-  loginTwoFactor(payload: { tempToken: string; code: string; trustDevice?: boolean }): Observable<AuthResponse> {
+  loginTwoFactor(payload: {
+    tempToken: string;
+    code: string;
+    trustDevice?: boolean;
+  }): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>(`${environment.apiUrl}/auth/login/2fa`, payload, { withCredentials: true })
+      .post<AuthResponse>(`${environment.apiUrl}/auth/login/2fa`, payload, {
+        withCredentials: true,
+      })
       .pipe(tap((response) => this.setSession(response)));
   }
 
@@ -45,11 +61,16 @@ export class AuthService {
   }
 
   forgotPassword(email: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/forgot-password`, { email });
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/forgot-password`, {
+      email,
+    });
   }
 
   resetPassword(token: string, newPassword: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/reset-password`, { token, newPassword });
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/reset-password`, {
+      token,
+      newPassword,
+    });
   }
 
   me(): Observable<{ user: AuthUser }> {
@@ -57,7 +78,8 @@ export class AuthService {
       tap(({ user }) => {
         this.currentUserSignal.set(user);
         localStorage.setItem(USER_KEY, JSON.stringify(user));
-      })
+        setSentryUser(user);
+      }),
     );
   }
 
@@ -66,19 +88,29 @@ export class AuthService {
   }
 
   confirmTwoFactor(code: string): Observable<{ backupCodes: string[] }> {
-    return this.http.post<{ backupCodes: string[] }>(`${environment.apiUrl}/auth/2fa/confirm`, { code });
+    return this.http.post<{ backupCodes: string[] }>(`${environment.apiUrl}/auth/2fa/confirm`, {
+      code,
+    });
   }
 
   disableTwoFactor(password: string, code: string): Observable<{ ok: boolean }> {
-    return this.http.post<{ ok: boolean }>(`${environment.apiUrl}/auth/2fa/disable`, { password, code }, { withCredentials: true });
+    return this.http.post<{ ok: boolean }>(
+      `${environment.apiUrl}/auth/2fa/disable`,
+      { password, code },
+      { withCredentials: true },
+    );
   }
 
   listTrustedDevices(): Observable<{ devices: TrustedDevice[] }> {
-    return this.http.get<{ devices: TrustedDevice[] }>(`${environment.apiUrl}/auth/trusted-devices`);
+    return this.http.get<{ devices: TrustedDevice[] }>(
+      `${environment.apiUrl}/auth/trusted-devices`,
+    );
   }
 
   revokeTrustedDevice(deviceId: number): Observable<void> {
-    return this.http.delete<void>(`${environment.apiUrl}/auth/trusted-devices/${deviceId}`, { withCredentials: true });
+    return this.http.delete<void>(`${environment.apiUrl}/auth/trusted-devices/${deviceId}`, {
+      withCredentials: true,
+    });
   }
 
   completeLogin(response: AuthResponse): void {
@@ -87,7 +119,7 @@ export class AuthService {
 
   logout(): void {
     this.clearSession();
-    this.router.navigate(['/login']);
+    void this.router.navigate(['/login']);
   }
 
   isAuthenticated(): boolean {
@@ -118,12 +150,14 @@ export class AuthService {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     this.currentUserSignal.set(null);
+    setSentryUser(null);
   }
 
   private setSession(response: AuthResponse): void {
     localStorage.setItem(TOKEN_KEY, response.token);
     localStorage.setItem(USER_KEY, JSON.stringify(response.user));
     this.currentUserSignal.set(response.user);
+    setSentryUser(response.user);
   }
 
   private getStoredUser(): AuthUser | null {
@@ -154,21 +188,30 @@ export class AuthService {
         username: String(parsed.username || ''),
         email: parsed.email ? String(parsed.email) : null,
         role: parsed.role as UserRole,
-        companyId: parsed.companyId === null || parsed.companyId === undefined ? null : Number(parsed.companyId),
+        companyId:
+          parsed.companyId === null || parsed.companyId === undefined
+            ? null
+            : Number(parsed.companyId),
         companyRole: (parsed.companyRole ?? null) as CompanyRole | null,
         company:
           parsed.company && typeof parsed.company === 'object'
             ? {
                 id: Number((parsed.company as { id?: number }).id),
                 name: String((parsed.company as { name?: string }).name || ''),
-                shopeeMode: (parsed.company as { shopeeMode?: 'TEST' | 'PROD' }).shopeeMode === 'PROD' ? 'PROD' : 'TEST',
+                shopeeMode:
+                  (parsed.company as { shopeeMode?: 'TEST' | 'PROD' }).shopeeMode === 'PROD'
+                    ? 'PROD'
+                    : 'TEST',
                 isShopeeConfiguredForMode: Boolean(
-                  (parsed.company as { isShopeeConfiguredForMode?: boolean }).isShopeeConfiguredForMode
-                )
+                  (parsed.company as { isShopeeConfiguredForMode?: boolean })
+                    .isShopeeConfiguredForMode,
+                ),
               }
             : null,
         twoFactorEnabled: Boolean(parsed.twoFactorEnabled),
-        twoFactorConfirmedAt: parsed.twoFactorConfirmedAt ? String(parsed.twoFactorConfirmedAt) : null
+        twoFactorConfirmedAt: parsed.twoFactorConfirmedAt
+          ? String(parsed.twoFactorConfirmedAt)
+          : null,
       };
     } catch {
       localStorage.removeItem(USER_KEY);

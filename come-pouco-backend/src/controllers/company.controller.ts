@@ -1,92 +1,26 @@
 import { NextFunction, Request, Response } from 'express';
 
-import { ALLOWED_HISTORY_RETENTION_DAYS } from '../constants/company.constants';
+import { AUDIT_EVENTS } from '../constants/audit-events';
+import type {
+  CompanyQuery,
+  CreateCompanyBody,
+  UpdateCompanyBody
+} from '../schemas/companies.schema';
+import { logEventFromRequest } from '../services/audit.service';
 import * as companyService from '../services/company.service';
-import HttpError from '../utils/httpError';
 
-interface CreateCompanyBody {
-  name?: string;
-  historyRetentionDays?: number;
-  shopeePlatformId?: number | null;
-  shopeePlatformTestId?: number | null;
-  shopeePlatformProdId?: number | null;
-  shopeeMode?: 'TEST' | 'PROD';
-}
-
-interface UpdateCompanyBody {
-  name?: string;
-  historyRetentionDays?: number;
-  shopeePlatformId?: number | null;
-  shopeePlatformTestId?: number | null;
-  shopeePlatformProdId?: number | null;
-  shopeeMode?: 'TEST' | 'PROD';
-}
-
-const parseShopeePlatformId = (value: unknown): number | null | undefined => {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (value === null || value === '') {
-    return null;
-  }
-
-  const parsed = Number(value);
-
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new HttpError(400, 'Plataforma Shopee invalida.');
-  }
-
-  return parsed;
-};
-
-const parseShopeeMode = (value: unknown): 'TEST' | 'PROD' | undefined => {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
-  }
-
-  if (value === 'TEST' || value === 'PROD') {
-    return value;
-  }
-
-  throw new HttpError(400, 'Modo Shopee invalido. Use TEST ou PROD.');
-};
-
-const parseHistoryRetentionDays = (value: unknown): number | undefined => {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
-  }
-
-  const parsed = Number(value);
-
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new HttpError(400, 'historyRetentionDays invalido.');
-  }
-
-  if (!ALLOWED_HISTORY_RETENTION_DAYS.includes(parsed)) {
-    throw new HttpError(
-      400,
-      `historyRetentionDays invalido. Valores permitidos: ${ALLOWED_HISTORY_RETENTION_DAYS.join(', ')}.`
-    );
-  }
-
-  return parsed;
-};
-
-const parseCompanyId = (value: string): number => {
-  const id = Number(value);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new HttpError(400, 'ID da empresa invalido.');
-  }
-
-  return id;
-};
-
-const listCompanies = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+const listCompanies = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const companies = await companyService.listCompanies();
-    res.status(200).json({ companies });
+    const query = req.query as unknown as CompanyQuery;
+    const result = await companyService.listCompanies({
+      pagination: {
+        page: query.page,
+        limit: query.limit
+      }
+    });
+    res
+      .status(200)
+      .json({ companies: result.items, data: result.data, items: result.items, meta: result.meta });
   } catch (error) {
     next(error);
   }
@@ -98,16 +32,16 @@ const createCompany = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { name } = req.body;
-    const historyRetentionDays = parseHistoryRetentionDays(req.body.historyRetentionDays);
-    const shopeePlatformId = parseShopeePlatformId(req.body.shopeePlatformId);
-    const shopeePlatformTestId = parseShopeePlatformId(req.body.shopeePlatformTestId);
-    const shopeePlatformProdId = parseShopeePlatformId(req.body.shopeePlatformProdId);
-    const shopeeMode = parseShopeeMode(req.body.shopeeMode);
-
-    if (!name || !name.trim().length) {
-      throw new HttpError(400, 'Nome da empresa e obrigatorio.');
-    }
+    const {
+      name,
+      historyRetentionDays,
+      shopeePlatformId,
+      shopeePlatformTestId,
+      shopeePlatformProdId,
+      shopeeMode,
+      publicSlug,
+      fallbackAffiliateUrl
+    } = req.body;
 
     const company = await companyService.createCompany({
       name,
@@ -115,7 +49,18 @@ const createCompany = async (
       shopeePlatformId,
       shopeePlatformTestId,
       shopeePlatformProdId,
-      shopeeMode
+      shopeeMode,
+      publicSlug,
+      fallbackAffiliateUrl
+    });
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.ADMIN_COMPANY_CREATE,
+      entityType: 'COMPANY',
+      entityId: company.id,
+      metadata: {
+        name: company.name,
+        shopeeMode: company.shopeeMode
+      }
     });
     res.status(201).json({ company });
   } catch (error) {
@@ -129,13 +74,17 @@ const updateCompany = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const id = parseCompanyId(req.params.id);
-    const { name } = req.body;
-    const historyRetentionDays = parseHistoryRetentionDays(req.body.historyRetentionDays);
-    const shopeePlatformId = parseShopeePlatformId(req.body.shopeePlatformId);
-    const shopeePlatformTestId = parseShopeePlatformId(req.body.shopeePlatformTestId);
-    const shopeePlatformProdId = parseShopeePlatformId(req.body.shopeePlatformProdId);
-    const shopeeMode = parseShopeeMode(req.body.shopeeMode);
+    const id = Number(req.params.id);
+    const {
+      name,
+      historyRetentionDays,
+      shopeePlatformId,
+      shopeePlatformTestId,
+      shopeePlatformProdId,
+      shopeeMode,
+      publicSlug,
+      fallbackAffiliateUrl
+    } = req.body;
 
     const company = await companyService.updateCompany(id, {
       name,
@@ -143,7 +92,19 @@ const updateCompany = async (
       shopeePlatformId,
       shopeePlatformTestId,
       shopeePlatformProdId,
-      shopeeMode
+      shopeeMode,
+      publicSlug,
+      fallbackAffiliateUrl
+    });
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.ADMIN_COMPANY_UPDATE,
+      entityType: 'COMPANY',
+      entityId: company.id,
+      metadata: {
+        changedFields: Object.keys(req.body),
+        name: company.name,
+        shopeeMode: company.shopeeMode
+      }
     });
     res.status(200).json({ company });
   } catch (error) {
@@ -151,4 +112,28 @@ const updateCompany = async (
   }
 };
 
-export { createCompany, listCompanies, updateCompany };
+const deleteCompany = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+    const company = await companyService.getCompanyById(id);
+
+    await companyService.deleteCompany(id);
+    logEventFromRequest(req, {
+      eventType: AUDIT_EVENTS.ADMIN_COMPANY_DELETE,
+      entityType: 'COMPANY',
+      entityId: id,
+      metadata: {
+        name: company?.name ?? null
+      }
+    });
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { createCompany, deleteCompany, listCompanies, updateCompany };

@@ -1,3 +1,12 @@
+import { sentry } from './sentry.generated';
+
 export const environment = {
-  apiUrl: 'http://apicomepouco.palsincomehub.com/api'
+  apiUrl: 'http://apicomepouco.palsincomehub.com/api',
+  appEnv: 'production',
+  sentry: {
+    dsn: sentry.dsn,
+    release: sentry.release || undefined,
+    environment: sentry.environment || 'production',
+    tracesSampleRate: sentry.tracesSampleRate ?? 0.1,
+  },
 };

@@ -6,12 +6,21 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { BehaviorSubject } from 'rxjs';
 
-import { EmailProvider, SystemEmailConfig, UpdateSystemEmailConfigPayload } from '../../core/models/email-config.model';
+import {
+  EmailProvider,
+  SystemEmailConfig,
+  UpdateSystemEmailConfigPayload,
+} from '../../core/models/email-config.model';
 import { AdminEmailConfigService } from '../../core/services/admin-email-config.service';
+import {
+  IconComponent,
+  PageHeaderComponent,
+  SkeletonLoaderComponent,
+  StatusChipComponent,
+} from '../../shared/components';
 
 @Component({
   selector: 'app-admin-email-settings',
@@ -25,11 +34,14 @@ import { AdminEmailConfigService } from '../../core/services/admin-email-config.
     MatFormFieldModule,
     MatInputModule,
     MatProgressBarModule,
-    MatSelectModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    IconComponent,
+    PageHeaderComponent,
+    SkeletonLoaderComponent,
+    StatusChipComponent,
   ],
   templateUrl: './admin-email-settings.component.html',
-  styleUrl: './admin-email-settings.component.scss'
+  styleUrl: './admin-email-settings.component.scss',
 })
 export class AdminEmailSettingsComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
@@ -40,7 +52,7 @@ export class AdminEmailSettingsComponent implements OnInit {
     { value: 'resend', label: 'Resend' },
     { value: 'sendgrid', label: 'SendGrid' },
     { value: 'ses', label: 'Amazon SES' },
-    { value: 'mailgun', label: 'Mailgun' }
+    { value: 'mailgun', label: 'Mailgun' },
   ];
   protected readonly isLoading$ = new BehaviorSubject<boolean>(false);
   protected readonly isSaving$ = new BehaviorSubject<boolean>(false);
@@ -64,7 +76,7 @@ export class AdminEmailSettingsComponent implements OnInit {
     sesSecretKey: [''],
     sesRegion: [''],
     mailgunApiKey: [''],
-    mailgunDomain: ['']
+    mailgunDomain: [''],
   });
 
   ngOnInit(): void {
@@ -73,6 +85,52 @@ export class AdminEmailSettingsComponent implements OnInit {
 
   protected get selectedProvider(): EmailProvider {
     return (this.form.controls.provider.value || 'smtp') as EmailProvider;
+  }
+
+  protected setProvider(provider: EmailProvider): void {
+    this.form.controls.provider.setValue(provider);
+  }
+
+  protected handleProviderKeydown(event: KeyboardEvent, provider: EmailProvider): void {
+    const currentIndex = this.providers.findIndex((option) => option.value === provider);
+    const lastIndex = this.providers.length - 1;
+    let nextIndex: number | null = null;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1;
+    }
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      nextIndex = currentIndex <= 0 ? lastIndex : currentIndex - 1;
+    }
+
+    if (event.key === 'Home') {
+      nextIndex = 0;
+    }
+
+    if (event.key === 'End') {
+      nextIndex = lastIndex;
+    }
+
+    if (nextIndex === null) {
+      return;
+    }
+
+    event.preventDefault();
+    const nextProvider = this.providers[nextIndex].value;
+    this.setProvider(nextProvider);
+
+    if (typeof document !== 'undefined') {
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>(`[data-provider-option="${nextProvider}"]`)?.focus(),
+      );
+    }
+  }
+
+  protected providerLabel(): string {
+    return (
+      this.providers.find((provider) => provider.value === this.selectedProvider)?.label || 'SMTP'
+    );
   }
 
   protected loadConfig(): void {
@@ -87,7 +145,7 @@ export class AdminEmailSettingsComponent implements OnInit {
       error: (error) => {
         this.isLoading$.next(false);
         this.error$.next(error?.error?.message || 'Nao foi possivel carregar a configuracao.');
-      }
+      },
     });
   }
 
@@ -110,7 +168,7 @@ export class AdminEmailSettingsComponent implements OnInit {
       error: (error) => {
         this.isSaving$.next(false);
         this.error$.next(error?.error?.message || 'Nao foi possivel salvar a configuracao.');
-      }
+      },
     });
   }
 
@@ -131,7 +189,7 @@ export class AdminEmailSettingsComponent implements OnInit {
       error: (error) => {
         this.isTesting$.next(false);
         this.error$.next(error?.error?.message || 'Falha no teste de envio.');
-      }
+      },
     });
   }
 
@@ -152,7 +210,7 @@ export class AdminEmailSettingsComponent implements OnInit {
       sesSecretKey: '',
       sesRegion: config.sesRegion || '',
       mailgunApiKey: '',
-      mailgunDomain: config.mailgunDomain || ''
+      mailgunDomain: config.mailgunDomain || '',
     });
   }
 
@@ -164,7 +222,8 @@ export class AdminEmailSettingsComponent implements OnInit {
       fromName: value.fromName || null,
       enabled: Boolean(value.enabled),
       smtpHost: value.smtpHost || null,
-      smtpPort: value.smtpPort !== null && value.smtpPort !== undefined ? Number(value.smtpPort) : null,
+      smtpPort:
+        value.smtpPort !== null && value.smtpPort !== undefined ? Number(value.smtpPort) : null,
       smtpUser: value.smtpUser || null,
       smtpPassword: value.smtpPassword || '',
       smtpSecure: Boolean(value.smtpSecure),
@@ -174,7 +233,7 @@ export class AdminEmailSettingsComponent implements OnInit {
       sesSecretKey: value.sesSecretKey || '',
       sesRegion: value.sesRegion || null,
       mailgunApiKey: value.mailgunApiKey || '',
-      mailgunDomain: value.mailgunDomain || null
+      mailgunDomain: value.mailgunDomain || null,
     };
   }
 }
