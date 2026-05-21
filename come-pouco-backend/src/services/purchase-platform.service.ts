@@ -297,11 +297,12 @@ const updatePurchasePlatform = async (
   if (apiUrl !== undefined) {
     const normalizedApiUrl = apiUrl.trim();
     updateClauses.push(Prisma.sql`api_url = ${normalizedApiUrl}`);
-    updateClauses.push(Prisma.sql`api_link = ${normalizedApiUrl}`);
   }
 
   if (apiLink !== undefined) {
     updateClauses.push(Prisma.sql`api_link = ${apiLink.trim()}`);
+  } else if (apiUrl !== undefined) {
+    updateClauses.push(Prisma.sql`api_link = ${apiUrl.trim()}`);
   }
 
   if (accessKey !== undefined) {

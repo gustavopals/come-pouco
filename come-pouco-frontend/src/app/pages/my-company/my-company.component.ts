@@ -151,7 +151,11 @@ export class MyCompanyComponent implements OnInit {
     }),
     switchMap(() =>
       this.userService.listAllUsers().pipe(
-        map((users) => (Array.isArray(users) ? users.filter((user) => user.role === 'USER') : [])),
+        map((users) =>
+          Array.isArray(users)
+            ? users.filter((user) => user.role === 'USER' && user.companyRole === 'EMPLOYEE')
+            : [],
+        ),
         catchError((error) => {
           this.errorMessage$.next(error?.error?.message || 'Nao foi possivel carregar usuarios.');
           return of([] as User[]);

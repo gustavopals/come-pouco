@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { of } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AuthUser } from '../../core/models/auth.model';
@@ -55,6 +55,7 @@ const makeLandingResponse = (
 });
 
 type MyCompanyHarness = MyCompanyComponent & {
+  employees$: MyCompanyComponent['employees$'];
   landingCompanyName: string;
   landingForm: MyCompanyComponent['landingForm'];
   howItWorksSteps: MyCompanyComponent['howItWorksSteps'];
@@ -130,6 +131,53 @@ describe('MyCompanyComponent', () => {
     expect(component.landingForm.controls.publicSlug.value).toBe('come-pouco');
     expect(component.howItWorksSteps.length).toBe(2);
     expect(component.slugAvailability$.getValue()).toBe('current');
+  });
+
+  it('lista apenas funcionarios na aba equipe', async () => {
+    userService.listAllUsers.mockReturnValue(
+      of([
+        {
+          id: 1,
+          fullName: 'Dono',
+          username: 'dono',
+          email: 'dono@example.com',
+          role: 'USER',
+          companyId: 10,
+          companyRole: 'OWNER',
+          publicSlug: null,
+          twoFactorEnabled: false,
+          createdAt: '2026-05-01T10:00:00.000Z',
+        },
+        {
+          id: 2,
+          fullName: 'Funcionario',
+          username: 'funcionario',
+          email: 'funcionario@example.com',
+          role: 'USER',
+          companyId: 10,
+          companyRole: 'EMPLOYEE',
+          publicSlug: null,
+          twoFactorEnabled: false,
+          createdAt: '2026-05-01T10:00:00.000Z',
+        },
+        {
+          id: 3,
+          fullName: 'Admin',
+          username: 'admin',
+          email: 'admin@example.com',
+          role: 'ADMIN',
+          companyId: null,
+          companyRole: null,
+          publicSlug: null,
+          twoFactorEnabled: false,
+          createdAt: '2026-05-01T10:00:00.000Z',
+        },
+      ]),
+    );
+
+    const employees = await firstValueFrom(component.employees$);
+
+    expect(employees.map((user) => user.id)).toEqual([2]);
   });
 
   it('verifica disponibilidade do slug com debounce', async () => {
