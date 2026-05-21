@@ -2,6 +2,8 @@
 @import '@fontsource-variable/manrope/index.css';
 @import 'tailwindcss';
 
+@source '../**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}';
+
 @theme {
   --color-bg: var(--cp-color-background);
   --color-surface: var(--cp-color-surface);
