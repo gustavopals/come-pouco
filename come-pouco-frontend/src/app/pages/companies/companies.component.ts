@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import {
   BehaviorSubject,
@@ -28,6 +29,7 @@ import { PurchasePlatform } from '../../core/models/purchase-platform.model';
 import { CompanyService } from '../../core/services/company.service';
 import { PurchasePlatformService } from '../../core/services/purchase-platform.service';
 import {
+  CrudDrawerComponent,
   EmptyStateComponent,
   IconComponent,
   PageHeaderComponent,
@@ -52,6 +54,7 @@ import {
     MatProgressBarModule,
     MatSelectModule,
     MatTableModule,
+    CrudDrawerComponent,
     EmptyStateComponent,
     IconComponent,
     PageHeaderComponent,
@@ -66,6 +69,7 @@ export class CompaniesComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly companyService = inject(CompanyService);
   private readonly purchasePlatformService = inject(PurchasePlatformService);
+  private readonly snackBar = inject(MatSnackBar);
 
   private readonly refresh$ = new Subject<void>();
   protected readonly pageSizeOptions = [10, 20, 50, 100];
@@ -81,8 +85,10 @@ export class CompaniesComponent implements OnInit {
   protected readonly totalCompanies$ = new BehaviorSubject<number>(0);
   protected isLoadingPlatforms = false;
   protected isSaving = false;
-  protected successMessage = '';
-  protected editingCompanyId: number | null = null;
+
+  protected readonly drawerOpen = signal(false);
+  protected readonly editingCompany = signal<Company | null>(null);
+  protected readonly drawerError = signal<string | null>(null);
 
   protected readonly companies$ = combineLatest([
     this.refresh$.pipe(startWith(void 0)),
@@ -94,10 +100,16 @@ export class CompaniesComponent implements OnInit {
     }),
     switchMap(([, pageState]) =>
       this.companyService.list({ page: pageState.pageIndex + 1, limit: pageState.pageSize }).pipe(
-        tap((response) =>
-          this.totalCompanies$.next(response.meta?.total ?? response.companies?.length ?? 0),
-        ),
-        map((response) => (Array.isArray(response?.companies) ? response.companies : [])),
+        map((response) => {
+          const rawCompanies = Array.isArray(response?.companies) ? response.companies : [];
+          const companies = rawCompanies.filter((company): company is Company =>
+            this.isValidCompanyRow(company),
+          );
+          this.totalCompanies$.next(
+            this.resolveTableTotal(response.meta?.total, rawCompanies, companies),
+          );
+          return companies;
+        }),
         catchError((error) => {
           this.errorMessage$.next(error?.error?.message || 'Nao foi possivel carregar empresas.');
           this.totalCompanies$.next(0);
@@ -131,10 +143,16 @@ export class CompaniesComponent implements OnInit {
 
   protected loadShopeePlatforms(): void {
     this.isLoadingPlatforms = true;
+    this.form.controls.shopeePlatformId.disable({ emitEvent: false });
 
     this.purchasePlatformService
       .listAll()
-      .pipe(finalize(() => (this.isLoadingPlatforms = false)))
+      .pipe(
+        finalize(() => {
+          this.isLoadingPlatforms = false;
+          this.form.controls.shopeePlatformId.enable({ emitEvent: false });
+        }),
+      )
       .subscribe({
         next: (platforms) => {
           const all = Array.isArray(platforms) ? platforms : [];
@@ -146,17 +164,30 @@ export class CompaniesComponent implements OnInit {
       });
   }
 
-  protected startCreate(): void {
-    this.editingCompanyId = null;
+  protected openCreate(): void {
+    this.editingCompany.set(null);
+    this.drawerError.set(null);
     this.form.reset({ name: '', shopeePlatformId: null });
+    this.drawerOpen.set(true);
   }
 
-  protected startEdit(company: Company): void {
-    this.editingCompanyId = company.id;
+  protected openEdit(company: Company): void {
+    this.editingCompany.set(company);
+    this.drawerError.set(null);
     this.form.reset({
       name: company.name,
       shopeePlatformId: company.shopeePlatformId ?? null,
     });
+    this.drawerOpen.set(true);
+  }
+
+  protected closeDrawer(): void {
+    if (this.isSaving) {
+      return;
+    }
+    this.drawerOpen.set(false);
+    this.editingCompany.set(null);
+    this.drawerError.set(null);
   }
 
   protected submit(): void {
@@ -169,36 +200,43 @@ export class CompaniesComponent implements OnInit {
     const shopeePlatformId = this.form.controls.shopeePlatformId.value;
 
     this.isSaving = true;
-    this.errorMessage$.next(null);
-    this.successMessage = '';
+    this.drawerError.set(null);
 
-    if (this.editingCompanyId === null) {
+    const editing = this.editingCompany();
+
+    if (editing === null) {
       this.companyService.create({ name, shopeePlatformId }).subscribe({
         next: ({ company }) => {
           this.isSaving = false;
-          this.startCreate();
-          this.successMessage = `Empresa ${company.name} criada com sucesso.`;
+          this.drawerOpen.set(false);
+          this.editingCompany.set(null);
+          this.snackBar.open(`Empresa ${company.name} criada com sucesso.`, 'OK', {
+            duration: 4000,
+          });
           this.refresh$.next();
         },
         error: (error) => {
           this.isSaving = false;
-          this.errorMessage$.next(error?.error?.message || 'Nao foi possivel criar empresa.');
+          this.drawerError.set(error?.error?.message || 'Nao foi possivel criar empresa.');
         },
       });
 
       return;
     }
 
-    this.companyService.update(this.editingCompanyId, { name, shopeePlatformId }).subscribe({
+    this.companyService.update(editing.id, { name, shopeePlatformId }).subscribe({
       next: ({ company }) => {
         this.isSaving = false;
-        this.startCreate();
-        this.successMessage = `Empresa ${company.name} atualizada com sucesso.`;
+        this.drawerOpen.set(false);
+        this.editingCompany.set(null);
+        this.snackBar.open(`Empresa ${company.name} atualizada com sucesso.`, 'OK', {
+          duration: 4000,
+        });
         this.refresh$.next();
       },
       error: (error) => {
         this.isSaving = false;
-        this.errorMessage$.next(error?.error?.message || 'Nao foi possivel atualizar empresa.');
+        this.drawerError.set(error?.error?.message || 'Nao foi possivel atualizar empresa.');
       },
     });
   }
@@ -209,5 +247,30 @@ export class CompaniesComponent implements OnInit {
     }
 
     return `${platform.name} (${platform.isActive ? 'Ativa' : 'Inativa'})`;
+  }
+
+  private isValidCompanyRow(company: unknown): company is Company {
+    if (!company || typeof company !== 'object') {
+      return false;
+    }
+
+    const candidate = company as Partial<Company>;
+
+    return (
+      typeof candidate.id === 'number' &&
+      Number.isFinite(candidate.id) &&
+      typeof candidate.name === 'string' &&
+      candidate.name.trim().length > 0 &&
+      typeof candidate.createdAt === 'string' &&
+      candidate.createdAt.trim().length > 0
+    );
+  }
+
+  private resolveTableTotal(
+    metaTotal: number | undefined,
+    rawRows: unknown[],
+    validRows: Company[],
+  ): number {
+    return rawRows.length === validRows.length ? (metaTotal ?? validRows.length) : validRows.length;
   }
 }

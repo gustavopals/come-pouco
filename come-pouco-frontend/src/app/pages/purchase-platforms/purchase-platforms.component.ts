@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
@@ -35,6 +35,7 @@ import {
 
 import { Company } from '../../core/models/company.model';
 import {
+  ApiUsageLog,
   ApiUsageMode,
   ApiUsageSummary,
   CreatePurchasePlatformPayload,
@@ -48,7 +49,9 @@ import { PurchasePlatformService } from '../../core/services/purchase-platform.s
 import { UserService } from '../../core/services/user.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import {
+  CrudDrawerComponent,
   EmptyStateComponent,
+  IconButtonComponent,
   IconComponent,
   PageHeaderComponent,
   ResponsiveTableComponent,
@@ -83,7 +86,9 @@ const SHOPEE_API_URL = 'https://open-api.affiliate.shopee.com.br/graphql';
     MatSnackBarModule,
     MatTableModule,
     MatToolbarModule,
+    CrudDrawerComponent,
     EmptyStateComponent,
+    IconButtonComponent,
     IconComponent,
     PageHeaderComponent,
     ResponsiveTableComponent,
@@ -101,6 +106,7 @@ export class PurchasePlatformsComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly authService = inject(AuthService);
+
   private readonly refresh$ = new Subject<void>();
   private readonly usageLoading$ = new BehaviorSubject<boolean>(false);
   private readonly usageError$ = new BehaviorSubject<string | null>(null);
@@ -126,10 +132,8 @@ export class PurchasePlatformsComponent implements OnInit {
   protected readonly displayedColumns: string[] = [
     'id',
     'name',
-    'type',
     'status',
     'mode',
-    'apiLink',
     'secret',
     'updatedAt',
     'actions',
@@ -146,9 +150,14 @@ export class PurchasePlatformsComponent implements OnInit {
   protected readonly error$ = new BehaviorSubject<string | null>(null);
   protected readonly totalPlatforms$ = new BehaviorSubject<number>(0);
   protected readonly totalUsageLogs$ = new BehaviorSubject<number>(0);
+
+  protected readonly drawerOpen = signal(false);
+  protected readonly editingPlatform = signal<PurchasePlatform | null>(null);
+  protected readonly drawerError = signal<string | null>(null);
+
   protected readonly usageForm = this.formBuilder.group({
     companyId: [null as number | null],
-    userId: [null as number | null],
+    userId: [{ value: null as number | null, disabled: true }],
     mode: ['ALL' as 'ALL' | ApiUsageMode],
     startDate: [null as Date | null],
     endDate: [null as Date | null],
@@ -165,10 +174,16 @@ export class PurchasePlatformsComponent implements OnInit {
       this.purchasePlatformService
         .list({ page: pageState.pageIndex + 1, limit: pageState.pageSize })
         .pipe(
-          tap((response) =>
-            this.totalPlatforms$.next(response.meta?.total ?? response.platforms?.length ?? 0),
-          ),
-          map((response) => (Array.isArray(response?.platforms) ? response.platforms : [])),
+          map((response) => {
+            const rawPlatforms = Array.isArray(response?.platforms) ? response.platforms : [];
+            const platforms = rawPlatforms.filter((platform): platform is PurchasePlatform =>
+              this.isValidPlatformRow(platform),
+            );
+            this.totalPlatforms$.next(
+              this.resolveTableTotal(response.meta?.total, rawPlatforms, platforms),
+            );
+            return platforms;
+          }),
           catchError((error) => {
             this.error$.next(error?.error?.message || 'Nao foi possivel carregar as plataformas.');
             this.totalPlatforms$.next(0);
@@ -180,12 +195,18 @@ export class PurchasePlatformsComponent implements OnInit {
     shareReplay({ bufferSize: 1, refCount: true }),
   );
   protected readonly companies$ = this.companyService.listAll().pipe(
-    map((companies) => (Array.isArray(companies) ? companies : [])),
+    map((companies) =>
+      (Array.isArray(companies) ? companies : []).filter((company): company is Company =>
+        this.isValidCompanyRow(company),
+      ),
+    ),
     catchError(() => of([] as Company[])),
     shareReplay({ bufferSize: 1, refCount: true }),
   );
   protected readonly users$ = this.userService.listAllUsers().pipe(
-    map((users) => (Array.isArray(users) ? users : [])),
+    map((users) =>
+      (Array.isArray(users) ? users : []).filter((user): user is User => this.isValidUserRow(user)),
+    ),
     catchError(() => of([] as User[])),
     shareReplay({ bufferSize: 1, refCount: true }),
   );
@@ -214,9 +235,7 @@ export class PurchasePlatformsComponent implements OnInit {
     }),
     switchMap(([, pageState]) =>
       this.purchasePlatformService.getApiUsage(this.buildUsageFilters(pageState)).pipe(
-        tap((response) =>
-          this.totalUsageLogs$.next(response.meta?.total ?? response.totalGeral ?? 0),
-        ),
+        map((response) => this.normalizeUsageSummary(response)),
         catchError((error) => {
           this.usageError$.next(
             error?.error?.message || 'Nao foi possivel carregar o monitoramento de API.',
@@ -243,9 +262,6 @@ export class PurchasePlatformsComponent implements OnInit {
   protected selectedCompanyIds: number[] = [];
   protected defaultCompanyIds = new Set<number>();
   protected isSaving = false;
-  protected errorMessage = '';
-  protected successMessage = '';
-  protected editingPlatformId: number | null = null;
 
   protected readonly form = this.formBuilder.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
@@ -273,10 +289,15 @@ export class PurchasePlatformsComponent implements OnInit {
       this.applyCompanyFilter(value || '');
     });
 
-    this.usageForm.controls.companyId.valueChanges.subscribe(() => {
-      const selectedUserId = this.usageForm.controls.userId.value;
-      if (selectedUserId !== null) {
-        this.usageForm.controls.userId.setValue(null);
+    this.usageForm.controls.companyId.valueChanges.subscribe((companyId) => {
+      const userIdControl = this.usageForm.controls.userId;
+      if (companyId) {
+        userIdControl.enable({ emitEvent: false });
+      } else {
+        userIdControl.disable({ emitEvent: false });
+      }
+      if (userIdControl.value !== null) {
+        userIdControl.setValue(null);
       }
     });
 
@@ -325,8 +346,9 @@ export class PurchasePlatformsComponent implements OnInit {
     });
   }
 
-  protected startCreate(): void {
-    this.editingPlatformId = null;
+  protected openCreate(): void {
+    this.editingPlatform.set(null);
+    this.drawerError.set(null);
     this.selectedCompanyIds = [];
     this.defaultCompanyIds.clear();
     this.form.reset({
@@ -342,15 +364,14 @@ export class PurchasePlatformsComponent implements OnInit {
       accessKey: '',
       companySearch: '',
     });
-
     this.applyCompanyFilter('');
     this.applyTypeValidators();
+    this.drawerOpen.set(true);
   }
 
-  protected startEdit(platform: PurchasePlatform): void {
-    this.editingPlatformId = platform.id;
-    this.successMessage = '';
-    this.errorMessage = '';
+  protected openEdit(platform: PurchasePlatform): void {
+    this.editingPlatform.set(platform);
+    this.drawerError.set(null);
     this.selectedCompanyIds = [];
     this.defaultCompanyIds.clear();
 
@@ -385,10 +406,16 @@ export class PurchasePlatformsComponent implements OnInit {
     });
 
     this.applyTypeValidators();
+    this.drawerOpen.set(true);
   }
 
-  protected cancelEdit(): void {
-    this.startCreate();
+  protected closeDrawer(): void {
+    if (this.isSaving) {
+      return;
+    }
+    this.drawerOpen.set(false);
+    this.editingPlatform.set(null);
+    this.drawerError.set(null);
   }
 
   protected submit(): void {
@@ -401,13 +428,12 @@ export class PurchasePlatformsComponent implements OnInit {
       this.form.getRawValue();
 
     if (!this.isValidUrl(apiUrl!)) {
-      this.errorMessage = 'Informe uma URL valida para o link da API.';
+      this.drawerError.set('Informe uma URL valida para o link da API.');
       return;
     }
 
     this.isSaving = true;
-    this.errorMessage = '';
-    this.successMessage = '';
+    this.drawerError.set(null);
 
     const persistLinks = (platformId: number, platformName: string): void => {
       this.purchasePlatformService
@@ -418,14 +444,18 @@ export class PurchasePlatformsComponent implements OnInit {
         .subscribe({
           next: () => {
             this.isSaving = false;
-            this.startCreate();
-            this.successMessage = `Plataforma ${platformName} salva e vinculada com sucesso.`;
+            this.drawerOpen.set(false);
+            this.editingPlatform.set(null);
+            this.snackBar.open(`Plataforma ${platformName} salva com sucesso.`, 'OK', {
+              duration: 4000,
+            });
             this.refresh$.next();
           },
           error: (error) => {
             this.isSaving = false;
-            this.errorMessage =
-              error?.error?.message || 'Plataforma salva, mas falhou ao vincular empresas.';
+            this.drawerError.set(
+              error?.error?.message || 'Plataforma salva, mas falhou ao vincular empresas.',
+            );
             this.refresh$.next();
           },
         });
@@ -451,7 +481,7 @@ export class PurchasePlatformsComponent implements OnInit {
         },
         error: (error) => {
           this.isSaving = false;
-          this.errorMessage = error?.error?.message || 'Nao foi possivel criar a plataforma.';
+          this.drawerError.set(error?.error?.message || 'Nao foi possivel criar a plataforma.');
         },
       });
 
@@ -471,37 +501,54 @@ export class PurchasePlatformsComponent implements OnInit {
       accessKey: secret || undefined,
     };
 
-    this.purchasePlatformService.update(this.editingPlatformId!, payload).subscribe({
+    this.purchasePlatformService.update(this.editingPlatform()!.id, payload).subscribe({
       next: ({ platform }) => {
         persistLinks(platform.id, platform.name);
       },
       error: (error) => {
         this.isSaving = false;
-        this.errorMessage = error?.error?.message || 'Nao foi possivel atualizar a plataforma.';
+        this.drawerError.set(error?.error?.message || 'Nao foi possivel atualizar a plataforma.');
       },
     });
   }
 
   protected remove(platform: PurchasePlatform): void {
-    if (!confirm(`Deseja realmente excluir a plataforma ${platform.name}?`)) {
-      return;
-    }
-
-    this.errorMessage = '';
-    this.successMessage = '';
-
-    this.purchasePlatformService.delete(platform.id).subscribe({
-      next: () => {
-        if (this.editingPlatformId === platform.id) {
-          this.startCreate();
-        }
-
-        this.successMessage = `Plataforma ${platform.name} removida com sucesso.`;
-        this.refresh$.next();
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '460px',
+      maxWidth: '100vw',
+      maxHeight: '100dvh',
+      panelClass: 'app-responsive-dialog',
+      data: {
+        title: 'Excluir plataforma',
+        message: `Deseja realmente excluir a plataforma ${platform.name}? Esta acao nao pode ser desfeita.`,
+        confirmText: 'Excluir',
+        tone: 'danger',
       },
-      error: (error) => {
-        this.errorMessage = error?.error?.message || 'Nao foi possivel remover a plataforma.';
-      },
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      this.purchasePlatformService.delete(platform.id).subscribe({
+        next: () => {
+          if (this.editingPlatform()?.id === platform.id) {
+            this.closeDrawer();
+          }
+          this.snackBar.open(`Plataforma ${platform.name} removida com sucesso.`, 'OK', {
+            duration: 4000,
+          });
+          this.refresh$.next();
+        },
+        error: (error) => {
+          this.snackBar.open(
+            error?.error?.message || 'Nao foi possivel remover a plataforma.',
+            'Fechar',
+            { duration: 4000 },
+          );
+        },
+      });
     });
   }
 
@@ -546,13 +593,9 @@ export class PurchasePlatformsComponent implements OnInit {
     return this.companies.find((company) => company.id === companyId)?.name || `#${companyId}`;
   }
 
-  protected logout(): void {
-    this.authService.logout();
-  }
-
   protected resetMockUsage(): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      width: '430px',
+      width: '460px',
       maxWidth: '100vw',
       maxHeight: '100dvh',
       panelClass: 'app-responsive-dialog',
@@ -560,6 +603,7 @@ export class PurchasePlatformsComponent implements OnInit {
         title: 'Zerar contador Mock',
         message: 'Deseja remover os registros MOCK com os filtros atuais?',
         confirmText: 'Zerar Mock',
+        tone: 'warning',
       },
     });
 
@@ -592,7 +636,7 @@ export class PurchasePlatformsComponent implements OnInit {
   }
 
   protected isCreateMode(): boolean {
-    return this.editingPlatformId === null;
+    return this.editingPlatform() === null;
   }
 
   protected secretStatus(platform: PurchasePlatform): string {
@@ -601,6 +645,114 @@ export class PurchasePlatformsComponent implements OnInit {
 
   protected modeStatus(platform: PurchasePlatform): string {
     return platform.mockMode ? 'MOCK' : 'REAL';
+  }
+
+  private normalizeUsageSummary(response: ApiUsageSummary): ApiUsageSummary {
+    const rawLogs = this.getUsageRows(response);
+    const logs = rawLogs.filter((usageLog): usageLog is ApiUsageLog =>
+      this.isValidUsageLogRow(usageLog),
+    );
+    const total = this.resolveTableTotal(
+      response.meta?.total ?? response.totalGeral,
+      rawLogs,
+      logs,
+    );
+    this.totalUsageLogs$.next(total);
+
+    return {
+      ...response,
+      totalGeral: total,
+      logs,
+      items: logs,
+      data: logs,
+    };
+  }
+
+  private getUsageRows(response: ApiUsageSummary): unknown[] {
+    if (Array.isArray(response.items)) {
+      return response.items;
+    }
+
+    if (Array.isArray(response.logs)) {
+      return response.logs;
+    }
+
+    return Array.isArray(response.data) ? response.data : [];
+  }
+
+  private isValidPlatformRow(platform: unknown): platform is PurchasePlatform {
+    if (!platform || typeof platform !== 'object') {
+      return false;
+    }
+
+    const candidate = platform as Partial<PurchasePlatform>;
+
+    return (
+      typeof candidate.id === 'number' &&
+      Number.isFinite(candidate.id) &&
+      typeof candidate.name === 'string' &&
+      candidate.name.trim().length > 0 &&
+      candidate.type === 'SHOPEE' &&
+      typeof candidate.updatedAt === 'string' &&
+      candidate.updatedAt.trim().length > 0
+    );
+  }
+
+  private isValidCompanyRow(company: unknown): company is Company {
+    if (!company || typeof company !== 'object') {
+      return false;
+    }
+
+    const candidate = company as Partial<Company>;
+
+    return (
+      typeof candidate.id === 'number' &&
+      Number.isFinite(candidate.id) &&
+      typeof candidate.name === 'string' &&
+      candidate.name.trim().length > 0
+    );
+  }
+
+  private isValidUserRow(user: unknown): user is User {
+    if (!user || typeof user !== 'object') {
+      return false;
+    }
+
+    const candidate = user as Partial<User>;
+
+    return (
+      typeof candidate.id === 'number' &&
+      Number.isFinite(candidate.id) &&
+      typeof candidate.fullName === 'string' &&
+      candidate.fullName.trim().length > 0 &&
+      candidate.role === 'USER'
+    );
+  }
+
+  private isValidUsageLogRow(usageLog: unknown): usageLog is ApiUsageLog {
+    if (!usageLog || typeof usageLog !== 'object') {
+      return false;
+    }
+
+    const candidate = usageLog as Partial<ApiUsageLog>;
+
+    return (
+      typeof candidate.createdAt === 'string' &&
+      candidate.createdAt.trim().length > 0 &&
+      (candidate.mode === 'MOCK' || candidate.mode === 'REAL') &&
+      typeof candidate.companyId === 'number' &&
+      Number.isFinite(candidate.companyId) &&
+      typeof candidate.userId === 'number' &&
+      Number.isFinite(candidate.userId)
+    );
+  }
+
+  private resolveTableTotal<T>(
+    metaTotal: number | undefined,
+    rawRows: unknown[],
+    validRows: T[],
+  ): number {
+    return rawRows.length === validRows.length ? (metaTotal ?? validRows.length) : validRows.length;
   }
 
   private applyTypeValidators(): void {

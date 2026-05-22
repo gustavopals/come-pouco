@@ -181,7 +181,7 @@ docker compose down -v && docker compose up -d
 - `src/styles/tailwind.css`, `tailwind.config.ts`, `postcss.config.json` — Tailwind CSS 4 integration through `@tailwindcss/postcss`; Tailwind colors/spacing/radii/shadows consume the `--cp-*` tokens.
 - `core/services/theme.service.ts` — `ThemeService` with signal `currentTheme` (`light | dark | system`), `effectiveTheme`, localStorage persistence (`come_pouco_theme`), `prefers-color-scheme` listener, and `<html>` class toggling.
 - `@lucide/angular` — official Lucide Angular package. `app.config.ts` registers the currently used icon set through `provideLucideIcons`; add icons there before using new string names via `app-icon`.
-- `shared/components/` — design-system component layer: `app-logo`, `page-header`, `empty-state`, `skeleton-loader`, `status-chip`, `theme-toggle`, `icon`, `icon-button`, `auth-shell`, `otp-input`, and the refactored `confirm-dialog`. Components are standalone, token-driven, and exported from `shared/components/index.ts`.
+- `shared/components/` — design-system component layer: `app-logo`, `page-header`, `empty-state`, `skeleton-loader`, `status-chip`, `theme-toggle`, `icon`, `icon-button`, `auth-shell`, `otp-input`, `crud-drawer` (right-side drawer used by all admin CRUDs for create/edit, with header/body/footer slots and trapped focus), and the refactored `confirm-dialog`. Components are standalone, token-driven, and exported from `shared/components/index.ts`.
 
 ### Frontend layout (`src/app/`)
 

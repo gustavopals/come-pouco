@@ -652,6 +652,34 @@ Cada Subtask é redigida no infinitivo ("Adicionar X", "Configurar Y") e idealme
 
 ---
 
+#### Task 1.9 — Padronizar CRUDs com drawer lateral
+
+- **Objetivo**: substituir o padrão atual (form inline ao lado da tabela ou form expandido em card) das telas de CRUD por um padrão único e moderno: lista compacta como visão principal + drawer lateral à direita para criar/editar registros. Inspiração: Linear, Vercel, Stripe.
+- **Critério de aceite**:
+  - `CrudDrawerComponent` reutilizável (overlay CDK) com header (título + close), corpo scrollável, footer fixo de ações (Cancelar/Salvar), suporte a `mode: 'create' | 'edit' | 'view'`, foco preso (cdkTrapFocus) e ESC pra fechar
+  - Drawer responsivo: 480px no desktop, full-screen em mobile (<768px)
+  - Companies, Users, Purchase Platforms e Affiliate Links migrados pro novo padrão sem regressão funcional
+  - Botão "Novo …" no header da listagem dispara o drawer em modo create; clique em linha (ou em "Editar") abre em modo edit
+  - Forms inline atuais (cards laterais "Cadastrar X") são removidos
+  - Cada drawer mostra validação inline e desabilita "Salvar" enquanto dirty/invalid
+- **Dependências**: Tasks 1.3 (componentes compartilhados), 1.5 (app shell), 1.6 (redesign de páginas)
+- **Notas técnicas**:
+  - Drawer via `Overlay` do `@angular/cdk/overlay` ancorado à direita; alternativa `MatSidenav` em modo `over` foi descartada pra não acoplar a listagem ao layout
+  - Estado do drawer (open/closed/dirty) em signal no componente da página; service de cada entidade continua igual
+  - Drawer dispara `(saved)` e `(closed)` — listagem re-fetches em `saved`
+  - Affiliate Links é caso especial: o drawer "Gerar links" abre form em lote (URLs + subId), e o resultado da geração reaproveita o `affiliate-links-results-dialog` existente
+
+**Subtasks**:
+
+- [x] **1.9.1** — Criar `shared/components/crud-drawer` (overlay CDK, header/body/footer, projeção de conteúdo, A11y completo)
+- [x] **1.9.2** — Refatorar `CompaniesComponent`: lista full-width + botão "Nova empresa" no header + drawer com form (nome + plataformas Shopee TEST/PROD + retenção)
+- [x] **1.9.3** — Refatorar `UsersComponent`: lista + drawer com form (papel, vínculo a empresa, dados pessoais), respeitando regras de RBAC já existentes
+- [x] **1.9.4** — Refatorar `PurchasePlatformsComponent`: lista + drawer com form (tipo, appId, secret, apiUrl, mockMode, isActive)
+- [x] **1.9.5** — Refatorar `AffiliateLinksComponent`: lista de links como visão principal + drawer "Gerar links" pro fluxo de batch (URLs + subId), mantendo o results-dialog atual no fim do fluxo
+- [ ] **1.9.6** — Smoke manual em cada CRUD: criar, editar, excluir, validar erros inline, mobile (375px), dark mode (pendente — requer verificação visual do usuário)
+
+---
+
 ### Fase 2 — Segurança & Performance (Backend + Banco)
 
 **Objetivo da fase**: levar o backend e o banco do "funciona" para o "configurado com o básico bem-feito" — sem buscar nível bancário, mas eliminando vetores óbvios (brute-force, segredos em texto plano, payloads gigantes, ausência de paginação) e ganhando observabilidade mínima via audit log. Sem mudar a arquitetura macro (sem Redis, sem refresh tokens — adiados pra fase futura).

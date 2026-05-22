@@ -73,10 +73,8 @@ type AffiliateLinksHarness = AffiliateLinksComponent & {
   form: AffiliateLinksComponent['form'];
   links$: AffiliateLinksComponent['links$'];
   totalLinks$: AffiliateLinksComponent['totalLinks$'];
-  processingResults$: AffiliateLinksComponent['processingResults$'];
-  errorMessage$: AffiliateLinksComponent['errorMessage$'];
-  successMessage$: AffiliateLinksComponent['successMessage$'];
   isSaving$: AffiliateLinksComponent['isSaving$'];
+  drawerError: AffiliateLinksComponent['drawerError'];
   submit(): void;
   remove(link: AffiliateLink): void;
 };
@@ -117,7 +115,7 @@ describe('AffiliateLinksComponent', () => {
     };
     purchasePlatformService = { listAll: vi.fn(() => of([makePlatform()])) };
     userService = { listAllUsers: vi.fn(() => of([] as User[])) };
-    dialog = { open: vi.fn() };
+    dialog = { open: vi.fn(() => ({ afterClosed: () => of(true) })) };
     snackBar = { open: vi.fn() };
 
     TestBed.configureTestingModule({
@@ -215,8 +213,11 @@ describe('AffiliateLinksComponent', () => {
       subId1: 'campanha_1',
     });
     expect(component.isSaving$.getValue()).toBe(false);
-    expect(component.successMessage$.getValue()).toContain('1 link(s) salvo(s) com sucesso.');
-    expect(component.processingResults$.getValue()).toHaveLength(2);
+    expect(snackBar.open).toHaveBeenCalledWith(
+      expect.stringContaining('1 link(s) salvo(s) com sucesso.'),
+      'OK',
+      expect.objectContaining({ duration: expect.any(Number) }),
+    );
     expect(dialog.open).toHaveBeenCalledWith(
       AffiliateLinksResultsDialogComponent,
       expect.objectContaining({
@@ -239,9 +240,7 @@ describe('AffiliateLinksComponent', () => {
     component.submit();
 
     expect(affiliateLinkService.generateShopeeShortLinks).not.toHaveBeenCalled();
-    expect(component.errorMessage$.getValue()).toBe(
-      'Selecione uma plataforma SHOPEE para gerar links.',
-    );
+    expect(component.drawerError()).toBe('Selecione uma plataforma SHOPEE para gerar links.');
   });
 
   it('traduz falha de credenciais Shopee para mensagem acionavel', () => {
@@ -258,19 +257,22 @@ describe('AffiliateLinksComponent', () => {
     component.submit();
 
     expect(component.isSaving$.getValue()).toBe(false);
-    expect(component.errorMessage$.getValue()).toBe(
+    expect(component.drawerError()).toBe(
       'A plataforma Shopee esta sem credenciais validas. Um ADMIN precisa cadastrar App ID e Secret.',
     );
   });
 
-  it('remove link apos confirmacao', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('abre confirmacao antes de remover link e chama servico ao confirmar', () => {
     affiliateLinkService.delete.mockReturnValue(of(undefined));
 
     component.remove(makeLink({ id: 42 }));
 
-    expect(confirmSpy).toHaveBeenCalledWith('Excluir o registro #42?');
+    expect(dialog.open).toHaveBeenCalled();
     expect(affiliateLinkService.delete).toHaveBeenCalledWith(42);
-    expect(component.successMessage$.getValue()).toBe('Registro #42 removido com sucesso.');
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'Registro #42 removido.',
+      'OK',
+      expect.objectContaining({ duration: expect.any(Number) }),
+    );
   });
 });

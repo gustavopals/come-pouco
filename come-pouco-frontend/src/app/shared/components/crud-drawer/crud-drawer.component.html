@@ -1,0 +1,64 @@
+@if (open()) {
+  <div class="crud-drawer-backdrop" aria-hidden="true" (click)="handleBackdropClick()"></div>
+
+  <aside
+    #panel
+    class="crud-drawer-panel"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="title()"
+    [style.--cp-drawer-width]="width()"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <header class="crud-drawer-header">
+      <div class="crud-drawer-titles">
+        <h2 class="crud-drawer-title">{{ title() }}</h2>
+        @if (subtitle(); as sub) {
+          <p class="crud-drawer-subtitle">{{ sub }}</p>
+        }
+      </div>
+
+      <app-icon-button
+        icon="x"
+        label="Fechar"
+        variant="ghost"
+        size="md"
+        [disabled]="saving()"
+        (pressed)="handleClose()"
+      ></app-icon-button>
+    </header>
+
+    <div class="crud-drawer-body">
+      <ng-content></ng-content>
+    </div>
+
+    <ng-content select="[drawer-footer]"></ng-content>
+
+    @if (showFooter()) {
+      <footer class="crud-drawer-footer">
+        <button
+          mat-button
+          type="button"
+          class="crud-drawer-cancel"
+          [disabled]="saving()"
+          (click)="handleClose()"
+        >
+          {{ cancelLabel() }}
+        </button>
+        <button
+          mat-flat-button
+          type="button"
+          class="crud-drawer-submit"
+          [disabled]="!canSubmit() || saving()"
+          (click)="handleSubmit()"
+        >
+          @if (saving()) {
+            <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
+          }
+          <span>{{ resolvedSubmitLabel() }}</span>
+        </button>
+      </footer>
+    }
+  </aside>
+}

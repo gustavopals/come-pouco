@@ -1,12 +1,11 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -33,11 +32,12 @@ import { Company } from '../../core/models/company.model';
 import { UpdateUserPayload, User } from '../../core/models/user.model';
 import { USER_ROLE_LABEL, type UserRole } from '../../core/models/user-role.model';
 import { CompanyService } from '../../core/services/company.service';
-import { LandingConfigService } from '../../core/services/landing-config.service';
 import { UserService } from '../../core/services/user.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import {
+  CrudDrawerComponent,
   EmptyStateComponent,
+  IconButtonComponent,
   IconComponent,
   PageHeaderComponent,
   ResponsiveTableComponent,
@@ -61,7 +61,6 @@ import {
     MatButtonModule,
     MatCardModule,
     MatFormFieldModule,
-    MatIconModule,
     MatInputModule,
     MatPaginatorModule,
     MatProgressBarModule,
@@ -69,7 +68,9 @@ import {
     MatSnackBarModule,
     MatTableModule,
     MatTooltipModule,
+    CrudDrawerComponent,
     EmptyStateComponent,
+    IconButtonComponent,
     IconComponent,
     PageHeaderComponent,
     ResponsiveTableComponent,
@@ -83,7 +84,6 @@ export class UsersComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly userService = inject(UserService);
   private readonly companyService = inject(CompanyService);
-  private readonly landingConfigService = inject(LandingConfigService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -97,8 +97,6 @@ export class UsersComponent implements OnInit {
   protected readonly displayedColumns: string[] = [
     'id',
     'fullName',
-    'username',
-    'email',
     'role',
     'company',
     'publicSlug',
@@ -110,16 +108,15 @@ export class UsersComponent implements OnInit {
   protected companies: Company[] = [];
   protected filteredCompanies: Company[] = [];
   protected isSaving = false;
-  protected editingUserId: number | null = null;
-  protected editingSlugUserId: number | null = null;
-  protected slugDraft = '';
-  protected slugSavingUserId: number | null = null;
+
+  protected readonly drawerOpen = signal(false);
+  protected readonly editingUser = signal<User | null>(null);
+  protected readonly drawerError = signal<string | null>(null);
 
   protected readonly isLoading$ = new BehaviorSubject<boolean>(false);
   protected readonly errorMessage$ = new BehaviorSubject<string | null>(null);
-  protected readonly successMessage$ = new BehaviorSubject<string | null>(null);
-
   protected readonly totalUsers$ = new BehaviorSubject<number>(0);
+
   protected readonly users$ = combineLatest([
     this.refresh$.pipe(startWith(void 0)),
     this.pageState$,
@@ -130,10 +127,12 @@ export class UsersComponent implements OnInit {
     }),
     switchMap(([, pageState]) =>
       this.userService.listUsers({ page: pageState.pageIndex + 1, limit: pageState.pageSize }).pipe(
-        tap((response) =>
-          this.totalUsers$.next(response.meta?.total ?? response.users?.length ?? 0),
-        ),
-        map((response) => (Array.isArray(response?.users) ? response.users : [])),
+        map((response) => {
+          const rawUsers = Array.isArray(response?.users) ? response.users : [];
+          const users = rawUsers.filter((user): user is User => this.isValidUserRow(user));
+          this.totalUsers$.next(this.resolveTableTotal(response.meta?.total, rawUsers, users));
+          return users;
+        }),
         catchError((error) => {
           this.errorMessage$.next(
             error?.error?.message || 'Nao foi possivel carregar os usuarios.',
@@ -156,6 +155,7 @@ export class UsersComponent implements OnInit {
     companyId: [null as number | null],
     companyRole: ['EMPLOYEE' as CompanyRole],
     companySearch: [''],
+    publicSlug: [''],
   });
 
   ngOnInit(): void {
@@ -200,8 +200,9 @@ export class UsersComponent implements OnInit {
     });
   }
 
-  protected startCreate(): void {
-    this.editingUserId = null;
+  protected openCreate(): void {
+    this.editingUser.set(null);
+    this.drawerError.set(null);
     this.form.reset({
       fullName: '',
       username: '',
@@ -211,14 +212,15 @@ export class UsersComponent implements OnInit {
       companyId: null,
       companyRole: 'EMPLOYEE',
       companySearch: '',
+      publicSlug: '',
     });
     this.applyCompanyFilter('');
+    this.drawerOpen.set(true);
   }
 
-  protected startEdit(user: User): void {
-    this.editingUserId = user.id;
-    this.successMessage$.next(null);
-    this.errorMessage$.next(null);
+  protected openEdit(user: User): void {
+    this.editingUser.set(user);
+    this.drawerError.set(null);
     this.form.reset({
       fullName: user.fullName,
       username: user.username,
@@ -228,13 +230,19 @@ export class UsersComponent implements OnInit {
       companyId: user.companyId ?? null,
       companyRole: (user.companyRole ?? 'EMPLOYEE') as CompanyRole,
       companySearch: user.companyId ? this.companyLabel(user.companyId) : '',
+      publicSlug: user.publicSlug || '',
     });
-
     this.applyCompanyFilter(this.form.controls.companySearch.value || '');
+    this.drawerOpen.set(true);
   }
 
-  protected cancelEdit(): void {
-    this.startCreate();
+  protected closeDrawer(): void {
+    if (this.isSaving) {
+      return;
+    }
+    this.drawerOpen.set(false);
+    this.editingUser.set(null);
+    this.drawerError.set(null);
   }
 
   protected passwordErrorMessage(): string {
@@ -247,28 +255,28 @@ export class UsersComponent implements OnInit {
       return;
     }
 
-    const { fullName, username, email, password, role, companyId, companyRole } =
+    const { fullName, username, email, password, role, companyId, companyRole, publicSlug } =
       this.form.getRawValue();
     const normalizedEmail = (email || '').trim().toLowerCase();
+    const normalizedSlug = this.slugify((publicSlug || '').trim());
 
     if (this.isCreateMode() && !password) {
-      this.errorMessage$.next('A senha e obrigatoria para criar usuario.');
+      this.drawerError.set('A senha e obrigatoria para criar usuario.');
       return;
     }
 
     if (!role) {
-      this.errorMessage$.next('Selecione um perfil para o usuario.');
+      this.drawerError.set('Selecione um perfil para o usuario.');
       return;
     }
 
     if (role === 'USER' && !companyId) {
-      this.errorMessage$.next('Selecione uma empresa para usuario do tipo USER.');
+      this.drawerError.set('Selecione uma empresa para usuario do tipo USER.');
       return;
     }
 
     this.isSaving = true;
-    this.errorMessage$.next(null);
-    this.successMessage$.next(null);
+    this.drawerError.set(null);
 
     if (this.isCreateMode()) {
       this.userService
@@ -280,20 +288,23 @@ export class UsersComponent implements OnInit {
           role,
           companyId: role === 'USER' ? companyId : null,
           companyRole: role === 'USER' ? (companyRole as CompanyRole) : null,
+          publicSlug: normalizedSlug || null,
         })
         .subscribe({
           next: ({ user }) => {
             this.isSaving = false;
-            this.startCreate();
-            this.successMessage$.next(`Usuario ${user.fullName} criado com sucesso.`);
+            this.drawerOpen.set(false);
+            this.editingUser.set(null);
+            this.snackBar.open(`Usuario ${user.fullName} criado com sucesso.`, 'OK', {
+              duration: 4000,
+            });
             this.refresh$.next();
           },
           error: (error) => {
             this.isSaving = false;
-            this.errorMessage$.next(error?.error?.message || 'Nao foi possivel criar usuario.');
+            this.drawerError.set(error?.error?.message || 'Nao foi possivel criar usuario.');
           },
         });
-
       return;
     }
 
@@ -304,46 +315,67 @@ export class UsersComponent implements OnInit {
       role,
       companyId: role === 'USER' ? companyId : null,
       companyRole: role === 'USER' ? (companyRole as CompanyRole) : null,
+      publicSlug: normalizedSlug || null,
     };
 
     if (password) {
       payload.password = password;
     }
 
-    this.userService.updateUser(this.editingUserId!, payload).subscribe({
+    this.userService.updateUser(this.editingUser()!.id, payload).subscribe({
       next: ({ user }) => {
         this.isSaving = false;
-        this.startCreate();
-        this.successMessage$.next(`Usuario ${user.fullName} atualizado com sucesso.`);
+        this.drawerOpen.set(false);
+        this.editingUser.set(null);
+        this.snackBar.open(`Usuario ${user.fullName} atualizado com sucesso.`, 'OK', {
+          duration: 4000,
+        });
         this.refresh$.next();
       },
       error: (error) => {
         this.isSaving = false;
-        this.errorMessage$.next(error?.error?.message || 'Nao foi possivel atualizar usuario.');
+        this.drawerError.set(error?.error?.message || 'Nao foi possivel atualizar usuario.');
       },
     });
   }
 
   protected removeUser(user: User): void {
-    if (!confirm(`Deseja realmente excluir ${user.fullName}?`)) {
-      return;
-    }
-
-    this.errorMessage$.next(null);
-    this.successMessage$.next(null);
-
-    this.userService.deleteUser(user.id).subscribe({
-      next: () => {
-        if (this.editingUserId === user.id) {
-          this.startCreate();
-        }
-
-        this.successMessage$.next(`Usuario ${user.fullName} removido com sucesso.`);
-        this.refresh$.next();
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '460px',
+      maxWidth: '100vw',
+      maxHeight: '100dvh',
+      panelClass: 'app-responsive-dialog',
+      data: {
+        title: 'Excluir usuario',
+        message: `Deseja realmente excluir ${user.fullName}? Esta acao nao pode ser desfeita.`,
+        confirmText: 'Excluir',
+        tone: 'danger',
       },
-      error: (error) => {
-        this.errorMessage$.next(error?.error?.message || 'Nao foi possivel remover usuario.');
-      },
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      this.userService.deleteUser(user.id).subscribe({
+        next: () => {
+          if (this.editingUser()?.id === user.id) {
+            this.closeDrawer();
+          }
+          this.snackBar.open(`Usuario ${user.fullName} removido com sucesso.`, 'OK', {
+            duration: 4000,
+          });
+          this.refresh$.next();
+        },
+        error: (error) => {
+          this.snackBar.open(
+            error?.error?.message || 'Nao foi possivel remover usuario.',
+            'Fechar',
+            { duration: 4000 },
+          );
+        },
+      });
     });
   }
 
@@ -357,6 +389,7 @@ export class UsersComponent implements OnInit {
         title: 'Resetar 2FA',
         message: `Resetar 2FA do usuario ${user.username}? Isso desativara 2FA, removera dispositivos confiaveis e backup codes.`,
         confirmText: 'Resetar 2FA',
+        tone: 'warning',
       },
     });
 
@@ -393,7 +426,7 @@ export class UsersComponent implements OnInit {
   }
 
   protected isCreateMode(): boolean {
-    return this.editingUserId === null;
+    return this.editingUser() === null;
   }
 
   protected roleLabel(role: UserRole): string {
@@ -417,42 +450,6 @@ export class UsersComponent implements OnInit {
     return company ? company.name : `#${companyId}`;
   }
 
-  protected startSlugEdit(user: User): void {
-    this.editingSlugUserId = user.id;
-    this.slugDraft = user.publicSlug || '';
-  }
-
-  protected cancelSlugEdit(): void {
-    this.editingSlugUserId = null;
-    this.slugDraft = '';
-  }
-
-  protected saveUserPublicSlug(user: User): void {
-    if (this.slugSavingUserId) {
-      return;
-    }
-
-    this.slugSavingUserId = user.id;
-    this.errorMessage$.next(null);
-    this.successMessage$.next(null);
-
-    this.landingConfigService
-      .updateUserPublicSlug(user.id, this.slugify(this.slugDraft) || null)
-      .pipe(finalize(() => (this.slugSavingUserId = null)))
-      .subscribe({
-        next: () => {
-          this.cancelSlugEdit();
-          this.successMessage$.next(`Slug publico de ${user.fullName} atualizado com sucesso.`);
-          this.refresh$.next();
-        },
-        error: (error) => {
-          this.errorMessage$.next(
-            error?.error?.message || 'Nao foi possivel atualizar slug publico.',
-          );
-        },
-      });
-  }
-
   private applyCompanyFilter(search: string): void {
     const normalized = search.trim().toLowerCase();
 
@@ -466,12 +463,43 @@ export class UsersComponent implements OnInit {
   }
 
   private slugify(value: string): string {
+    if (!value) {
+      return '';
+    }
     return value
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[̀-ͯ]/g, '')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .replace(/-{2,}/g, '-');
+  }
+
+  private isValidUserRow(user: unknown): user is User {
+    if (!user || typeof user !== 'object') {
+      return false;
+    }
+
+    const candidate = user as Partial<User>;
+
+    return (
+      typeof candidate.id === 'number' &&
+      Number.isFinite(candidate.id) &&
+      typeof candidate.fullName === 'string' &&
+      candidate.fullName.trim().length > 0 &&
+      typeof candidate.username === 'string' &&
+      candidate.username.trim().length > 0 &&
+      (candidate.role === 'ADMIN' || candidate.role === 'USER') &&
+      typeof candidate.createdAt === 'string' &&
+      candidate.createdAt.trim().length > 0
+    );
+  }
+
+  private resolveTableTotal(
+    metaTotal: number | undefined,
+    rawRows: unknown[],
+    validRows: User[],
+  ): number {
+    return rawRows.length === validRows.length ? (metaTotal ?? validRows.length) : validRows.length;
   }
 }

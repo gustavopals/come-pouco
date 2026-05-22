@@ -163,6 +163,10 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+body.cp-drawer-open {
+  overflow: hidden;
+}
+
 button,
 input,
 textarea,

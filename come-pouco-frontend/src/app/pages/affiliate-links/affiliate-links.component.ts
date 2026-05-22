@@ -1,6 +1,6 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { SelectionModel } from '@angular/cdk/collections';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -46,8 +46,11 @@ import { AffiliateLinkService } from '../../core/services/affiliate-link.service
 import { AuthService } from '../../core/services/auth.service';
 import { PurchasePlatformService } from '../../core/services/purchase-platform.service';
 import { UserService } from '../../core/services/user.service';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import {
+  CrudDrawerComponent,
   EmptyStateComponent,
+  IconButtonComponent,
   IconComponent,
   PageHeaderComponent,
   ResponsiveTableComponent,
@@ -93,7 +96,9 @@ const MAX_LINKS_PER_BATCH = 5;
     MatSnackBarModule,
     MatTableModule,
     MatTooltipModule,
+    CrudDrawerComponent,
     EmptyStateComponent,
+    IconButtonComponent,
     IconComponent,
     PageHeaderComponent,
     ResponsiveTableComponent,
@@ -133,11 +138,9 @@ export class AffiliateLinksComponent implements OnInit {
   protected currentFilteredLinks: AffiliateLink[] = [];
   protected visibleFilteredLinks: AffiliateLink[] = [];
 
-  protected readonly processingResults$ = new BehaviorSubject<LinkProcessResult[]>([]);
   protected readonly isLoading$ = new BehaviorSubject<boolean>(false);
   protected readonly isSaving$ = new BehaviorSubject<boolean>(false);
   protected readonly errorMessage$ = new BehaviorSubject<string | null>(null);
-  protected readonly successMessage$ = new BehaviorSubject<string | null>(null);
   protected readonly normalizedLinks$ = new BehaviorSubject<string[]>([]);
   protected adminShopeePlatforms: PurchasePlatform[] = [];
   protected readonly pageSizeOptions = [10, 25, 50, 100];
@@ -155,6 +158,9 @@ export class AffiliateLinksComponent implements OnInit {
     employeeId: [null as number | null],
   });
 
+  protected readonly drawerOpen = signal(false);
+  protected readonly drawerError = signal<string | null>(null);
+
   protected readonly links$ = combineLatest([
     this.refresh$.pipe(startWith(void 0)),
     this.pageState$,
@@ -165,10 +171,14 @@ export class AffiliateLinksComponent implements OnInit {
     }),
     switchMap(([, pageState]) =>
       this.affiliateLinkService.list(this.buildHistoryListParams(pageState)).pipe(
-        tap((response) =>
-          this.totalLinks$.next(response.meta?.total ?? response.links?.length ?? 0),
-        ),
-        map((response) => (Array.isArray(response?.links) ? response.links : [])),
+        map((response) => {
+          const rawLinks = Array.isArray(response?.links) ? response.links : [];
+          const links = rawLinks.filter((link): link is AffiliateLink =>
+            this.isValidAffiliateLinkRow(link),
+          );
+          this.totalLinks$.next(this.resolveTableTotal(response.meta?.total, rawLinks, links));
+          return links;
+        }),
         catchError((error) => {
           this.errorMessage$.next(error?.error?.message || 'Nao foi possivel carregar os links.');
           this.totalLinks$.next(0);
@@ -202,13 +212,6 @@ export class AffiliateLinksComponent implements OnInit {
       this.visibleFilteredLinks = links;
     }),
   );
-  protected readonly hasGeneratedShortLinks$ = this.processingResults$.pipe(
-    map((results) =>
-      results.some(
-        (item) => typeof item.shortLink === 'string' && item.shortLink.trim().length > 0,
-      ),
-    ),
-  );
   protected readonly maxLinksPerBatch = MAX_LINKS_PER_BATCH;
 
   protected readonly form = this.formBuilder.group({
@@ -221,7 +224,6 @@ export class AffiliateLinksComponent implements OnInit {
     map((links) => links.length),
     shareReplay({ bufferSize: 1, refCount: true }),
   );
-  protected readonly isLinksOverLimit$ = this.linksCount$.pipe(map(() => false));
 
   ngOnInit(): void {
     this.authService.me().subscribe({
@@ -260,7 +262,6 @@ export class AffiliateLinksComponent implements OnInit {
 
     this.syncAutoSubId1WithCurrentUser();
     this.loadAdminPlatforms();
-    this.startCreate();
     this.applyOriginalLinksInput(this.form.controls.originalLinksText.value || '');
   }
 
@@ -316,10 +317,8 @@ export class AffiliateLinksComponent implements OnInit {
     );
   }
 
-  protected startCreate(): void {
-    this.processingResults$.next([]);
-    this.errorMessage$.next(null);
-    this.successMessage$.next(null);
+  protected openGenerateDrawer(): void {
+    this.drawerError.set(null);
     this.form.reset({
       originalLinksText: '',
       subId1: '',
@@ -328,6 +327,15 @@ export class AffiliateLinksComponent implements OnInit {
     });
     this.form.controls.subId1.enable();
     this.normalizedLinks$.next([]);
+    this.drawerOpen.set(true);
+  }
+
+  protected closeDrawer(): void {
+    if (this.isSaving$.getValue()) {
+      return;
+    }
+    this.drawerOpen.set(false);
+    this.drawerError.set(null);
   }
 
   protected submit(): void {
@@ -355,14 +363,12 @@ export class AffiliateLinksComponent implements OnInit {
       Number.isInteger(selectedPlatformId) && selectedPlatformId > 0 ? selectedPlatformId : null;
 
     if (this.authService.isAdmin() && !effectivePlatformId) {
-      this.errorMessage$.next('Selecione uma plataforma SHOPEE para gerar links.');
+      this.drawerError.set('Selecione uma plataforma SHOPEE para gerar links.');
       return;
     }
 
     this.isSaving$.next(true);
-    this.errorMessage$.next(null);
-    this.successMessage$.next(null);
-    this.processingResults$.next([]);
+    this.drawerError.set(null);
 
     this.submitShopeeCreate({
       originalLinks,
@@ -372,54 +378,48 @@ export class AffiliateLinksComponent implements OnInit {
   }
 
   protected remove(link: AffiliateLink): void {
-    if (!confirm(`Excluir o registro #${link.id}?`)) {
-      return;
-    }
-
-    this.errorMessage$.next(null);
-    this.successMessage$.next(null);
-
-    this.affiliateLinkService.delete(link.id).subscribe({
-      next: () => {
-        this.selection.deselect(link.id);
-        this.successMessage$.next(`Registro #${link.id} removido com sucesso.`);
-        this.refresh$.next();
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '460px',
+      maxWidth: '100vw',
+      maxHeight: '100dvh',
+      panelClass: 'app-responsive-dialog',
+      data: {
+        title: 'Excluir link',
+        message: `Excluir o registro #${link.id} do historico?`,
+        confirmText: 'Excluir',
+        tone: 'danger',
       },
-      error: (error) => {
-        this.errorMessage$.next(error?.error?.message || 'Nao foi possivel remover o registro.');
-      },
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      this.affiliateLinkService.delete(link.id).subscribe({
+        next: () => {
+          this.selection.deselect(link.id);
+          this.snackBar.open(`Registro #${link.id} removido.`, 'OK', { duration: 3000 });
+          this.refresh$.next();
+        },
+        error: (error) => {
+          this.snackBar.open(
+            error?.error?.message || 'Nao foi possivel remover o registro.',
+            'Fechar',
+            { duration: 3500 },
+          );
+        },
+      });
     });
   }
 
   protected copyToClipboard(value: string): void {
     void this.copyTextToClipboard(value).then((copied) => {
       if (copied) {
-        this.successMessage$.next('Link copiado.');
+        this.snackBar.open('Link copiado.', 'OK', { duration: 2000 });
       } else {
-        this.errorMessage$.next('Nao foi possivel copiar o link.');
+        this.snackBar.open('Nao foi possivel copiar o link.', 'Fechar', { duration: 3000 });
       }
-    });
-  }
-
-  protected copyGeneratedShortLinks(): void {
-    const shortLinks = this.processingResults$
-      .getValue()
-      .map((item) => item.shortLink?.trim() || '')
-      .filter((shortLink) => shortLink.length > 0);
-
-    if (!shortLinks.length) {
-      return;
-    }
-
-    void this.copyTextToClipboard(shortLinks.join('\n')).then((copied) => {
-      if (!copied) {
-        this.errorMessage$.next('Nao foi possivel copiar os shortlinks.');
-        return;
-      }
-
-      this.snackBar.open('Shortlinks copiados!', 'Fechar', {
-        duration: 2500,
-      });
     });
   }
 
@@ -460,49 +460,65 @@ export class AffiliateLinksComponent implements OnInit {
     const content = selected.map((item) => item.affiliateLink).join('\n');
     void this.copyTextToClipboard(content).then((copied) => {
       if (!copied) {
-        this.errorMessage$.next('Nao foi possivel copiar os links selecionados.');
+        this.snackBar.open('Nao foi possivel copiar os links selecionados.', 'Fechar', {
+          duration: 3000,
+        });
         return;
       }
 
-      this.snackBar.open(`${selected.length} link(s) copiado(s).`, 'Fechar', {
+      this.snackBar.open(`${selected.length} link(s) copiado(s).`, 'OK', {
         duration: 2500,
       });
     });
   }
 
-  protected async removeSelectedLinks(): Promise<void> {
+  protected removeSelectedLinks(): void {
     const selected = this.getSelectedRows();
     if (!selected.length) {
       return;
     }
 
-    if (!confirm(`Excluir ${selected.length} registro(s) selecionado(s)?`)) {
-      return;
-    }
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '460px',
+      maxWidth: '100vw',
+      maxHeight: '100dvh',
+      panelClass: 'app-responsive-dialog',
+      data: {
+        title: 'Excluir selecionados',
+        message: `Excluir ${selected.length} registro(s) selecionado(s)? Esta acao nao pode ser desfeita.`,
+        confirmText: 'Excluir',
+        tone: 'danger',
+      },
+    });
 
-    this.errorMessage$.next(null);
-    this.successMessage$.next(null);
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) {
+        return;
+      }
 
-    const results = await Promise.allSettled(
-      selected.map((item) => firstValueFrom(this.affiliateLinkService.delete(item.id))),
-    );
-    const deletedCount = results.filter((result) => result.status === 'fulfilled').length;
-    const failedCount = results.length - deletedCount;
-
-    if (deletedCount > 0) {
-      this.successMessage$.next(`${deletedCount} registro(s) removido(s) com sucesso.`);
-    }
-
-    if (failedCount > 0) {
-      this.errorMessage$.next(
-        failedCount === results.length
-          ? 'Nao foi possivel remover os registros selecionados.'
-          : `${failedCount} registro(s) nao puderam ser removido(s).`,
+      const results = await Promise.allSettled(
+        selected.map((item) => firstValueFrom(this.affiliateLinkService.delete(item.id))),
       );
-    }
+      const deletedCount = results.filter((result) => result.status === 'fulfilled').length;
+      const failedCount = results.length - deletedCount;
 
-    this.selection.clear();
-    this.refresh$.next();
+      if (deletedCount > 0) {
+        this.snackBar.open(`${deletedCount} registro(s) removido(s).`, 'OK', { duration: 3000 });
+      }
+
+      if (failedCount > 0) {
+        this.snackBar.open(
+          failedCount === results.length
+            ? 'Nao foi possivel remover os registros selecionados.'
+            : `${failedCount} registro(s) nao puderam ser removido(s).`,
+          'Fechar',
+          { duration: 3500 },
+        );
+      }
+
+      this.selection.clear();
+      this.refresh$.next();
+    });
   }
 
   protected clearSelection(): void {
@@ -510,31 +526,40 @@ export class AffiliateLinksComponent implements OnInit {
   }
 
   protected clearHistory(): void {
-    if (!confirm('Deseja limpar todo o historico disponivel para seu perfil?')) {
-      return;
-    }
-
-    this.errorMessage$.next(null);
-    this.successMessage$.next(null);
-
-    this.affiliateLinkService.clearAll().subscribe({
-      next: ({ deletedCount }) => {
-        this.selection.clear();
-        this.successMessage$.next(`${deletedCount} registro(s) removido(s) do historico.`);
-        this.refresh$.next();
-      },
-      error: (error) => {
-        this.errorMessage$.next(error?.error?.message || 'Nao foi possivel limpar o historico.');
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '460px',
+      maxWidth: '100vw',
+      maxHeight: '100dvh',
+      panelClass: 'app-responsive-dialog',
+      data: {
+        title: 'Limpar historico',
+        message:
+          'Deseja limpar todo o historico disponivel para seu perfil? Esta acao nao pode ser desfeita.',
+        confirmText: 'Limpar tudo',
+        tone: 'danger',
       },
     });
-  }
 
-  protected submitButtonLabel(isSaving: boolean | null): string {
-    if (isSaving) {
-      return 'Gerando e salvando...';
-    }
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) {
+        return;
+      }
 
-    return 'Gerar';
+      this.affiliateLinkService.clearAll().subscribe({
+        next: ({ deletedCount }) => {
+          this.selection.clear();
+          this.snackBar.open(`${deletedCount} registro(s) removido(s).`, 'OK', { duration: 3000 });
+          this.refresh$.next();
+        },
+        error: (error) => {
+          this.snackBar.open(
+            error?.error?.message || 'Nao foi possivel limpar o historico.',
+            'Fechar',
+            { duration: 3500 },
+          );
+        },
+      });
+    });
   }
 
   private submitShopeeCreate(input: {
@@ -560,13 +585,10 @@ export class AffiliateLinksComponent implements OnInit {
         const generated = Array.isArray(results) ? results : [];
         const successItems = generated.filter((item) => item.success && item.shortLink);
 
-        this.processingResults$.next(generated.map((item) => this.toProcessResult(item)));
-
         if (!successItems.length) {
           this.isSaving$.next(false);
-          this.errorMessage$.next(
-            'Nenhum shortlink foi gerado. Verifique os erros por item abaixo.',
-          );
+          this.drawerError.set('Nenhum shortlink foi gerado. Verifique os erros por item.');
+          this.openResultsDialog(generated.map((item) => this.toProcessResult(item)));
           return;
         }
 
@@ -595,33 +617,23 @@ export class AffiliateLinksComponent implements OnInit {
                 } satisfies LinkProcessResult;
               });
 
-              this.processingResults$.next(processResults);
-
               const savedCount = Array.isArray(links) ? links.length : 0;
               const failedCount = generated.length - savedCount;
-              this.successMessage$.next(
+
+              this.snackBar.open(
                 `${savedCount} link(s) salvo(s) com sucesso.${failedCount > 0 ? ` ${failedCount} com erro.` : ''}`,
+                'OK',
+                { duration: 4000 },
               );
-              this.form.controls.originalLinksText.setValue('');
-              this.form.controls.originalLinksText.markAsPristine();
-              this.form.controls.originalLinksText.markAsUntouched();
-              this.form.controls.originalLinksText.updateValueAndValidity();
+
               this.selection.clear();
               this.refresh$.next();
-
-              this.dialog.open(AffiliateLinksResultsDialogComponent, {
-                width: '780px',
-                maxWidth: '100vw',
-                maxHeight: '100dvh',
-                panelClass: 'app-responsive-dialog',
-                data: {
-                  results: processResults,
-                },
-              });
+              this.drawerOpen.set(false);
+              this.openResultsDialog(processResults);
             },
             error: (error) => {
               this.isSaving$.next(false);
-              this.errorMessage$.next(
+              this.drawerError.set(
                 error?.error?.message || 'Nao foi possivel salvar os shortlinks gerados.',
               );
             },
@@ -629,12 +641,22 @@ export class AffiliateLinksComponent implements OnInit {
       },
       error: (error) => {
         this.isSaving$.next(false);
-        this.errorMessage$.next(
+        this.drawerError.set(
           this.toShopeeFriendlyError(
             error?.error?.message || 'Nao foi possivel gerar shortlinks na Shopee.',
           ),
         );
       },
+    });
+  }
+
+  private openResultsDialog(results: LinkProcessResult[]): void {
+    this.dialog.open(AffiliateLinksResultsDialogComponent, {
+      width: '780px',
+      maxWidth: '100vw',
+      maxHeight: '100dvh',
+      panelClass: 'app-responsive-dialog',
+      data: { results },
     });
   }
 
@@ -867,6 +889,33 @@ export class AffiliateLinksComponent implements OnInit {
         email: user.email,
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  private isValidAffiliateLinkRow(link: unknown): link is AffiliateLink {
+    if (!link || typeof link !== 'object') {
+      return false;
+    }
+
+    const candidate = link as Partial<AffiliateLink>;
+
+    return (
+      typeof candidate.id === 'number' &&
+      Number.isFinite(candidate.id) &&
+      typeof candidate.originalLink === 'string' &&
+      candidate.originalLink.trim().length > 0 &&
+      typeof candidate.affiliateLink === 'string' &&
+      candidate.affiliateLink.trim().length > 0 &&
+      typeof candidate.updatedAt === 'string' &&
+      candidate.updatedAt.trim().length > 0
+    );
+  }
+
+  private resolveTableTotal(
+    metaTotal: number | undefined,
+    rawRows: unknown[],
+    validRows: AffiliateLink[],
+  ): number {
+    return rawRows.length === validRows.length ? (metaTotal ?? validRows.length) : validRows.length;
   }
 
   private copyTextToClipboard(value: string): Promise<boolean> {

@@ -1,7 +1,6 @@
 <section class="page-shell">
-  <main class="page-main admin-grid purchase-platforms-layout">
+  <main class="page-main">
     <app-page-header
-      class="grid-header"
       eyebrow="Administracao"
       title="Plataformas de compras"
       description="Configure credenciais Shopee, empresas autorizadas e monitore uso da API."
@@ -16,546 +15,559 @@
         <app-icon name="refresh-cw" size="18" />
         Atualizar
       </button>
+      <button
+        pageHeaderActions
+        mat-flat-button
+        type="button"
+        class="button-with-icon primary-cta"
+        (click)="openCreate()"
+      >
+        <app-icon name="plus" size="18" />
+        Nova plataforma
+      </button>
     </app-page-header>
 
-    <mat-card appearance="outlined" class="form-card purchase-form-card">
-      <mat-card-header>
-        <mat-card-title>
-          {{ isCreateMode() ? 'Cadastrar Plataforma de Compras' : 'Editar Plataforma de Compras' }}
-        </mat-card-title>
-        <mat-card-subtitle
-          >Configure integracoes com plataformas externas de compra.</mat-card-subtitle
-        >
-      </mat-card-header>
-
-      <mat-card-content>
-        <form [formGroup]="form" (ngSubmit)="submit()" class="entity-form">
-          <mat-form-field appearance="outline">
-            <mat-label>Nome</mat-label>
-            <input matInput type="text" formControlName="name" placeholder="Ex: Shopee Brasil" />
-            <mat-error *ngIf="form.controls.name.touched && form.controls.name.invalid"
-              >Nome invalido.</mat-error
-            >
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Descricao</mat-label>
-            <textarea
-              matInput
-              rows="3"
-              formControlName="description"
-              placeholder="Resumo da integracao"
-            ></textarea>
-            <mat-error
-              *ngIf="form.controls.description.touched && form.controls.description.invalid"
-            >
-              Descricao invalida.
-            </mat-error>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Tipo da Plataforma</mat-label>
-            <mat-select formControlName="type">
-              <mat-option *ngFor="let platformType of platformTypes" [value]="platformType">
-                {{ platformType }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>App ID</mat-label>
-            <input matInput type="text" formControlName="appId" placeholder="123456" />
-            <mat-error *ngIf="form.controls.appId.touched && form.controls.appId.invalid">
-              App ID obrigatorio para SHOPEE.
-            </mat-error>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Secret</mat-label>
-            <input matInput type="password" formControlName="secret" placeholder="********" />
-            <mat-hint>O secret nao e exibido na listagem.</mat-hint>
-            <mat-error *ngIf="form.controls.secret.touched && form.controls.secret.invalid">
-              Secret obrigatorio para SHOPEE.
-            </mat-error>
-          </mat-form-field>
-
-          <div class="toggle-row">
-            <mat-slide-toggle formControlName="isActive">Ativo?</mat-slide-toggle>
-            <mat-slide-toggle formControlName="mockMode">Modo Sandbox (Mock)</mat-slide-toggle>
-          </div>
-          <p class="status-block mode-help">
-            Quando ligado, nao chama a Shopee e gera links simulados (apenas para testes).
-          </p>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Link da API</mat-label>
-            <input
-              matInput
-              type="url"
-              formControlName="apiUrl"
-              placeholder="https://open-api.affiliate.shopee.com.br/graphql"
-            />
-            <mat-error *ngIf="form.controls.apiUrl.touched && form.controls.apiUrl.invalid">
-              Link da API invalido.
-            </mat-error>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Empresas autorizadas</mat-label>
-            <input
-              matInput
-              type="text"
-              formControlName="companySearch"
-              placeholder="Pesquisar empresa..."
-              [matAutocomplete]="companyAuto"
-            />
-            <mat-autocomplete #companyAuto="matAutocomplete">
-              <mat-option
-                *ngFor="let company of filteredCompanies"
-                [value]="company.name"
-                (onSelectionChange)="selectCompany(company, $event.isUserInput)"
-              >
-                {{ company.name }}
-              </mat-option>
-            </mat-autocomplete>
-            <mat-hint>Selecione uma ou mais empresas para usar esta plataforma.</mat-hint>
-          </mat-form-field>
-
-          <mat-chip-set class="selected-companies" *ngIf="selectedCompanyIds.length">
-            <mat-chip
-              *ngFor="let companyId of selectedCompanyIds"
-              [removable]="true"
-              (removed)="removeCompany(companyId)"
-            >
-              {{ selectedCompanyLabel(companyId) }}
-              <button matChipRemove type="button">x</button>
-            </mat-chip>
-          </mat-chip-set>
-
-          <div class="default-company-block" *ngIf="selectedCompanyIds.length">
-            <p class="status-block">Padrao (default) para esta empresa:</p>
-            <mat-checkbox
-              class="default-company-item"
-              *ngFor="let companyId of selectedCompanyIds"
-              [checked]="isDefaultCompany(companyId)"
-              (change)="toggleDefaultCompany(companyId, $event.checked)"
-            >
-              {{ selectedCompanyLabel(companyId) }}
-            </mat-checkbox>
-          </div>
-
-          <div class="entity-actions">
-            <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
-              {{ isSaving ? 'Salvando...' : isCreateMode() ? 'Cadastrar' : 'Salvar alteracoes' }}
-            </button>
-            <button mat-stroked-button type="button" *ngIf="!isCreateMode()" (click)="cancelEdit()">
-              Cancelar edicao
-            </button>
-          </div>
-        </form>
-
-        <p class="status-block status-error" role="alert" *ngIf="errorMessage">
-          {{ errorMessage }}
-        </p>
-        <p
-          class="status-block status-success"
-          role="status"
-          aria-live="polite"
-          *ngIf="successMessage"
-        >
-          {{ successMessage }}
-        </p>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card appearance="outlined" class="table-card usage-card" *ngIf="authService.isAdmin()">
-      <mat-card-header>
-        <mat-card-title>Monitoramento API</mat-card-title>
-        <mat-card-subtitle>Resumo de uso das requisicoes de integracao Shopee.</mat-card-subtitle>
-      </mat-card-header>
-
-      <mat-card-content>
-        <form [formGroup]="usageForm" class="usage-filter-grid">
-          <mat-form-field appearance="outline">
-            <mat-label>Empresa</mat-label>
-            <mat-select formControlName="companyId">
-              <mat-option [value]="null">Todas</mat-option>
-              <mat-option *ngFor="let company of companies$ | async" [value]="company.id">{{
-                company.name
-              }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Funcionario</mat-label>
-            <mat-select formControlName="userId" [disabled]="!usageForm.controls.companyId.value">
-              <mat-option [value]="null">Todos</mat-option>
-              <mat-option *ngFor="let employee of filteredEmployees$ | async" [value]="employee.id">
-                {{ employee.fullName }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Periodo</mat-label>
-            <mat-date-range-input [rangePicker]="rangePicker">
-              <input matStartDate formControlName="startDate" placeholder="Data inicial" />
-              <input matEndDate formControlName="endDate" placeholder="Data final" />
-            </mat-date-range-input>
-            <mat-datepicker-toggle matIconSuffix [for]="rangePicker"></mat-datepicker-toggle>
-            <mat-date-range-picker #rangePicker></mat-date-range-picker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Modo</mat-label>
-            <mat-select formControlName="mode">
-              <mat-option *ngFor="let option of usageModeOptions" [value]="option.value">
-                {{ option.label }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </form>
-
-        <div class="usage-actions">
-          <button mat-stroked-button type="button" (click)="resetUsageFilters()">
-            Limpar filtros
-          </button>
-          <button mat-flat-button color="warn" type="button" (click)="resetMockUsage()">
-            Zerar contador Mock
-          </button>
-        </div>
-
-        <mat-progress-bar
-          mode="indeterminate"
-          *ngIf="usageLoadingState$ | async"
-        ></mat-progress-bar>
-        <p
-          class="status-block status-error"
-          role="alert"
-          *ngIf="usageErrorState$ | async as usageError"
-        >
-          {{ usageError }}
-        </p>
-
-        <ng-container *ngIf="usage$ | async as usage">
-          <div class="usage-cards-grid">
-            <article class="usage-summary-card">
-              <p class="usage-summary-label">Total Mock</p>
-              <p class="usage-summary-value">{{ usage.totalMock }}</p>
-            </article>
-            <article class="usage-summary-card">
-              <p class="usage-summary-label">Total Real</p>
-              <p class="usage-summary-value">{{ usage.totalReal }}</p>
-            </article>
-            <article class="usage-summary-card">
-              <p class="usage-summary-label">Total Geral</p>
-              <p class="usage-summary-value">{{ usage.totalGeral }}</p>
-            </article>
-          </div>
-
-          <ng-container
-            *ngIf="{
-              logs: usage.items || usage.logs || [],
-              total: (totalUsageLogs$ | async) || 0,
-              pageState: (usagePageState$ | async),
-            } as usageState"
-          >
-            <app-responsive-table
-              *ngIf="!(usageLoadingState$ | async) && usageState.logs.length"
-              label="Requisicoes de API paginadas"
-            >
-              <div responsiveTableDesktop class="table-shell">
-                <table mat-table [dataSource]="usageState.logs" class="data-table">
-                  <ng-container matColumnDef="createdAt">
-                    <th mat-header-cell *matHeaderCellDef>Criada em</th>
-                    <td mat-cell *matCellDef="let usageLog">
-                      {{ usageLog.createdAt | date: 'dd/MM/yyyy HH:mm' }}
-                    </td>
-                  </ng-container>
-
-                  <ng-container matColumnDef="mode">
-                    <th mat-header-cell *matHeaderCellDef>Modo</th>
-                    <td mat-cell *matCellDef="let usageLog">
-                      <app-status-chip
-                        [label]="usageLog.mode"
-                        [variant]="usageLog.mode === 'MOCK' ? 'warning' : 'success'"
-                      />
-                    </td>
-                  </ng-container>
-
-                  <ng-container matColumnDef="companyId">
-                    <th mat-header-cell *matHeaderCellDef>Empresa</th>
-                    <td mat-cell *matCellDef="let usageLog">#{{ usageLog.companyId }}</td>
-                  </ng-container>
-
-                  <ng-container matColumnDef="userId">
-                    <th mat-header-cell *matHeaderCellDef>Usuario</th>
-                    <td mat-cell *matCellDef="let usageLog">#{{ usageLog.userId }}</td>
-                  </ng-container>
-
-                  <ng-container matColumnDef="endpoint">
-                    <th mat-header-cell *matHeaderCellDef>Endpoint</th>
-                    <td mat-cell *matCellDef="let usageLog">{{ usageLog.endpoint || '-' }}</td>
-                  </ng-container>
-
-                  <ng-container matColumnDef="success">
-                    <th mat-header-cell *matHeaderCellDef>Status</th>
-                    <td mat-cell *matCellDef="let usageLog">
-                      <app-status-chip
-                        [label]="usageLog.success ? 'Sucesso' : 'Falha'"
-                        [variant]="usageLog.success ? 'success' : 'danger'"
-                      />
-                    </td>
-                  </ng-container>
-
-                  <tr mat-header-row *matHeaderRowDef="usageDisplayedColumns"></tr>
-                  <tr mat-row *matRowDef="let row; columns: usageDisplayedColumns"></tr>
-                </table>
-              </div>
-
-              <div responsiveTableMobile class="mobile-platform-list">
-                <article class="platform-card" *ngFor="let usageLog of usageState.logs">
-                  <header class="platform-card-header">
-                    <span class="id-pill">{{ usageLog.mode }}</span>
-                    <span class="platform-date">{{
-                      usageLog.createdAt | date: 'dd/MM/yyyy HH:mm'
-                    }}</span>
-                  </header>
-                  <div class="platform-meta-grid">
-                    <p>
-                      Empresa: <strong>#{{ usageLog.companyId }}</strong>
-                    </p>
-                    <p>
-                      Usuario: <strong>#{{ usageLog.userId }}</strong>
-                    </p>
-                    <p>
-                      Endpoint: <strong>{{ usageLog.endpoint || '-' }}</strong>
-                    </p>
-                    <p>
-                      Status: <strong>{{ usageLog.success ? 'Sucesso' : 'Falha' }}</strong>
-                    </p>
-                  </div>
-                </article>
-              </div>
-            </app-responsive-table>
-
-            <app-empty-state
-              *ngIf="!(usageLoadingState$ | async) && !usageState.logs.length"
-              icon="activity"
-              title="Nenhuma requisicao encontrada"
-              description="Ajuste os filtros para consultar registros de API."
-            />
-
-            <mat-paginator
-              *ngIf="usageState.total > 0"
-              [length]="usageState.total"
-              [pageIndex]="usageState.pageState?.pageIndex || 0"
-              [pageSize]="usageState.pageState?.pageSize || 20"
-              [pageSizeOptions]="usagePageSizeOptions"
-              showFirstLastButtons
-              (page)="handleUsagePage($event)"
-            >
-            </mat-paginator>
-          </ng-container>
-        </ng-container>
-      </mat-card-content>
-    </mat-card>
-
     <mat-card appearance="outlined" class="table-card platforms-table-card">
-      <mat-card-header class="table-header">
-        <div>
-          <mat-card-title>Plataformas cadastradas</mat-card-title>
-          <mat-card-subtitle>{{ (totalPlatforms$ | async) || 0 }} registro(s)</mat-card-subtitle>
+      <header class="table-header">
+        <div class="table-header-titles">
+          <h2 class="table-title">Plataformas cadastradas</h2>
+          <p class="table-subtitle">{{ (totalPlatforms$ | async) || 0 }} registro(s)</p>
         </div>
-        <div class="toolbar-spacer"></div>
-        <button mat-stroked-button type="button" (click)="loadPlatforms()">Atualizar</button>
-      </mat-card-header>
+      </header>
 
-      <mat-card-content>
-        <mat-progress-bar mode="indeterminate" *ngIf="isLoading$ | async"></mat-progress-bar>
-        <div class="table-loading" *ngIf="isLoading$ | async">
+      <p class="status-block status-error" role="alert" *ngIf="error$ | async as loadError">
+        {{ loadError }}
+      </p>
+
+      <mat-progress-bar mode="indeterminate" *ngIf="isLoading$ | async"></mat-progress-bar>
+
+      <ng-container *ngIf="platforms$ | async as platforms">
+        <div class="table-loading" *ngIf="(isLoading$ | async) && !platforms.length">
           <app-skeleton-loader variant="table-row" label="Carregando plataformas" />
           <app-skeleton-loader variant="table-row" label="Carregando plataformas" />
         </div>
-        <p class="status-block status-error" role="alert" *ngIf="error$ | async as loadError">
-          {{ loadError }}
-        </p>
 
-        <ng-container *ngIf="platforms$ | async as platforms">
-          <app-responsive-table
-            *ngIf="!(isLoading$ | async) && platforms.length"
-            label="Plataformas cadastradas"
-          >
-            <div responsiveTableDesktop class="table-shell">
-              <table mat-table [dataSource]="platforms" class="data-table">
-                <ng-container matColumnDef="id">
-                  <th mat-header-cell *matHeaderCellDef>ID</th>
-                  <td mat-cell *matCellDef="let platform">
-                    <span class="id-pill">#{{ platform.id }}</span>
-                  </td>
-                </ng-container>
+        <app-responsive-table *ngIf="platforms.length" label="Plataformas cadastradas">
+          <div responsiveTableDesktop class="table-shell">
+            <table mat-table [dataSource]="platforms" class="data-table">
+              <ng-container matColumnDef="id">
+                <th mat-header-cell *matHeaderCellDef>ID</th>
+                <td mat-cell *matCellDef="let platform">
+                  <span class="id-pill">#{{ platform.id }}</span>
+                </td>
+              </ng-container>
 
-                <ng-container matColumnDef="name">
-                  <th mat-header-cell *matHeaderCellDef>Nome</th>
-                  <td mat-cell *matCellDef="let platform" class="strong-cell">
-                    {{ platform.name }}
-                  </td>
-                </ng-container>
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Plataforma</th>
+                <td mat-cell *matCellDef="let platform">
+                  <div class="platform-cell">
+                    <span class="strong-cell">{{ platform.name }}</span>
+                    <span class="platform-type">{{ platform.type }}</span>
+                  </div>
+                </td>
+              </ng-container>
 
-                <ng-container matColumnDef="type">
-                  <th mat-header-cell *matHeaderCellDef>Tipo</th>
-                  <td mat-cell *matCellDef="let platform">{{ platform.type }}</td>
-                </ng-container>
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef>Status</th>
+                <td mat-cell *matCellDef="let platform">
+                  <app-status-chip
+                    [label]="platform.isActive ? 'Ativo' : 'Inativo'"
+                    [variant]="platform.isActive ? 'success' : 'danger'"
+                  />
+                </td>
+              </ng-container>
 
-                <ng-container matColumnDef="status">
-                  <th mat-header-cell *matHeaderCellDef>Ativo?</th>
-                  <td mat-cell *matCellDef="let platform">
-                    <app-status-chip
-                      [label]="platform.isActive ? 'Ativo' : 'Inativo'"
-                      [variant]="platform.isActive ? 'success' : 'danger'"
-                    />
-                  </td>
-                </ng-container>
+              <ng-container matColumnDef="mode">
+                <th mat-header-cell *matHeaderCellDef>Ambiente</th>
+                <td mat-cell *matCellDef="let platform">
+                  <app-status-chip
+                    [label]="modeStatus(platform)"
+                    [variant]="platform.mockMode ? 'warning' : 'success'"
+                  />
+                </td>
+              </ng-container>
 
-                <ng-container matColumnDef="mode">
-                  <th mat-header-cell *matHeaderCellDef>Ambiente</th>
-                  <td mat-cell *matCellDef="let platform">
-                    <app-status-chip
-                      [label]="modeStatus(platform)"
-                      [variant]="platform.mockMode ? 'warning' : 'success'"
-                    />
-                  </td>
-                </ng-container>
+              <ng-container matColumnDef="secret">
+                <th mat-header-cell *matHeaderCellDef>Secret</th>
+                <td mat-cell *matCellDef="let platform">
+                  <app-status-chip
+                    [label]="secretStatus(platform)"
+                    [variant]="platform.secretConfigured ? 'success' : 'warning'"
+                  />
+                </td>
+              </ng-container>
 
-                <ng-container matColumnDef="apiLink">
-                  <th mat-header-cell *matHeaderCellDef>Link da API</th>
-                  <td mat-cell *matCellDef="let platform">
+              <ng-container matColumnDef="updatedAt">
+                <th mat-header-cell *matHeaderCellDef>Atualizado em</th>
+                <td mat-cell *matCellDef="let platform">
+                  {{ platform.updatedAt | date: 'dd/MM/yyyy HH:mm' }}
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef class="actions-header">Acoes</th>
+                <td
+                  mat-cell
+                  *matCellDef="let platform"
+                  class="row-actions"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="row-actions-inner" role="toolbar" aria-label="Acoes da plataforma">
                     <a
                       class="api-link"
                       [href]="platform.apiUrl || platform.apiLink"
                       target="_blank"
                       rel="noreferrer"
-                      >Abrir</a
+                      matTooltip="Abrir link da API"
                     >
+                      <app-icon name="external-link" size="16" />
+                    </a>
+                    <app-icon-button
+                      icon="pencil"
+                      label="Editar plataforma"
+                      tooltip="Editar"
+                      variant="ghost"
+                      size="sm"
+                      (pressed)="openEdit(platform)"
+                    ></app-icon-button>
+                    <app-icon-button
+                      icon="trash-2"
+                      label="Excluir plataforma"
+                      tooltip="Excluir"
+                      variant="danger"
+                      size="sm"
+                      (pressed)="remove(platform)"
+                    ></app-icon-button>
+                  </div>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr
+                mat-row
+                *matRowDef="let row; columns: displayedColumns"
+                class="clickable-row"
+                tabindex="0"
+                (click)="openEdit(row)"
+                (keydown.enter)="openEdit(row)"
+              ></tr>
+            </table>
+          </div>
+
+          <div responsiveTableMobile class="mobile-platform-list">
+            <article
+              class="platform-card"
+              *ngFor="let platform of platforms"
+              tabindex="0"
+              role="button"
+              (click)="openEdit(platform)"
+              (keydown.enter)="openEdit(platform)"
+            >
+              <header class="platform-card-header">
+                <span class="id-pill">#{{ platform.id }}</span>
+                <span class="platform-date">{{
+                  platform.updatedAt | date: 'dd/MM/yyyy HH:mm'
+                }}</span>
+              </header>
+
+              <p class="platform-name">{{ platform.name }}</p>
+
+              <div class="platform-card-badges">
+                <app-status-chip
+                  [label]="platform.isActive ? 'Ativo' : 'Inativo'"
+                  [variant]="platform.isActive ? 'success' : 'danger'"
+                />
+                <app-status-chip
+                  [label]="modeStatus(platform)"
+                  [variant]="platform.mockMode ? 'warning' : 'success'"
+                />
+                <app-status-chip
+                  [label]="secretStatus(platform)"
+                  [variant]="platform.secretConfigured ? 'success' : 'warning'"
+                />
+              </div>
+
+              <a
+                class="api-link mobile-api-link"
+                [href]="platform.apiUrl || platform.apiLink"
+                target="_blank"
+                rel="noreferrer"
+                (click)="$event.stopPropagation()"
+              >
+                <app-icon name="external-link" size="14" />
+                Abrir link da API
+              </a>
+
+              <div class="mobile-row-actions" role="toolbar" aria-label="Acoes da plataforma">
+                <app-icon-button
+                  icon="trash-2"
+                  label="Excluir plataforma"
+                  tooltip="Excluir"
+                  variant="danger"
+                  size="md"
+                  (click)="$event.stopPropagation()"
+                  (pressed)="remove(platform)"
+                ></app-icon-button>
+              </div>
+            </article>
+          </div>
+        </app-responsive-table>
+
+        <app-empty-state
+          *ngIf="!(isLoading$ | async) && !platforms.length"
+          icon="shopping-bag"
+          title="Nenhuma plataforma cadastrada"
+          description="Cadastre uma integracao para liberar geracao de shortlinks."
+        />
+
+        <mat-paginator
+          *ngIf="platforms.length"
+          [length]="(totalPlatforms$ | async) || 0"
+          [pageIndex]="(pageState$ | async)?.pageIndex || 0"
+          [pageSize]="(pageState$ | async)?.pageSize || 20"
+          [pageSizeOptions]="pageSizeOptions"
+          showFirstLastButtons
+          (page)="handlePage($event)"
+        >
+        </mat-paginator>
+      </ng-container>
+    </mat-card>
+
+    <mat-card appearance="outlined" class="table-card usage-card" *ngIf="authService.isAdmin()">
+      <header class="table-header">
+        <div class="table-header-titles">
+          <h2 class="table-title">Monitoramento API</h2>
+          <p class="table-subtitle">Resumo de uso das requisicoes de integracao Shopee.</p>
+        </div>
+      </header>
+
+      <form [formGroup]="usageForm" class="usage-filter-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Empresa</mat-label>
+          <mat-select formControlName="companyId">
+            <mat-option [value]="null">Todas</mat-option>
+            <mat-option *ngFor="let company of companies$ | async" [value]="company.id">{{
+              company.name
+            }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Funcionario</mat-label>
+          <mat-select formControlName="userId">
+            <mat-option [value]="null">Todos</mat-option>
+            <mat-option *ngFor="let employee of filteredEmployees$ | async" [value]="employee.id">
+              {{ employee.fullName }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Periodo</mat-label>
+          <mat-date-range-input [rangePicker]="rangePicker">
+            <input matStartDate formControlName="startDate" placeholder="Data inicial" />
+            <input matEndDate formControlName="endDate" placeholder="Data final" />
+          </mat-date-range-input>
+          <mat-datepicker-toggle matIconSuffix [for]="rangePicker"></mat-datepicker-toggle>
+          <mat-date-range-picker #rangePicker></mat-date-range-picker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Modo</mat-label>
+          <mat-select formControlName="mode">
+            <mat-option *ngFor="let option of usageModeOptions" [value]="option.value">
+              {{ option.label }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </form>
+
+      <div class="usage-actions">
+        <button mat-stroked-button type="button" (click)="resetUsageFilters()">
+          Limpar filtros
+        </button>
+        <button mat-stroked-button color="warn" type="button" (click)="resetMockUsage()">
+          Zerar contador Mock
+        </button>
+      </div>
+
+      <mat-progress-bar mode="indeterminate" *ngIf="usageLoadingState$ | async"></mat-progress-bar>
+      <p
+        class="status-block status-error"
+        role="alert"
+        *ngIf="usageErrorState$ | async as usageError"
+      >
+        {{ usageError }}
+      </p>
+
+      <ng-container *ngIf="usage$ | async as usage">
+        <div class="usage-cards-grid">
+          <article class="usage-summary-card">
+            <p class="usage-summary-label">Total Mock</p>
+            <p class="usage-summary-value">{{ usage.totalMock }}</p>
+          </article>
+          <article class="usage-summary-card">
+            <p class="usage-summary-label">Total Real</p>
+            <p class="usage-summary-value">{{ usage.totalReal }}</p>
+          </article>
+          <article class="usage-summary-card">
+            <p class="usage-summary-label">Total Geral</p>
+            <p class="usage-summary-value">{{ usage.totalGeral }}</p>
+          </article>
+        </div>
+
+        <ng-container
+          *ngIf="{
+            logs: usage.items || usage.logs || [],
+            total: (totalUsageLogs$ | async) || 0,
+            pageState: (usagePageState$ | async),
+          } as usageState"
+        >
+          <app-responsive-table *ngIf="usageState.logs.length" label="Requisicoes de API paginadas">
+            <div responsiveTableDesktop class="table-shell">
+              <table mat-table [dataSource]="usageState.logs" class="data-table">
+                <ng-container matColumnDef="createdAt">
+                  <th mat-header-cell *matHeaderCellDef>Criada em</th>
+                  <td mat-cell *matCellDef="let usageLog">
+                    {{ usageLog.createdAt | date: 'dd/MM/yyyy HH:mm' }}
                   </td>
                 </ng-container>
 
-                <ng-container matColumnDef="secret">
-                  <th mat-header-cell *matHeaderCellDef>Secret</th>
-                  <td mat-cell *matCellDef="let platform">
+                <ng-container matColumnDef="mode">
+                  <th mat-header-cell *matHeaderCellDef>Modo</th>
+                  <td mat-cell *matCellDef="let usageLog">
                     <app-status-chip
-                      [label]="secretStatus(platform)"
-                      [variant]="platform.secretConfigured ? 'success' : 'warning'"
+                      [label]="usageLog.mode"
+                      [variant]="usageLog.mode === 'MOCK' ? 'warning' : 'success'"
                     />
                   </td>
                 </ng-container>
 
-                <ng-container matColumnDef="updatedAt">
-                  <th mat-header-cell *matHeaderCellDef>Atualizado em</th>
-                  <td mat-cell *matCellDef="let platform">
-                    {{ platform.updatedAt | date: 'dd/MM/yyyy HH:mm' }}
+                <ng-container matColumnDef="companyId">
+                  <th mat-header-cell *matHeaderCellDef>Empresa</th>
+                  <td mat-cell *matCellDef="let usageLog">#{{ usageLog.companyId }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="userId">
+                  <th mat-header-cell *matHeaderCellDef>Usuario</th>
+                  <td mat-cell *matCellDef="let usageLog">#{{ usageLog.userId }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="endpoint">
+                  <th mat-header-cell *matHeaderCellDef>Endpoint</th>
+                  <td mat-cell *matCellDef="let usageLog">{{ usageLog.endpoint || '-' }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="success">
+                  <th mat-header-cell *matHeaderCellDef>Status</th>
+                  <td mat-cell *matCellDef="let usageLog">
+                    <app-status-chip
+                      [label]="usageLog.success ? 'Sucesso' : 'Falha'"
+                      [variant]="usageLog.success ? 'success' : 'danger'"
+                    />
                   </td>
                 </ng-container>
 
-                <ng-container matColumnDef="actions">
-                  <th mat-header-cell *matHeaderCellDef>Acoes</th>
-                  <td mat-cell *matCellDef="let platform" class="row-actions">
-                    <button mat-stroked-button type="button" (click)="startEdit(platform)">
-                      Editar
-                    </button>
-                    <button mat-flat-button color="warn" type="button" (click)="remove(platform)">
-                      Excluir
-                    </button>
-                  </td>
-                </ng-container>
-
-                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+                <tr mat-header-row *matHeaderRowDef="usageDisplayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: usageDisplayedColumns"></tr>
               </table>
             </div>
 
             <div responsiveTableMobile class="mobile-platform-list">
-              <article class="platform-card" *ngFor="let platform of platforms">
+              <article class="platform-card" *ngFor="let usageLog of usageState.logs">
                 <header class="platform-card-header">
-                  <span class="id-pill">#{{ platform.id }}</span>
+                  <span class="id-pill">{{ usageLog.mode }}</span>
                   <span class="platform-date">{{
-                    platform.updatedAt | date: 'dd/MM/yyyy HH:mm'
+                    usageLog.createdAt | date: 'dd/MM/yyyy HH:mm'
                   }}</span>
                 </header>
-
-                <p class="platform-name">{{ platform.name }}</p>
-
                 <div class="platform-meta-grid">
                   <p>
-                    Tipo: <strong>{{ platform.type }}</strong>
+                    Empresa: <strong>#{{ usageLog.companyId }}</strong>
                   </p>
                   <p>
-                    Status:
-                    <strong
-                      [class.status-active]="platform.isActive"
-                      [class.status-inactive]="!platform.isActive"
-                    >
-                      {{ platform.isActive ? 'Ativo' : 'Inativo' }}
-                    </strong>
+                    Usuario: <strong>#{{ usageLog.userId }}</strong>
                   </p>
                   <p>
-                    Ambiente:
-                    <strong
-                      [class.status-active]="platform.mockMode"
-                      [class.status-inactive]="!platform.mockMode"
-                    >
-                      {{ modeStatus(platform) }}
-                    </strong>
+                    Endpoint: <strong>{{ usageLog.endpoint || '-' }}</strong>
                   </p>
                   <p>
-                    Secret:
-                    <strong
-                      [class.secret-ready]="platform.secretConfigured"
-                      [class.secret-missing]="!platform.secretConfigured"
-                    >
-                      {{ secretStatus(platform) }}
-                    </strong>
+                    Status: <strong>{{ usageLog.success ? 'Sucesso' : 'Falha' }}</strong>
                   </p>
-                </div>
-
-                <a
-                  class="api-link mobile-api-link"
-                  [href]="platform.apiUrl || platform.apiLink"
-                  target="_blank"
-                  rel="noreferrer"
-                  >Abrir link da API</a
-                >
-
-                <div class="row-actions mobile-actions">
-                  <button mat-stroked-button type="button" (click)="startEdit(platform)">
-                    Editar
-                  </button>
-                  <button mat-flat-button color="warn" type="button" (click)="remove(platform)">
-                    Excluir
-                  </button>
                 </div>
               </article>
             </div>
           </app-responsive-table>
 
           <app-empty-state
-            *ngIf="!(isLoading$ | async) && !platforms.length"
-            icon="shopping-bag"
-            title="Nenhuma plataforma cadastrada"
-            description="Cadastre uma integracao para liberar geracao de shortlinks."
+            *ngIf="!(usageLoadingState$ | async) && !usageState.logs.length"
+            icon="activity"
+            title="Nenhuma requisicao encontrada"
+            description="Ajuste os filtros para consultar registros de API."
           />
 
           <mat-paginator
-            [length]="(totalPlatforms$ | async) || 0"
-            [pageIndex]="(pageState$ | async)?.pageIndex || 0"
-            [pageSize]="(pageState$ | async)?.pageSize || 20"
-            [pageSizeOptions]="pageSizeOptions"
+            *ngIf="usageState.total > 0"
+            [length]="usageState.total"
+            [pageIndex]="usageState.pageState?.pageIndex || 0"
+            [pageSize]="usageState.pageState?.pageSize || 20"
+            [pageSizeOptions]="usagePageSizeOptions"
             showFirstLastButtons
-            (page)="handlePage($event)"
+            (page)="handleUsagePage($event)"
           >
           </mat-paginator>
         </ng-container>
-      </mat-card-content>
+      </ng-container>
     </mat-card>
   </main>
 </section>
+
+<app-crud-drawer
+  [open]="drawerOpen()"
+  [title]="editingPlatform() ? 'Editar plataforma' : 'Nova plataforma'"
+  [subtitle]="
+    editingPlatform()
+      ? 'Atualize credenciais, modo e empresas autorizadas.'
+      : 'Configure uma integracao externa de compras.'
+  "
+  [mode]="editingPlatform() ? 'edit' : 'create'"
+  [saving]="isSaving"
+  [canSubmit]="form.valid"
+  width="540px"
+  (closed)="closeDrawer()"
+  (submitted)="submit()"
+>
+  <form [formGroup]="form" class="entity-form" (ngSubmit)="submit()">
+    <div class="form-section">
+      <h3 class="form-section-title">Identificacao</h3>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Nome</mat-label>
+        <input matInput type="text" formControlName="name" placeholder="Ex: Shopee Brasil" />
+        <mat-error *ngIf="form.controls.name.touched && form.controls.name.invalid"
+          >Nome invalido.</mat-error
+        >
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Descricao</mat-label>
+        <textarea
+          matInput
+          rows="3"
+          formControlName="description"
+          placeholder="Resumo da integracao"
+        ></textarea>
+        <mat-error *ngIf="form.controls.description.touched && form.controls.description.invalid">
+          Descricao invalida.
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select formControlName="type">
+          <mat-option *ngFor="let platformType of platformTypes" [value]="platformType">
+            {{ platformType }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="form-section">
+      <h3 class="form-section-title">Credenciais</h3>
+
+      <mat-form-field appearance="outline">
+        <mat-label>App ID</mat-label>
+        <input matInput type="text" formControlName="appId" placeholder="123456" />
+        <mat-error *ngIf="form.controls.appId.touched && form.controls.appId.invalid">
+          App ID obrigatorio para SHOPEE.
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Secret</mat-label>
+        <input matInput type="password" formControlName="secret" placeholder="********" />
+        <mat-hint>O secret nao e exibido na listagem.</mat-hint>
+        <mat-error *ngIf="form.controls.secret.touched && form.controls.secret.invalid">
+          Secret obrigatorio para SHOPEE.
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Link da API</mat-label>
+        <input
+          matInput
+          type="url"
+          formControlName="apiUrl"
+          placeholder="https://open-api.affiliate.shopee.com.br/graphql"
+        />
+        <mat-error *ngIf="form.controls.apiUrl.touched && form.controls.apiUrl.invalid">
+          Link da API invalido.
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="form-section">
+      <h3 class="form-section-title">Opcoes</h3>
+
+      <div class="toggle-row">
+        <mat-slide-toggle formControlName="isActive">Ativo</mat-slide-toggle>
+        <mat-slide-toggle formControlName="mockMode">Modo Sandbox (Mock)</mat-slide-toggle>
+      </div>
+      <p class="mode-help">
+        Quando o modo Sandbox esta ligado, a integracao nao chama a Shopee e gera links simulados.
+      </p>
+    </div>
+
+    <div class="form-section">
+      <h3 class="form-section-title">Empresas autorizadas</h3>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Pesquisar empresa</mat-label>
+        <input
+          matInput
+          type="text"
+          formControlName="companySearch"
+          placeholder="Digite o nome..."
+          [matAutocomplete]="companyAuto"
+        />
+        <mat-autocomplete #companyAuto="matAutocomplete">
+          <mat-option
+            *ngFor="let company of filteredCompanies"
+            [value]="company.name"
+            (onSelectionChange)="selectCompany(company, $event.isUserInput)"
+          >
+            {{ company.name }}
+          </mat-option>
+        </mat-autocomplete>
+        <mat-hint>Selecione uma ou mais empresas autorizadas a usar esta plataforma.</mat-hint>
+      </mat-form-field>
+
+      <mat-chip-set class="selected-companies" *ngIf="selectedCompanyIds.length">
+        <mat-chip
+          *ngFor="let companyId of selectedCompanyIds"
+          [removable]="true"
+          (removed)="removeCompany(companyId)"
+        >
+          {{ selectedCompanyLabel(companyId) }}
+          <button matChipRemove type="button" aria-label="Remover">x</button>
+        </mat-chip>
+      </mat-chip-set>
+
+      <div class="default-company-block" *ngIf="selectedCompanyIds.length">
+        <p class="default-company-help">Marcar como plataforma padrao da empresa:</p>
+        <mat-checkbox
+          class="default-company-item"
+          *ngFor="let companyId of selectedCompanyIds"
+          [checked]="isDefaultCompany(companyId)"
+          (change)="toggleDefaultCompany(companyId, $event.checked)"
+        >
+          {{ selectedCompanyLabel(companyId) }}
+        </mat-checkbox>
+      </div>
+    </div>
+
+    <p class="drawer-error" role="alert" *ngIf="drawerError() as message">
+      {{ message }}
+    </p>
+  </form>
+</app-crud-drawer>

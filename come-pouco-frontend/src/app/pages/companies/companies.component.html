@@ -1,7 +1,6 @@
 <section class="page-shell">
-  <main class="page-main admin-grid">
+  <main class="page-main">
     <app-page-header
-      class="grid-header"
       eyebrow="Administracao"
       title="Empresas"
       description="Cadastre empresas e acompanhe o vinculo ativo com plataformas Shopee."
@@ -16,180 +15,177 @@
         <app-icon name="refresh-cw" size="18" />
         Atualizar
       </button>
+      <button
+        pageHeaderActions
+        mat-flat-button
+        type="button"
+        class="button-with-icon primary-cta"
+        (click)="openCreate()"
+      >
+        <app-icon name="plus" size="18" />
+        Nova empresa
+      </button>
     </app-page-header>
 
-    <mat-card appearance="outlined" class="form-card">
-      <mat-card-header>
-        <mat-card-title>{{
-          editingCompanyId === null ? 'Cadastrar empresa' : 'Editar empresa'
-        }}</mat-card-title>
-        <mat-card-subtitle
-          >Defina empresa e vinculo de plataforma Shopee para operacao.</mat-card-subtitle
-        >
-      </mat-card-header>
-      <mat-card-content>
-        <form [formGroup]="form" (ngSubmit)="submit()" class="entity-form">
-          <mat-form-field appearance="outline">
-            <mat-label>Nome da empresa</mat-label>
-            <input matInput formControlName="name" placeholder="Empresa A" />
-            <mat-error *ngIf="form.controls.name.touched && form.controls.name.invalid"
-              >Nome invalido.</mat-error
-            >
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Plataforma Shopee</mat-label>
-            <mat-select formControlName="shopeePlatformId" [disabled]="isLoadingPlatforms">
-              <mat-option [value]="null">Nao vincular</mat-option>
-              <mat-option *ngFor="let platform of shopeePlatforms" [value]="platform.id">
-                #{{ platform.id }} - {{ platform.name }}
-              </mat-option>
-            </mat-select>
-            <mat-hint>Apenas plataformas SHOPEE ativas aparecem aqui.</mat-hint>
-          </mat-form-field>
-
-          <div class="entity-actions">
-            <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
-              {{
-                isSaving
-                  ? 'Salvando...'
-                  : editingCompanyId === null
-                    ? 'Criar empresa'
-                    : 'Salvar alteracoes'
-              }}
-            </button>
-            <button
-              mat-stroked-button
-              type="button"
-              *ngIf="editingCompanyId !== null"
-              (click)="startCreate()"
-            >
-              Cancelar edicao
-            </button>
-          </div>
-        </form>
-        <p
-          class="status-block status-error"
-          role="alert"
-          *ngIf="errorMessage$ | async as errorMessage"
-        >
-          {{ errorMessage }}
-        </p>
-        <p
-          class="status-block status-success"
-          role="status"
-          aria-live="polite"
-          *ngIf="successMessage"
-        >
-          {{ successMessage }}
-        </p>
-      </mat-card-content>
-    </mat-card>
-
     <mat-card appearance="outlined" class="table-card">
-      <mat-card-header class="table-header">
-        <div>
-          <mat-card-title>Empresas</mat-card-title>
-          <mat-card-subtitle>{{ (totalCompanies$ | async) || 0 }} registro(s)</mat-card-subtitle>
+      <header class="table-header">
+        <div class="table-header-titles">
+          <h2 class="table-title">Empresas</h2>
+          <p class="table-subtitle">{{ (totalCompanies$ | async) || 0 }} registro(s)</p>
         </div>
-        <div class="toolbar-spacer"></div>
-        <button mat-stroked-button type="button" (click)="loadCompanies()">Atualizar</button>
-      </mat-card-header>
-      <mat-card-content>
-        <mat-progress-bar mode="indeterminate" *ngIf="isLoading$ | async"></mat-progress-bar>
-        <div class="table-loading" *ngIf="isLoading$ | async">
+      </header>
+
+      <p
+        class="status-block status-error"
+        role="alert"
+        *ngIf="errorMessage$ | async as errorMessage"
+      >
+        {{ errorMessage }}
+      </p>
+
+      <mat-progress-bar mode="indeterminate" *ngIf="isLoading$ | async"></mat-progress-bar>
+
+      <ng-container *ngIf="companies$ | async as companies">
+        <div class="table-loading" *ngIf="(isLoading$ | async) && !companies.length">
           <app-skeleton-loader variant="table-row" label="Carregando empresas" />
           <app-skeleton-loader variant="table-row" label="Carregando empresas" />
         </div>
-        <ng-container *ngIf="companies$ | async as companies">
-          <app-responsive-table
-            *ngIf="!(isLoading$ | async) && companies.length"
-            label="Empresas cadastradas"
-          >
-            <div responsiveTableDesktop class="table-shell">
-              <table mat-table [dataSource]="companies" class="data-table">
-                <ng-container matColumnDef="id">
-                  <th mat-header-cell *matHeaderCellDef>ID</th>
-                  <td mat-cell *matCellDef="let company">
-                    <span class="id-pill">#{{ company.id }}</span>
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="name">
-                  <th mat-header-cell *matHeaderCellDef>Nome</th>
-                  <td mat-cell *matCellDef="let company" class="strong-cell">{{ company.name }}</td>
-                </ng-container>
-                <ng-container matColumnDef="platform">
-                  <th mat-header-cell *matHeaderCellDef>Plataforma Shopee</th>
-                  <td mat-cell *matCellDef="let company">
-                    <app-status-chip
-                      [label]="platformLabel(company.shopeePlatform)"
-                      [variant]="company.shopeePlatform?.isActive ? 'success' : 'neutral'"
-                    />
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="createdAt">
-                  <th mat-header-cell *matHeaderCellDef>Criada em</th>
-                  <td mat-cell *matCellDef="let company">
-                    {{ company.createdAt | date: 'dd/MM/yyyy HH:mm' }}
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="actions">
-                  <th mat-header-cell *matHeaderCellDef>Acoes</th>
-                  <td mat-cell *matCellDef="let company" class="row-actions">
-                    <button mat-stroked-button type="button" (click)="startEdit(company)">
+
+        <app-responsive-table *ngIf="companies.length" label="Empresas cadastradas">
+          <div responsiveTableDesktop class="table-shell">
+            <table mat-table [dataSource]="companies" class="data-table">
+              <ng-container matColumnDef="id">
+                <th mat-header-cell *matHeaderCellDef>ID</th>
+                <td mat-cell *matCellDef="let company">
+                  <span class="id-pill">#{{ company.id }}</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Nome</th>
+                <td mat-cell *matCellDef="let company" class="strong-cell">{{ company.name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="platform">
+                <th mat-header-cell *matHeaderCellDef>Plataforma Shopee</th>
+                <td mat-cell *matCellDef="let company">
+                  <app-status-chip
+                    [label]="platformLabel(company.shopeePlatform)"
+                    [variant]="company.shopeePlatform?.isActive ? 'success' : 'neutral'"
+                  />
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="createdAt">
+                <th mat-header-cell *matHeaderCellDef>Criada em</th>
+                <td mat-cell *matCellDef="let company">
+                  {{ company.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef class="actions-header">Acoes</th>
+                <td
+                  mat-cell
+                  *matCellDef="let company"
+                  class="row-actions"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="row-actions-inner" role="toolbar" aria-label="Acoes da empresa">
+                    <button mat-stroked-button type="button" (click)="openEdit(company)">
                       Editar
                     </button>
-                  </td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-              </table>
-            </div>
+                  </div>
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr
+                mat-row
+                *matRowDef="let row; columns: displayedColumns"
+                class="clickable-row"
+                tabindex="0"
+                (click)="openEdit(row)"
+                (keydown.enter)="openEdit(row)"
+              ></tr>
+            </table>
+          </div>
 
-            <div responsiveTableMobile class="mobile-company-list">
-              <article class="company-card" *ngFor="let company of companies">
-                <header class="company-card-header">
-                  <span class="id-pill">#{{ company.id }}</span>
-                  <span class="company-date">{{
-                    company.createdAt | date: 'dd/MM/yyyy HH:mm'
-                  }}</span>
-                </header>
+          <div responsiveTableMobile class="mobile-company-list">
+            <article
+              class="company-card"
+              *ngFor="let company of companies"
+              tabindex="0"
+              role="button"
+              (click)="openEdit(company)"
+              (keydown.enter)="openEdit(company)"
+            >
+              <header class="company-card-header">
+                <span class="id-pill">#{{ company.id }}</span>
+                <span class="company-date">{{ company.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+              </header>
 
-                <p class="company-name">{{ company.name }}</p>
-                <p class="company-platform">
-                  Plataforma: {{ platformLabel(company.shopeePlatform) }}
-                </p>
+              <p class="company-name">{{ company.name }}</p>
+              <p class="company-platform">
+                Plataforma: {{ platformLabel(company.shopeePlatform) }}
+              </p>
+            </article>
+          </div>
+        </app-responsive-table>
 
-                <button
-                  mat-stroked-button
-                  type="button"
-                  class="company-edit-btn"
-                  (click)="startEdit(company)"
-                >
-                  Editar
-                </button>
-              </article>
-            </div>
-          </app-responsive-table>
+        <app-empty-state
+          *ngIf="!(isLoading$ | async) && !companies.length"
+          icon="building-2"
+          title="Nenhuma empresa cadastrada"
+          description="Crie uma empresa para vincular usuarios e plataformas."
+        />
 
-          <app-empty-state
-            *ngIf="!(isLoading$ | async) && !companies.length"
-            icon="building-2"
-            title="Nenhuma empresa cadastrada"
-            description="Crie uma empresa para vincular usuarios e plataformas."
-          />
-
-          <mat-paginator
-            [length]="(totalCompanies$ | async) || 0"
-            [pageIndex]="(pageState$ | async)?.pageIndex || 0"
-            [pageSize]="(pageState$ | async)?.pageSize || 20"
-            [pageSizeOptions]="pageSizeOptions"
-            showFirstLastButtons
-            (page)="handlePage($event)"
-          >
-          </mat-paginator>
-        </ng-container>
-      </mat-card-content>
+        <mat-paginator
+          *ngIf="companies.length"
+          [length]="(totalCompanies$ | async) || 0"
+          [pageIndex]="(pageState$ | async)?.pageIndex || 0"
+          [pageSize]="(pageState$ | async)?.pageSize || 20"
+          [pageSizeOptions]="pageSizeOptions"
+          showFirstLastButtons
+          (page)="handlePage($event)"
+        >
+        </mat-paginator>
+      </ng-container>
     </mat-card>
   </main>
 </section>
+
+<app-crud-drawer
+  [open]="drawerOpen()"
+  [title]="editingCompany() ? 'Editar empresa' : 'Nova empresa'"
+  [subtitle]="
+    editingCompany()
+      ? 'Atualize os dados da empresa e vinculo de plataforma Shopee.'
+      : 'Defina o nome e o vinculo de plataforma Shopee para operacao.'
+  "
+  [mode]="editingCompany() ? 'edit' : 'create'"
+  [saving]="isSaving"
+  [canSubmit]="form.valid"
+  (closed)="closeDrawer()"
+  (submitted)="submit()"
+>
+  <form [formGroup]="form" class="entity-form" (ngSubmit)="submit()">
+    <mat-form-field appearance="outline">
+      <mat-label>Nome da empresa</mat-label>
+      <input matInput formControlName="name" placeholder="Empresa A" />
+      <mat-error *ngIf="form.controls.name.touched && form.controls.name.invalid">
+        Nome invalido.
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Plataforma Shopee</mat-label>
+      <mat-select formControlName="shopeePlatformId">
+        <mat-option [value]="null">Nao vincular</mat-option>
+        <mat-option *ngFor="let platform of shopeePlatforms" [value]="platform.id">
+          #{{ platform.id }} - {{ platform.name }}
+        </mat-option>
+      </mat-select>
+      <mat-hint>Apenas plataformas SHOPEE ativas aparecem aqui.</mat-hint>
+    </mat-form-field>
+
+    <p class="drawer-error" role="alert" *ngIf="drawerError() as message">
+      {{ message }}
+    </p>
+  </form>
+</app-crud-drawer>

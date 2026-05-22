@@ -1,6 +1,7 @@
 export * from './auth-shell/auth-shell.component';
 export * from './app-logo/app-logo.component';
 export * from './confirm-dialog/confirm-dialog.component';
+export * from './crud-drawer/crud-drawer.component';
 export * from './empty-state/empty-state.component';
 export * from './icon/icon.component';
 export * from './icon-button/icon-button.component';

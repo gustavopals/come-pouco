@@ -9,7 +9,8 @@
   min-height: var(--cp-layout-topbar-height);
   align-items: center;
   gap: var(--cp-space-4);
-  padding: 0 var(--cp-space-4);
+  padding: var(--cp-space-2) var(--cp-space-4);
+  padding-inline-end: var(--cp-space-6);
   border-bottom: 1px solid color-mix(in srgb, var(--cp-color-border) 84%, transparent);
   background: color-mix(in srgb, var(--cp-color-background) 88%, var(--cp-color-surface));
   backdrop-filter: blur(16px);
@@ -48,26 +49,50 @@
 
 .user-trigger {
   min-width: 0;
-  max-width: 280px;
-  gap: var(--cp-space-2);
-  padding: var(--cp-space-1) var(--cp-space-2) !important;
-  border-radius: var(--cp-radius-md);
+  max-width: 260px;
+  min-height: 48px;
+  line-height: 1;
+  padding: var(--cp-space-1) var(--cp-space-3) var(--cp-space-1) var(--cp-space-1) !important;
+  border: 1px solid transparent;
+  border-radius: var(--cp-radius-full) !important;
   color: var(--cp-color-foreground);
+  transition:
+    background-color var(--cp-duration-short) var(--cp-ease-standard),
+    border-color var(--cp-duration-short) var(--cp-ease-standard);
+}
+
+::ng-deep .user-trigger .mdc-button__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cp-space-2);
+  min-width: 0;
+  width: 100%;
+}
+
+.user-trigger:hover,
+.user-trigger[aria-expanded='true'] {
+  background: var(--cp-color-primary-soft);
+  border-color: color-mix(in srgb, var(--cp-color-border) 80%, transparent);
+}
+
+.user-trigger app-icon {
+  flex: 0 0 auto;
+  color: var(--cp-color-muted-foreground);
 }
 
 .user-avatar {
   display: inline-flex;
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   align-items: center;
   justify-content: center;
   border-radius: var(--cp-radius-full);
   background: var(--cp-color-primary);
   color: var(--cp-color-primary-foreground);
-  font-size: var(--cp-text-caption-size);
-  font-weight: 800;
-  letter-spacing: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .user-copy {
@@ -85,13 +110,15 @@
 
 .user-copy strong {
   font-size: var(--cp-text-body-sm-size);
-  line-height: var(--cp-text-body-sm-line-height);
+  line-height: 1.15;
+  font-weight: 600;
 }
 
 .user-copy small {
   color: var(--cp-color-muted-foreground);
-  font-size: var(--cp-text-caption-size);
-  line-height: var(--cp-text-caption-line-height);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  margin-top: 2px;
 }
 
 .menu-user-summary {
@@ -124,11 +151,13 @@
 @media (max-width: 720px) {
   .topbar {
     padding-inline: var(--cp-space-3);
+    padding-inline-end: var(--cp-space-3);
   }
 
   .user-trigger {
     max-width: none;
-    min-width: 44px;
+    min-width: 48px;
+    padding: var(--cp-space-1) !important;
   }
 
   .user-copy,
