@@ -2,10 +2,10 @@ import { Routes } from '@angular/router';
 
 import { adminGuard } from './core/guards/admin.guard';
 import { authGuard } from './core/guards/auth.guard';
+import { conversionsGuard } from './core/guards/conversions.guard';
 import { guestGuard } from './core/guards/guest.guard';
 import { noPublicRegisterGuard } from './core/guards/no-public-register.guard';
 import { ownerGuard } from './core/guards/owner.guard';
-import { ownerOrAdminGuard } from './core/guards/owner-or-admin.guard';
 import { AppLayoutComponent } from './pages/app-layout/app-layout.component';
 import { AdminEmailSettingsComponent } from './pages/admin-email-settings/admin-email-settings.component';
 import { AdminStatusComponent } from './pages/admin-status/admin-status.component';
@@ -98,7 +98,7 @@ export const routes: Routes = [
           import('./pages/conversions/conversions-dashboard.component').then(
             (module) => module.ConversionsDashboardComponent,
           ),
-        canActivate: [ownerOrAdminGuard],
+        canActivate: [conversionsGuard],
         data: { breadcrumb: 'Conversoes' },
       },
       { path: 'security', component: SecurityComponent, data: { breadcrumb: 'Seguranca' } },

@@ -95,7 +95,7 @@
         <a
           class="quick-action"
           routerLink="/conversions"
-          *ngIf="authService.isAdmin() || authService.isOwner()"
+          *ngIf="authService.isAdmin() || authService.isOwner() || authService.isEmployee()"
         >
           <span><app-icon name="activity" size="20" /></span>
           <strong>Conversoes</strong>

@@ -14,6 +14,7 @@ const getDashboardScope = (req: Request): dashboardService.DashboardScope => {
   }
 
   return {
+    userId: req.userId,
     userRole: req.userRole || 'USER',
     companyId: req.companyId || null,
     companyRole: req.companyRole || null
@@ -23,7 +24,11 @@ const getDashboardScope = (req: Request): dashboardService.DashboardScope => {
 const handleDashboardError = (error: unknown, next: NextFunction): void => {
   if (error instanceof Error && error.message === 'CONVERSIONS_DASHBOARD_FORBIDDEN') {
     next(
-      new HttpError(403, 'Acesso restrito a ADMIN ou OWNER.', 'DASHBOARD_CONVERSIONS_FORBIDDEN')
+      new HttpError(
+        403,
+        'Acesso restrito a ADMIN ou usuarios vinculados a empresa.',
+        'DASHBOARD_CONVERSIONS_FORBIDDEN'
+      )
     );
     return;
   }

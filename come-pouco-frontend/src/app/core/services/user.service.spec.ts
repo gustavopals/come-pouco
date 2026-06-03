@@ -13,6 +13,7 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
   email: 'ana@example.com',
   role: 'USER',
   companyId: 10,
+  companyName: 'Acme Integracao',
   companyRole: 'OWNER',
   publicSlug: 'ana-ofertas',
   twoFactorEnabled: false,
@@ -50,6 +51,22 @@ describe('UserService', () => {
       users: [makeUser()],
       items: [makeUser()],
       meta: { page: 3, limit: 20, total: 1, totalPages: 1 },
+    });
+  });
+
+  it('lista usuarios com termo de busca normalizado', () => {
+    service.listUsers({ page: 1, limit: 10, search: '  ana  ' }).subscribe();
+
+    const req = http.expectOne((request) => request.url === `${environment.apiUrl}/users`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('page')).toBe('1');
+    expect(req.request.params.get('limit')).toBe('10');
+    expect(req.request.params.get('search')).toBe('ana');
+
+    req.flush({
+      users: [makeUser()],
+      items: [makeUser()],
+      meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
     });
   });
 

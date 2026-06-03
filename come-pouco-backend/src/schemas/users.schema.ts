@@ -6,6 +6,7 @@ import {
   idParamsSchema,
   nullableEmailSchema,
   nullableString,
+  optionalNonEmptyString,
   nullablePositiveIdSchema,
   optionalStrongPasswordSchema,
   paginationQueryShape,
@@ -52,7 +53,8 @@ const updateUserBodySchema = z.object({
 
 const userParamsSchema = idParamsSchema;
 const userQuerySchema = z.object({
-  ...paginationQueryShape
+  ...paginationQueryShape,
+  search: optionalNonEmptyString('Busca', 120)
 });
 
 type CreateUserBody = z.infer<typeof createUserBodySchema>;

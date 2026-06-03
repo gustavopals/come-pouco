@@ -7,17 +7,25 @@ import { PaginatedResponse, PaginationParams } from '../models/pagination.model'
 import { CreateUserPayload, UpdateUserPayload, User } from '../models/user.model';
 import { buildPaginationParams, collectPaginatedItems } from './pagination-params';
 
+export interface UserListParams extends PaginationParams {
+  search?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class UserService {
   constructor(private readonly http: HttpClient) {}
 
-  listUsers(
-    pagination?: PaginationParams,
-  ): Observable<{ users: User[] } & PaginatedResponse<User>> {
+  listUsers(params?: UserListParams): Observable<{ users: User[] } & PaginatedResponse<User>> {
+    let httpParams = buildPaginationParams(params);
+
+    if (params?.search?.trim()) {
+      httpParams = httpParams.set('search', params.search.trim());
+    }
+
     return this.http.get<{ users: User[] } & PaginatedResponse<User>>(
       `${environment.apiUrl}/users`,
       {
-        params: buildPaginationParams(pagination),
+        params: httpParams,
       },
     );
   }

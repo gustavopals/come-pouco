@@ -10,24 +10,24 @@ O Alli permite que cada empresa tenha uma pagina publica, sem login, onde qualqu
 
 Use os enderecos do ambiente entregue para testes.
 
-| Area                                         | URL                                                                             |
-| -------------------------------------------- | ------------------------------------------------------------------------------- |
-| Painel autenticado                           | `https://comepouco.palsincomehub.com`                                           |
-| API publica                                  | `https://apicomepouco.palsincomehub.com/api`                                    |
-| Landing publica da empresa                   | `https://comepouco.palsincomehub.com/p/<slug-da-empresa>`                       |
-| Landing publica atribuida a colaborador      | `https://comepouco.palsincomehub.com/p/<slug-da-empresa>/<slug-do-colaborador>` |
-| Ambiente local, se usado pela equipe tecnica | `http://localhost:4200`                                                         |
+| Area                                         | URL                                                                      |
+| -------------------------------------------- | ------------------------------------------------------------------------ |
+| Painel autenticado                           | `https://app.auralinks.com.br`                                           |
+| API publica                                  | `https://api.auralinks.com.br/api`                                       |
+| Landing publica da empresa                   | `https://app.auralinks.com.br/p/<slug-da-empresa>`                       |
+| Landing publica atribuida a colaborador      | `https://app.auralinks.com.br/p/<slug-da-empresa>/<slug-do-colaborador>` |
+| Ambiente local, se usado pela equipe tecnica | `http://localhost:4200`                                                  |
 
 Exemplo de URL publica:
 
 ```text
-https://comepouco.palsincomehub.com/p/minha-loja
+https://app.auralinks.com.br/p/minha-loja
 ```
 
 Exemplo com colaborador:
 
 ```text
-https://comepouco.palsincomehub.com/p/minha-loja/ana
+https://app.auralinks.com.br/p/minha-loja/ana
 ```
 
 ## 2. Logins e perfis

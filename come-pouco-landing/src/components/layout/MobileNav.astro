@@ -11,7 +11,7 @@ import ThemeToggle from './ThemeToggle.astro';
   aria-label="Abrir menu"
   aria-expanded="false"
   aria-controls="cp-mobile-nav"
-  class="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] text-[var(--cp-color-foreground)] transition-colors hover:bg-[var(--cp-color-muted)]"
+  class="inline-flex h-10 w-10 items-center justify-center rounded-[var(--cp-radius-md)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] text-[var(--cp-color-foreground)] transition-colors hover:bg-[var(--cp-color-muted)] lg:hidden"
 >
   <svg
     width="20"
@@ -33,7 +33,7 @@ import ThemeToggle from './ThemeToggle.astro';
 <dialog
   id="cp-mobile-nav"
   data-mobile-nav-dialog
-  class="m-0 max-h-screen max-w-none p-0 backdrop:bg-black/40 backdrop:backdrop-blur-sm md:hidden"
+  class="m-0 max-h-screen max-w-none p-0 backdrop:bg-black/40 backdrop:backdrop-blur-sm lg:hidden"
   aria-label="Menu principal"
 >
   <div

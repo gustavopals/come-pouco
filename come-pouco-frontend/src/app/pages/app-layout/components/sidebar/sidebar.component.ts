@@ -51,7 +51,10 @@ export class SidebarComponent {
           label: 'Conversoes',
           route: '/conversions',
           icon: 'activity',
-          visible: () => this.authService.isAdmin() || this.authService.isOwner(),
+          visible: () =>
+            this.authService.isAdmin() ||
+            this.authService.isOwner() ||
+            this.authService.isEmployee(),
         },
       ],
     },

@@ -21,6 +21,7 @@ interface UserRecord {
   email: string | null;
   role: UserRole;
   companyId: number | null;
+  company: { name: string } | null;
   companyRole: CompanyRole | null;
   publicSlug: string | null;
   twoFactorEnabled: boolean;
@@ -34,6 +35,7 @@ interface UserOutput {
   email: string | null;
   role: UserRole;
   companyId: number | null;
+  companyName: string | null;
   companyRole: CompanyRole | null;
   publicSlug: string | null;
   twoFactorEnabled: boolean;
@@ -45,6 +47,7 @@ interface ListUsersScope {
   requesterCompanyId: number | null;
   requesterCompanyRole: CompanyRole | null;
   pagination?: PaginationInput;
+  search?: string;
 }
 
 interface CreateUserInput {
@@ -76,6 +79,7 @@ const toUserOutput = (user: UserRecord): UserOutput => ({
   email: user.email,
   role: user.role,
   companyId: user.companyId,
+  companyName: user.company?.name ?? null,
   companyRole: user.companyRole,
   publicSlug: user.publicSlug,
   twoFactorEnabled: user.twoFactorEnabled,
@@ -131,6 +135,11 @@ const userSelect = {
   email: true,
   role: true,
   companyId: true,
+  company: {
+    select: {
+      name: true
+    }
+  },
   companyRole: true,
   publicSlug: true,
   twoFactorEnabled: true,
@@ -141,13 +150,54 @@ const getUserRecordById = async (id: number): Promise<UserRecord | null> => {
   return prisma.user.findUnique({ where: { id }, select: userSelect });
 };
 
+const buildUserSearchWhere = (search?: string): Prisma.UserWhereInput => {
+  const term = search?.trim();
+
+  if (!term) {
+    return {};
+  }
+
+  const numericTerm = term.replace(/^#/, '');
+  const parsedId = /^\d+$/.test(numericTerm) ? Number(numericTerm) : null;
+  const or: Prisma.UserWhereInput[] = [
+    { fullName: { contains: term, mode: 'insensitive' } },
+    { username: { contains: term, mode: 'insensitive' } },
+    { email: { contains: term, mode: 'insensitive' } },
+    { publicSlug: { contains: term, mode: 'insensitive' } },
+    { company: { is: { name: { contains: term, mode: 'insensitive' } } } }
+  ];
+
+  if (parsedId !== null && Number.isSafeInteger(parsedId) && parsedId > 0) {
+    or.unshift({ id: parsedId });
+  }
+
+  return { OR: or };
+};
+
+const mergeUserWhere = (...clauses: Prisma.UserWhereInput[]): Prisma.UserWhereInput => {
+  const activeClauses = clauses.filter((clause) => Object.keys(clause).length > 0);
+
+  if (activeClauses.length === 0) {
+    return {};
+  }
+
+  if (activeClauses.length === 1) {
+    return activeClauses[0];
+  }
+
+  return { AND: activeClauses };
+};
+
 const listUsers = async (scope: ListUsersScope): Promise<PaginatedResult<UserOutput>> => {
   const pagination = normalizePagination(scope.pagination);
+  const searchWhere = buildUserSearchWhere(scope.search);
 
   if (scope.requesterRole === 'ADMIN') {
+    const where = mergeUserWhere(searchWhere);
     const [total, users] = await prisma.$transaction([
-      prisma.user.count(),
+      prisma.user.count({ where }),
       prisma.user.findMany({
+        where,
         orderBy: { id: 'asc' },
         skip: pagination.skip,
         take: pagination.take,
@@ -158,7 +208,10 @@ const listUsers = async (scope: ListUsersScope): Promise<PaginatedResult<UserOut
   }
 
   if (scope.requesterCompanyRole === 'OWNER' && scope.requesterCompanyId) {
-    const where = { role: 'USER' as const, companyId: scope.requesterCompanyId };
+    const where = mergeUserWhere(
+      { role: 'USER' as const, companyId: scope.requesterCompanyId },
+      searchWhere
+    );
     const [total, users] = await prisma.$transaction([
       prisma.user.count({ where }),
       prisma.user.findMany({

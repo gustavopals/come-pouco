@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 
 import { adminGuard } from './admin.guard';
 import { authGuard } from './auth.guard';
+import { conversionsGuard } from './conversions.guard';
 import { guestGuard } from './guest.guard';
 import { noPublicRegisterGuard } from './no-public-register.guard';
 import { ownerGuard } from './owner.guard';
@@ -15,6 +16,7 @@ describe('auth guards', () => {
     isAuthenticated: ReturnType<typeof vi.fn<() => boolean>>;
     isAdmin: ReturnType<typeof vi.fn<() => boolean>>;
     isOwner: ReturnType<typeof vi.fn<() => boolean>>;
+    isEmployee: ReturnType<typeof vi.fn<() => boolean>>;
   };
 
   const runGuard = (guard: CanActivateFn) =>
@@ -30,6 +32,7 @@ describe('auth guards', () => {
       isAuthenticated: vi.fn<() => boolean>(() => false),
       isAdmin: vi.fn<() => boolean>(() => false),
       isOwner: vi.fn<() => boolean>(() => false),
+      isEmployee: vi.fn<() => boolean>(() => false),
     };
 
     TestBed.configureTestingModule({
@@ -96,6 +99,24 @@ describe('auth guards', () => {
     authService.isOwner.mockReturnValue(false);
     authService.isAdmin.mockReturnValue(true);
     expect(runGuard(ownerOrAdminGuard)).toBe(true);
+  });
+
+  it('conversionsGuard libera ADMIN, OWNER ou EMPLOYEE', () => {
+    expectRedirect(runGuard(conversionsGuard), '/login');
+
+    authService.isAuthenticated.mockReturnValue(true);
+    expectRedirect(runGuard(conversionsGuard), '/home');
+
+    authService.isEmployee.mockReturnValue(true);
+    expect(runGuard(conversionsGuard)).toBe(true);
+
+    authService.isEmployee.mockReturnValue(false);
+    authService.isOwner.mockReturnValue(true);
+    expect(runGuard(conversionsGuard)).toBe(true);
+
+    authService.isOwner.mockReturnValue(false);
+    authService.isAdmin.mockReturnValue(true);
+    expect(runGuard(conversionsGuard)).toBe(true);
   });
 
   it('noPublicRegisterGuard libera admin e redireciona usuarios comuns', () => {

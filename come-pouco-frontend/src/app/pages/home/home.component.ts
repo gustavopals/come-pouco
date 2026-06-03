@@ -89,7 +89,11 @@ export class HomeComponent implements OnInit {
   }
 
   private loadConversionSummary(): void {
-    if (!this.authService.isAdmin() && !this.authService.isOwner()) {
+    if (
+      !this.authService.isAdmin() &&
+      !this.authService.isOwner() &&
+      !this.authService.isEmployee()
+    ) {
       this.conversionSummary$.next(null);
       return;
     }

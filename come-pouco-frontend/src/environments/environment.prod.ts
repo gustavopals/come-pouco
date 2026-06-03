@@ -1,7 +1,7 @@
 import { sentry } from './sentry.generated';
 
 export const environment = {
-  apiUrl: 'http://apicomepouco.palsincomehub.com/api',
+  apiUrl: 'https://api.auralinks.com.br/api',
   appEnv: 'production',
   sentry: {
     dsn: sentry.dsn,

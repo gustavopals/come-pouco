@@ -7,7 +7,7 @@
 ## Pré-requisitos (verificar antes de começar)
 
 - [ ] Subdomínio `landing.palsincomehub.com` apontado para o IP do servidor Coolify (registro A ou CNAME).
-- [ ] Backend já está rodando em `apicomepouco.palsincomehub.com` (✅ confirmado no print).
+- [ ] Backend já está rodando em `api.auralinks.com.br` (✅ confirmado no print).
 - [ ] Acesso ao Coolify em `app.palsincomehub.com` com permissão sobre o projeto "Projeto Come Pouco".
 - [ ] PR com o código da Fase 4 mergeado em `main` no repositório `gustavopals/come-pouco`.
 
@@ -35,7 +35,7 @@ Salvar → Coolify oferece um botão "Restart" para aplicar as envs sem rebuild.
 Depois do redeploy:
 
 ```bash
-curl -s -i -X POST https://apicomepouco.palsincomehub.com/api/public/leads \
+curl -s -i -X POST https://api.auralinks.com.br/api/public/leads \
   -H 'Content-Type: application/json' \
   -d '{"name":"Teste deploy","email":"deploy-test@example.com"}'
 ```
@@ -71,13 +71,13 @@ Coolify roda Traefik na frente, então TLS é automático (Let's Encrypt) se o D
 
 Em **Build Variables** (não confundir com Environment Variables — esses são consumidos só durante o `docker build`, mas o Dockerfile copia eles pra `ENV` antes do `npm run build`):
 
-| Build arg                 | Valor                                                     |
-| ------------------------- | --------------------------------------------------------- |
-| `PUBLIC_SITE_URL`         | `https://landing.palsincomehub.com`                       |
-| `PUBLIC_APP_URL`          | `https://comepouco.palsincomehub.com`                     |
-| `PUBLIC_LEAD_API_URL`     | `https://apicomepouco.palsincomehub.com/api/public/leads` |
-| `PUBLIC_PLAUSIBLE_DOMAIN` | (vazio por enquanto — preencher quando ativar analytics)  |
-| `PUBLIC_ANALYTICS_SCRIPT` | (vazio por enquanto)                                      |
+| Build arg                 | Valor                                                    |
+| ------------------------- | -------------------------------------------------------- |
+| `PUBLIC_SITE_URL`         | `https://landing.palsincomehub.com`                      |
+| `PUBLIC_APP_URL`          | `https://app.auralinks.com.br`                           |
+| `PUBLIC_LEAD_API_URL`     | `https://api.auralinks.com.br/api/public/leads`          |
+| `PUBLIC_PLAUSIBLE_DOMAIN` | (vazio por enquanto — preencher quando ativar analytics) |
+| `PUBLIC_ANALYTICS_SCRIPT` | (vazio por enquanto)                                     |
 
 > ⚠️ Se você esquecer de configurar isso, o HTML vai apontar pros domínios default (`come-pouco.com.br`) e o form de lead vai falhar em produção.
 
@@ -119,7 +119,7 @@ curl -s https://landing.palsincomehub.com/robots.txt
 curl -sI https://landing.palsincomehub.com/dev/components/ | head -5
 
 # 5. Submit de teste no form de lead (vai bater no backend)
-curl -s -i -X POST https://apicomepouco.palsincomehub.com/api/public/leads \
+curl -s -i -X POST https://api.auralinks.com.br/api/public/leads \
   -H 'Content-Type: application/json' \
   -H 'Origin: https://landing.palsincomehub.com' \
   -d '{"name":"Smoke deploy","email":"smoke@example.com","volume":"ate-500","message":"teste pós-deploy"}'

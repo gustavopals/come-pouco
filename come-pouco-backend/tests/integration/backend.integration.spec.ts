@@ -204,6 +204,28 @@ describeIntegration('backend integration routes', () => {
     expect(adminFilteredResponse.body.items[0].subId1).toBe('owner-visible');
   });
 
+  it('lists users with server-side search and role-based visibility', async () => {
+    const adminFilteredResponse = await http
+      .get('/api/users?page=1&limit=10&search=other.employee')
+      .set('Authorization', `Bearer ${seed.adminToken}`)
+      .expect(200);
+
+    expect(adminFilteredResponse.body.meta.total).toBe(1);
+    expect(adminFilteredResponse.body.items[0]).toMatchObject({
+      id: seed.otherEmployeeId,
+      username: 'other-employee',
+      companyName: 'Acme Integracao'
+    });
+
+    const ownerScopedResponse = await http
+      .get('/api/users?page=1&limit=10&search=admin.integration')
+      .set('Authorization', `Bearer ${seed.ownerToken}`)
+      .expect(200);
+
+    expect(ownerScopedResponse.body.meta.total).toBe(0);
+    expect(ownerScopedResponse.body.items).toEqual([]);
+  });
+
   it('handles public landing conversion success, missing slug and honeypot bot detection', async () => {
     await http.get('/api/public/landing/acme-integracao').expect(200);
 

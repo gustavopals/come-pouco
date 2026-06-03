@@ -5,6 +5,7 @@ import prisma from '../config/prisma';
 type DashboardRange = '7d' | '30d' | '90d';
 type TimelineBucket = 'day' | 'hour';
 type DashboardScope = {
+  userId: number;
   userRole: string;
   companyId: number | null;
   companyRole: string | null;
@@ -301,6 +302,7 @@ const buildConversionContext = async (
   const to = new Date();
   const from = startOfUtcDay(addDays(to, -(rangeDays - 1)));
   const companyId = resolveDashboardCompanyId(scope);
+  const employeeId = await resolveDashboardEmployeeId(scope, filters.employeeId, companyId);
   const where: Prisma.ConversionWhereInput = {
     createdAt: {
       gte: from,
@@ -312,12 +314,8 @@ const buildConversionContext = async (
     where.companyId = companyId;
   }
 
-  if (filters.employeeId) {
-    if (companyId !== null) {
-      await assertEmployeeBelongsToCompany(companyId, filters.employeeId);
-    }
-
-    where.employeeId = filters.employeeId;
+  if (employeeId !== null) {
+    where.employeeId = employeeId;
   }
 
   return {
@@ -335,11 +333,31 @@ const resolveDashboardCompanyId = (scope: DashboardScope): number | null => {
     return null;
   }
 
-  if (scope.companyRole === 'OWNER' && scope.companyId) {
+  if ((scope.companyRole === 'OWNER' || scope.companyRole === 'EMPLOYEE') && scope.companyId) {
     return scope.companyId;
   }
 
   throw new Error('CONVERSIONS_DASHBOARD_FORBIDDEN');
+};
+
+const resolveDashboardEmployeeId = async (
+  scope: DashboardScope,
+  requestedEmployeeId: number | undefined,
+  companyId: number | null
+): Promise<number | null> => {
+  if (scope.companyRole === 'EMPLOYEE') {
+    return scope.userId;
+  }
+
+  if (!requestedEmployeeId) {
+    return null;
+  }
+
+  if (companyId !== null) {
+    await assertEmployeeBelongsToCompany(companyId, requestedEmployeeId);
+  }
+
+  return requestedEmployeeId;
 };
 
 const assertEmployeeBelongsToCompany = async (

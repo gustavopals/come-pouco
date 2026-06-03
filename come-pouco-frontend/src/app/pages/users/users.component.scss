@@ -35,6 +35,23 @@
   @include table.cp-table-shell;
 }
 
+.users-toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cp-space-3);
+  padding: 0 var(--cp-space-1) var(--cp-space-4);
+}
+
+.users-search {
+  width: min(100%, 460px);
+}
+
+.users-search .search-prefix {
+  display: inline-flex;
+  margin-right: var(--cp-space-2);
+  color: var(--cp-color-muted-foreground);
+}
+
 .data-table {
   @include table.cp-data-table;
 
@@ -211,6 +228,14 @@ mat-paginator {
 @media (max-width: 768px) {
   .table-card {
     padding: var(--cp-space-3);
+  }
+
+  .users-toolbar {
+    padding-inline: 0;
+  }
+
+  .users-search {
+    width: 100%;
   }
 
   .table-shell {

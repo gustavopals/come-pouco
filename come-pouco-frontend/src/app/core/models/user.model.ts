@@ -8,6 +8,7 @@ export interface User {
   email: string | null;
   role: UserRole;
   companyId: number | null;
+  companyName?: string | null;
   companyRole: CompanyRole | null;
   publicSlug: string | null;
   twoFactorEnabled: boolean;

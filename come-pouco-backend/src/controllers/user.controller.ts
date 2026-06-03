@@ -29,7 +29,8 @@ const listUsers = async (req: Request, res: Response, next: NextFunction): Promi
       pagination: {
         page: query.page,
         limit: query.limit
-      }
+      },
+      search: query.search
     });
 
     res

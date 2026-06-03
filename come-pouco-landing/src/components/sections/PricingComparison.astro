@@ -11,6 +11,7 @@ const renderCell = (value: string | boolean) => {
 };
 
 const categories = Array.from(new Set(comparisonRows.map((r) => r.category)));
+const planIds = ['free', 'pro', 'enterprise'] as const;
 ---
 
 <Section
@@ -32,8 +33,61 @@ const categories = Array.from(new Set(comparisonRows.map((r) => r.category)));
       </p>
     </header>
 
+    <div class="flex flex-col gap-5 md:hidden">
+      {
+        categories.map((category) => (
+          <section aria-label={category} class="flex flex-col gap-3">
+            <h4 class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--cp-color-muted-foreground)]">
+              {category}
+            </h4>
+            <ul class="flex flex-col gap-3">
+              {comparisonRows
+                .filter((row) => row.category === category)
+                .map((row) => (
+                  <li>
+                    <article class="rounded-[var(--cp-radius-lg)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] p-4 shadow-[var(--cp-shadow-sm)]">
+                      <h5 class="text-[15px] font-semibold leading-snug text-[var(--cp-color-foreground)]">
+                        {row.feature}
+                      </h5>
+                      <dl class="mt-4 grid grid-cols-1 gap-3">
+                        {planIds.map((id) => {
+                          const plan = plans.find((item) => item.id === id);
+                          const cell = renderCell(row[id]);
+                          return (
+                            <div class="flex items-center justify-between gap-4 border-t border-[var(--cp-color-border)]/70 pt-3">
+                              <dt class="text-[13px] font-semibold text-[var(--cp-color-muted-foreground)]">
+                                {plan?.name}
+                              </dt>
+                              <dd class="text-right text-[13px] text-[var(--cp-color-foreground)]">
+                                {cell.kind === 'check' ? (
+                                  <span class="inline-flex items-center gap-1.5 font-semibold text-[var(--cp-color-primary)]">
+                                    <Icon name="Check" size={14} strokeWidth={2.5} />
+                                    Incluído
+                                  </span>
+                                ) : cell.kind === 'cross' ? (
+                                  <span class="inline-flex items-center gap-1.5 text-[var(--cp-color-muted-foreground)]">
+                                    <Icon name="X" size={14} strokeWidth={2} />
+                                    Não incluso
+                                  </span>
+                                ) : (
+                                  <span>{cell.value}</span>
+                                )}
+                              </dd>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                    </article>
+                  </li>
+                ))}
+            </ul>
+          </section>
+        ))
+      }
+    </div>
+
     <div
-      class="overflow-x-auto rounded-[var(--cp-radius-lg)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)]"
+      class="hidden overflow-x-auto rounded-[var(--cp-radius-lg)] border border-[var(--cp-color-border)] bg-[var(--cp-color-surface)] md:block"
     >
       <table class="w-full min-w-[640px] border-collapse text-[14px]">
         <thead>
@@ -71,7 +125,7 @@ const categories = Array.from(new Set(comparisonRows.map((r) => r.category)));
                       <td class="px-5 py-3 text-[14px] text-[var(--cp-color-foreground)]">
                         {row.feature}
                       </td>
-                      {(['free', 'pro', 'enterprise'] as const).map((id) => {
+                      {planIds.map((id) => {
                         const cell = renderCell(row[id]);
                         return (
                           <td class="px-5 py-3 text-[14px] text-[var(--cp-color-muted-foreground)]">

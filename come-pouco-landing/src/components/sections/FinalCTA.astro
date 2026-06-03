@@ -35,12 +35,15 @@ import { getAppUrl } from '@lib/navigation';
             href={getAppUrl('/register')}
             variant="primary"
             size="lg"
+            class="w-full sm:w-auto"
             dataEvent="cta_click_final"
           >
             Começar grátis
             <Icon name="ArrowRight" size={18} strokeWidth={2.2} />
           </Button>
-          <Button href="#lead" variant="secondary" size="lg"> Agendar demo </Button>
+          <Button href="#lead" variant="secondary" size="lg" class="w-full sm:w-auto">
+            Agendar demo
+          </Button>
         </div>
       </div>
     </div>

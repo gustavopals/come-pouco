@@ -113,6 +113,15 @@
         </a>
 
         <button
+          class="apply-another-button"
+          type="button"
+          *ngIf="isRedirectState()"
+          (click)="retryConversion()"
+        >
+          Aplicar cupom em outro link
+        </button>
+
+        <button
           class="retry-button"
           type="button"
           *ngIf="conversionState() === 'error'"

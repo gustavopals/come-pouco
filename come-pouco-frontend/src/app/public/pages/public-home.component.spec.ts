@@ -159,6 +159,27 @@ describe('PublicHomeComponent', () => {
     expect(publicRedirectService.openInNewTab).toHaveBeenCalledWith(affiliateUrl);
   });
 
+  it('permite aplicar cupom em outro link apos sucesso sem abrir a Shopee automaticamente', () => {
+    vi.useFakeTimers();
+    publicConvertService.convert.mockReturnValue(
+      of({
+        status: 'success',
+        affiliateUrl: 'https://s.shopee.com.br/success',
+        conversionId: 'conversion-3',
+      }),
+    );
+    component.convertForm.setValue({ url: 'https://shopee.com.br/product/1/2', website: '' });
+
+    component.submitConversion();
+    component.retryConversion();
+    vi.advanceTimersByTime(2000);
+
+    expect(component.conversionState()).toBe('form');
+    expect(component.convertForm.value).toEqual({ url: '', website: '' });
+    expect(publicRedirectService.openInNewTab).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it('mostra erro e reseta o formulario ao tentar novamente', () => {
     publicConvertService.convert.mockReturnValue(throwError(() => new Error('network')));
     component.convertForm.setValue({ url: 'https://shopee.com.br/product/1/2', website: '' });

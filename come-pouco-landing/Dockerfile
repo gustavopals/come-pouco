@@ -15,8 +15,8 @@ COPY . .
 
 # Build args sobrescrevem PUBLIC_* em tempo de build (Astro injeta no HTML).
 ARG PUBLIC_SITE_URL=https://landing.palsincomehub.com
-ARG PUBLIC_APP_URL=https://comepouco.palsincomehub.com
-ARG PUBLIC_LEAD_API_URL=https://apicomepouco.palsincomehub.com/api/public/leads
+ARG PUBLIC_APP_URL=https://app.auralinks.com.br
+ARG PUBLIC_LEAD_API_URL=https://api.auralinks.com.br/api/public/leads
 ARG PUBLIC_PLAUSIBLE_DOMAIN=
 ARG PUBLIC_ANALYTICS_SCRIPT=
 

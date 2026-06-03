@@ -18,6 +18,8 @@ import {
   Subject,
   catchError,
   combineLatest,
+  debounceTime,
+  distinctUntilChanged,
   finalize,
   map,
   of,
@@ -116,32 +118,42 @@ export class UsersComponent implements OnInit {
   protected readonly isLoading$ = new BehaviorSubject<boolean>(false);
   protected readonly errorMessage$ = new BehaviorSubject<string | null>(null);
   protected readonly totalUsers$ = new BehaviorSubject<number>(0);
+  protected readonly searchControl = this.formBuilder.control('', { nonNullable: true });
+  private readonly userSearch$ = new BehaviorSubject<string>('');
 
   protected readonly users$ = combineLatest([
     this.refresh$.pipe(startWith(void 0)),
     this.pageState$,
+    this.userSearch$,
   ]).pipe(
+    debounceTime(0),
     tap(() => {
       this.isLoading$.next(true);
       this.errorMessage$.next(null);
     }),
-    switchMap(([, pageState]) =>
-      this.userService.listUsers({ page: pageState.pageIndex + 1, limit: pageState.pageSize }).pipe(
-        map((response) => {
-          const rawUsers = Array.isArray(response?.users) ? response.users : [];
-          const users = rawUsers.filter((user): user is User => this.isValidUserRow(user));
-          this.totalUsers$.next(this.resolveTableTotal(response.meta?.total, rawUsers, users));
-          return users;
-        }),
-        catchError((error) => {
-          this.errorMessage$.next(
-            error?.error?.message || 'Nao foi possivel carregar os usuarios.',
-          );
-          this.totalUsers$.next(0);
-          return of([] as User[]);
-        }),
-        finalize(() => this.isLoading$.next(false)),
-      ),
+    switchMap(([, pageState, search]) =>
+      this.userService
+        .listUsers({
+          page: pageState.pageIndex + 1,
+          limit: pageState.pageSize,
+          search,
+        })
+        .pipe(
+          map((response) => {
+            const rawUsers = Array.isArray(response?.users) ? response.users : [];
+            const users = rawUsers.filter((user): user is User => this.isValidUserRow(user));
+            this.totalUsers$.next(this.resolveTableTotal(response.meta?.total, rawUsers, users));
+            return users;
+          }),
+          catchError((error) => {
+            this.errorMessage$.next(
+              error?.error?.message || 'Nao foi possivel carregar os usuarios.',
+            );
+            this.totalUsers$.next(0);
+            return of([] as User[]);
+          }),
+          finalize(() => this.isLoading$.next(false)),
+        ),
     ),
     shareReplay({ bufferSize: 1, refCount: true }),
   );
@@ -160,6 +172,21 @@ export class UsersComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadCompanies();
+
+    this.searchControl.valueChanges
+      .pipe(
+        map((value) => value.trim()),
+        debounceTime(300),
+        distinctUntilChanged(),
+      )
+      .subscribe((search) => {
+        this.userSearch$.next(search);
+
+        const pageState = this.pageState$.value;
+        if (pageState.pageIndex !== 0) {
+          this.pageState$.next({ ...pageState, pageIndex: 0 });
+        }
+      });
 
     this.form.controls.companySearch.valueChanges.subscribe((value) => {
       this.applyCompanyFilter(value || '');
@@ -200,6 +227,14 @@ export class UsersComponent implements OnInit {
     });
   }
 
+  protected clearUserSearch(): void {
+    if (!this.searchControl.value) {
+      return;
+    }
+
+    this.searchControl.setValue('');
+  }
+
   protected openCreate(): void {
     this.editingUser.set(null);
     this.drawerError.set(null);
@@ -229,7 +264,7 @@ export class UsersComponent implements OnInit {
       role: user.role,
       companyId: user.companyId ?? null,
       companyRole: (user.companyRole ?? 'EMPLOYEE') as CompanyRole,
-      companySearch: user.companyId ? this.companyLabel(user.companyId) : '',
+      companySearch: user.companyId ? this.userCompanyLabel(user) : '',
       publicSlug: user.publicSlug || '',
     });
     this.applyCompanyFilter(this.form.controls.companySearch.value || '');
@@ -447,7 +482,20 @@ export class UsersComponent implements OnInit {
     }
 
     const company = this.companies.find((item) => item.id === companyId);
-    return company ? company.name : `#${companyId}`;
+    return company ? company.name : 'Empresa nao encontrada';
+  }
+
+  protected userCompanyLabel(user: User): string {
+    if (!user.companyId) {
+      return '-';
+    }
+
+    const companyName = user.companyName?.trim();
+    if (companyName) {
+      return companyName;
+    }
+
+    return this.companyLabel(user.companyId);
   }
 
   private applyCompanyFilter(search: string): void {

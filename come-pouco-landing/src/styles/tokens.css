@@ -31,7 +31,7 @@ html.light {
   --cp-mkt-hero-grad-end: #f97316;
   --cp-mkt-glow: rgb(20 184 166 / 0.18);
   --cp-mkt-section-pad-y: clamp(72px, 9vw, 128px);
-  --cp-mkt-hero-pad-y: clamp(96px, 12vw, 192px);
+  --cp-mkt-hero-pad-y: clamp(72px, 9vw, 128px);
   --cp-mkt-prose-max: 68ch;
 
   --cp-text-display-size: clamp(40px, 6vw, 68px);

@@ -14,7 +14,7 @@ import { primaryNav, getAppUrl } from '@lib/navigation';
   <Container size="page" class="flex h-[68px] items-center justify-between gap-6">
     <Logo />
 
-    <nav aria-label="Navegação principal" class="hidden items-center gap-1 md:flex">
+    <nav aria-label="Navegação principal" class="hidden items-center gap-1 lg:flex">
       {
         primaryNav.map((item) => (
           <a
@@ -28,7 +28,7 @@ import { primaryNav, getAppUrl } from '@lib/navigation';
     </nav>
 
     <div class="flex items-center gap-2">
-      <div class="hidden md:flex md:items-center md:gap-2">
+      <div class="hidden lg:flex lg:items-center lg:gap-2">
         <ThemeToggle />
         <Button href={getAppUrl('/login')} variant="ghost" size="sm">Entrar</Button>
         <Button

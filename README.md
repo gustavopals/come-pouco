@@ -82,7 +82,7 @@ App em `http://localhost:4200`.
 
 Exemplo para deploy:
 
-`CORS_ORIGINS=http://comepouco.palsincomehub.com,https://comepouco.palsincomehub.com`
+`CORS_ORIGINS=http://app.auralinks.com.br,https://app.auralinks.com.br`
 
 ## Hardening de Auth (producao)
 

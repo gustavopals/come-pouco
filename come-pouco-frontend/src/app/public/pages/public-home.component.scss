@@ -176,6 +176,7 @@ h1 {
 
 .conversion-cta,
 .result-cta,
+.apply-another-button,
 .retry-button {
   min-height: 54px;
   display: inline-flex;
@@ -312,8 +313,17 @@ h1 {
   cursor: pointer;
 }
 
+.apply-another-button {
+  border: 1px solid var(--public-border);
+  background: var(--public-surface);
+  color: var(--public-ink);
+  cursor: pointer;
+}
+
 .result-cta:hover,
 .result-cta:focus-visible,
+.apply-another-button:hover,
+.apply-another-button:focus-visible,
 .retry-button:hover,
 .retry-button:focus-visible {
   filter: brightness(0.96);
@@ -431,6 +441,7 @@ h1 {
 
   .conversion-cta,
   .result-cta,
+  .apply-another-button,
   .retry-button {
     min-height: 52px;
     font-size: 0.94rem;

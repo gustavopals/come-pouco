@@ -50,13 +50,19 @@ import { getAppUrl } from '@lib/navigation';
           href={`${getAppUrl('')}/p/demo`}
           variant="primary"
           size="lg"
+          class="w-full sm:w-auto"
           dataEvent="alli_demo_interact"
           external
         >
           Ver demo ao vivo
           <Icon name="ExternalLink" size={16} strokeWidth={2} />
         </Button>
-        <Button href={getAppUrl('/register?plan=free')} variant="secondary" size="lg">
+        <Button
+          href={getAppUrl('/register?plan=free')}
+          variant="secondary"
+          size="lg"
+          class="w-full sm:w-auto"
+        >
           Criar minha URL Alli
         </Button>
       </div>
@@ -65,21 +71,22 @@ import { getAppUrl } from '@lib/navigation';
     <div data-cp-reveal class="relative flex items-center justify-center">
       <PhoneFrame bezel="dark" class="rotate-[-1.5deg]">
         <div
-          class="flex h-full flex-col bg-gradient-to-b from-[var(--cp-color-primary-soft)] to-[var(--cp-color-surface)] p-5"
+          class="flex h-full flex-col bg-gradient-to-b from-[var(--cp-color-primary-soft)] to-[var(--cp-color-surface)] p-5 pt-10"
         >
-          <div class="flex items-center gap-2">
+          <div class="flex min-w-0 items-center gap-2">
             <span
-              class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--cp-color-primary)] text-[10px] font-bold text-[var(--cp-color-primary-foreground)]"
+              class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--cp-color-primary)] text-[10px] font-bold text-[var(--cp-color-primary-foreground)]"
               >AL</span
             >
-            <span class="text-[13px] font-semibold text-[var(--cp-color-foreground)]"
+            <span
+              class="min-w-0 truncate text-[11px] font-semibold text-[var(--cp-color-foreground)] sm:text-[13px]"
               >auralinks.com.br/p/lojinha-da-ju</span
             >
           </div>
 
           <div class="mt-6 flex flex-col gap-3">
             <h3 class="text-[20px] font-bold leading-tight text-[var(--cp-color-foreground)]">
-              Cole o link da Shopee e ganhe o melhor cupom 🔥
+              Cole o link da Shopee e ganhe o melhor cupom
             </h3>
             <p class="text-[12px] leading-relaxed text-[var(--cp-color-muted-foreground)]">
               Funciona com shope.ee e link longo. Você é redirecionado direto pra Shopee.
