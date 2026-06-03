@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
       createMany: vi.fn()
     }
   },
-  postGraphql: vi.fn()
+  postGraphql: vi.fn(),
+  expandShortlink: vi.fn()
 }));
 
 vi.mock('../src/config/prisma', () => ({
@@ -23,6 +24,18 @@ vi.mock('../src/config/env', () => ({
 
 vi.mock('../src/services/shopee-affiliate-client.service', () => ({
   postGraphql: mocks.postGraphql
+}));
+
+vi.mock('../src/services/shortlink-expander.service', () => ({
+  expandShortlink: mocks.expandShortlink,
+  ShortlinkExpansionError: class ShortlinkExpansionError extends Error {
+    readonly code = 'SHORTLINK_INVALID';
+
+    constructor(message: string) {
+      super(message);
+      this.name = 'ShortlinkExpansionError';
+    }
+  }
 }));
 
 import { generateShopeeShortLinks } from '../src/services/shopee-integration.service';
@@ -59,7 +72,7 @@ describe('generateShopeeShortLinks', () => {
     expect(first[0]).toMatchObject({
       originUrl: input.originUrls[0],
       success: true,
-      shortLink: expect.stringMatching(/^https:\/\/shopee\.mock\/s\/[a-f0-9]{12}$/)
+      shortLink: expect.stringMatching(/^https:\/\/br\.shp\.ee\/[a-f0-9]{12}$/)
     });
     expect(mocks.prisma.apiRequestLog.createMany).toHaveBeenCalledWith({
       data: [
@@ -73,6 +86,48 @@ describe('generateShopeeShortLinks', () => {
         })
       ]
     });
+  });
+
+  it('expands br.shp.ee shortlinks before calling the Shopee API', async () => {
+    const shortOrigin = 'https://br.shp.ee/abc123XYZ';
+    const expandedProductUrl = 'https://shopee.com.br/product/10001/20002';
+
+    mocks.expandShortlink.mockResolvedValue({
+      finalUrl: expandedProductUrl,
+      hops: 1
+    });
+    mocks.postGraphql.mockResolvedValue({
+      data: {
+        generateShortLink: {
+          shortLink: 'https://br.shp.ee/realShort01',
+          originUrl: expandedProductUrl
+        }
+      }
+    });
+
+    const result = await generateShopeeShortLinks({
+      ...input,
+      originUrls: [shortOrigin]
+    });
+
+    expect(mocks.expandShortlink).toHaveBeenCalledWith(shortOrigin);
+    expect(mocks.postGraphql).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          variables: {
+            originUrl: expandedProductUrl,
+            subIds: ['loja', 'creator', 'extra']
+          }
+        })
+      })
+    );
+    expect(result).toEqual([
+      {
+        originUrl: shortOrigin,
+        success: true,
+        shortLink: 'https://br.shp.ee/realShort01'
+      }
+    ]);
   });
 
   it('posts real GraphQL requests with normalized subIds and parses shortLink response', async () => {

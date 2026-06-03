@@ -134,6 +134,20 @@
     "normalizedUrl": "https://s.shopee.com.br/9A8b7C6d5E"
   },
   {
+    "description": "br.shp.ee shortlink",
+    "input": "https://br.shp.ee/9ZkLmN4pQ",
+    "kind": "short",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://br.shp.ee/9ZkLmN4pQ"
+  },
+  {
+    "description": "br.shp.ee shortlink with trailing slash",
+    "input": "https://br.shp.ee/AbC12xYz/",
+    "kind": "short",
+    "hasAffiliateParams": false,
+    "normalizedUrl": "https://br.shp.ee/AbC12xYz/"
+  },
+  {
     "description": "shortlink with tracking removed",
     "input": "https://s.shopee.com.br/1q2w3e4r?utm_medium=social&foo=bar",
     "kind": "short",

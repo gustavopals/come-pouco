@@ -64,6 +64,8 @@ type MyCompanyHarness = MyCompanyComponent & {
   landingErrorMessage$: MyCompanyComponent['landingErrorMessage$'];
   loadLandingConfig(): void;
   saveLandingConfig(): void;
+  publicLandingUrl(): string | null;
+  previewUrl(): string;
 };
 
 describe('MyCompanyComponent', () => {
@@ -235,6 +237,13 @@ describe('MyCompanyComponent', () => {
     );
     expect(component.landingSuccessMessage$.getValue()).toBe('Landing publica atualizada.');
     expect(component.landingForm.controls.publicSlug.value).toBe('nova-loja');
+  });
+
+  it('monta o link publico sem modo preview', () => {
+    component.landingForm.controls.publicSlug.setValue('minha-loja');
+
+    expect(component.publicLandingUrl()).toBe(`${window.location.origin}/p/minha-loja`);
+    expect(component.previewUrl()).toBe('/p/minha-loja?preview=true');
   });
 
   it('exige slug e fallback antes de ativar landing publica', () => {

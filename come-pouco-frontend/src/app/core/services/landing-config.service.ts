@@ -46,6 +46,22 @@ export class LandingConfigService {
     );
   }
 
+  uploadProfileImage(companyId: number, file: File): Observable<LandingConfigResponse> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    return this.http.post<LandingConfigResponse>(
+      `${environment.apiUrl}/companies/${companyId}/landing-config/profile-image`,
+      formData,
+    );
+  }
+
+  removeProfileImage(companyId: number): Observable<LandingConfigResponse> {
+    return this.http.delete<LandingConfigResponse>(
+      `${environment.apiUrl}/companies/${companyId}/landing-config/profile-image`,
+    );
+  }
+
   updateUserPublicSlug(userId: number, publicSlug: string | null): Observable<{ user: User }> {
     return this.http.put<{ user: User }>(`${environment.apiUrl}/users/${userId}/public-slug`, {
       publicSlug,

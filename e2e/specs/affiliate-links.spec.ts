@@ -37,7 +37,7 @@ test.describe('Geracao de affiliate link', () => {
     await page.getByRole('button', { name: /^Gerar$/ }).click();
 
     await expect(page.getByRole('heading', { name: 'Resultados da geracao' })).toBeVisible();
-    await expect(page.getByText('https://shopee.mock/s/').first()).toBeVisible();
+    await expect(page.getByText('https://br.shp.ee/').first()).toBeVisible();
     await page.getByRole('button', { name: 'Fechar' }).click();
 
     await expect(page.getByText('5 link(s) salvo(s) com sucesso.')).toBeVisible();
@@ -51,8 +51,8 @@ test.describe('Geracao de affiliate link', () => {
     expect(listResponse.ok()).toBe(true);
     const body = (await listResponse.json()) as { links: Array<{ affiliateLink: string }> };
     expect(body.links).toHaveLength(5);
-    expect(
-      body.links.every((link) => link.affiliateLink.startsWith('https://shopee.mock/s/'))
-    ).toBe(true);
+    expect(body.links.every((link) => link.affiliateLink.startsWith('https://br.shp.ee/'))).toBe(
+      true
+    );
   });
 });

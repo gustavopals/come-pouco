@@ -2,6 +2,10 @@
 node_modules/
 **/node_modules/
 
+# Uploaded assets (landing profile images)
+uploads/
+**/uploads/
+
 # Build artifacts
 dist/
 **/dist/

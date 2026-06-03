@@ -1,3 +1,5 @@
+import { getAppUrl } from './navigation';
+
 export interface Plan {
   id: 'free' | 'pro' | 'enterprise';
   name: string;
@@ -12,8 +14,6 @@ export interface Plan {
   features: string[];
 }
 
-const APP = import.meta.env.PUBLIC_APP_URL ?? 'https://app.auralinks.com.br';
-
 export const yearlyDiscountPct = 20;
 
 export const plans: Plan[] = [
@@ -25,7 +25,7 @@ export const plans: Plan[] = [
     priceYearly: 0,
     priceLabel: 'R$ 0',
     ctaLabel: 'Começar grátis',
-    ctaHref: `${APP}/register?plan=free`,
+    ctaHref: getAppUrl('/register?plan=free'),
     ctaEvent: 'cta_click_pricing_free',
     features: [
       'Grátis por 1 mês',
@@ -44,7 +44,7 @@ export const plans: Plan[] = [
     priceYearly: Math.round(79 * 12 * (1 - 20 / 100)),
     highlight: true,
     ctaLabel: 'Assinar Pro',
-    ctaHref: `${APP}/register?plan=pro`,
+    ctaHref: getAppUrl('/register?plan=pro'),
     ctaEvent: 'cta_click_pricing_pro',
     features: [
       'Até 5 usuários',

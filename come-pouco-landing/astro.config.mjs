@@ -3,7 +3,7 @@ import sitemap from '@astrojs/sitemap';
 import mdx from '@astrojs/mdx';
 import sentry from '@sentry/astro';
 
-const SITE_URL = process.env.PUBLIC_SITE_URL ?? 'https://come-pouco.com.br';
+const SITE_URL = process.env.PUBLIC_SITE_URL ?? 'https://auralinks.com.br';
 const SENTRY_DSN_LANDING =
   process.env.SENTRY_DSN_LANDING || process.env.PUBLIC_SENTRY_DSN_LANDING || '';
 const SENTRY_ENVIRONMENT =

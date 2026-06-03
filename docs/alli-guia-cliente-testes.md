@@ -58,7 +58,7 @@ A Fase 3 implementou um produto publico chamado Alli, dividido em quatro blocos 
 
 2. Conversao publica de links Shopee:
    - Endpoint publico: `POST /api/public/convert`.
-   - Aceita link longo da Shopee, link curto `shope.ee` e `s.shopee.com.br`.
+   - Aceita link longo da Shopee, link curto `shope.ee`, `br.shp.ee` e `s.shopee.com.br`.
    - Normaliza links e remove parametros de afiliados de terceiros.
    - Expande shortlinks antes de converter.
    - Chama a integracao Shopee ja existente no sistema.
@@ -241,6 +241,7 @@ O backend aceita:
 - `https://shopee.com.br/product/{shopId}/{itemId}`
 - `https://shopee.com.br/nome-do-produto-i.{shopId}.{itemId}`
 - `https://shope.ee/<codigo>`
+- `https://br.shp.ee/<codigo>`
 - `https://s.shopee.com.br/<codigo>`
 - Outras URLs Shopee validas, como busca ou categoria, quando a Shopee aceitar gerar shortlink.
 
@@ -255,7 +256,7 @@ Durante a normalizacao, parametros de afiliado de terceiros e parametros de trac
 
 ### 6.4. Shortlinks
 
-Quando o visitante usa `shope.ee` ou `s.shopee.com.br`, o backend:
+Quando o visitante usa `shope.ee`, `br.shp.ee` ou `s.shopee.com.br`, o backend:
 
 1. Faz expansao por redirect HTTP.
 2. Tenta `HEAD` primeiro.
@@ -405,7 +406,7 @@ O IP bruto nao e salvo no banco. O documento tecnico de LGPD esta em `docs/lgpd-
 
 ### 9.5. Teste de shortlink
 
-- Colar uma URL `https://shope.ee/<codigo>` ou `https://s.shopee.com.br/<codigo>`.
+- Colar uma URL `https://shope.ee/<codigo>`, `https://br.shp.ee/<codigo>` ou `https://s.shopee.com.br/<codigo>`.
 - Confirmar o mesmo comportamento do teste anterior.
 - Em modo real, usar um shortlink real da Shopee.
 - Em modo mock, a expansao pode usar o destino configurado para teste.

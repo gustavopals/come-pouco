@@ -1,7 +1,7 @@
 import type { ShopeeUrlAnalysis, ShopeeUrlInvalidReason, ShopeeUrlKind } from '../types/shopee-url';
 
 const HTTP_PROTOCOLS = new Set(['http:', 'https:']);
-const SHORTLINK_HOSTS = new Set(['shope.ee', 's.shopee.com.br']);
+const SHORTLINK_HOSTS = new Set(['shope.ee', 's.shopee.com.br', 'br.shp.ee', 'shp.ee']);
 
 const AFFILIATE_QUERY_PARAMS = new Set([
   'af_click_lookback',
@@ -95,9 +95,15 @@ const parseShopeeUrl = (input: string): ShopeeUrlAnalysis => {
 };
 
 const isShopeeHost = (host: string): boolean =>
-  host === 'shope.ee' || host === 'shopee.com.br' || host.endsWith('.shopee.com.br');
+  host === 'shope.ee' ||
+  host === 'shopee.com.br' ||
+  host.endsWith('.shopee.com.br') ||
+  host === 'br.shp.ee' ||
+  host === 'shp.ee' ||
+  host.endsWith('.shp.ee');
 
-const isShortlinkHost = (host: string): boolean => SHORTLINK_HOSTS.has(host);
+const isShortlinkHost = (host: string): boolean =>
+  SHORTLINK_HOSTS.has(host) || host.endsWith('.shp.ee');
 
 const matchProductPath = (pathname: string): { shopId: string; itemId: string } | null => {
   const canonicalMatch = SHOPEE_PRODUCT_REGEX_CANONICAL.exec(pathname);
@@ -178,9 +184,12 @@ const toValidAnalysis = (
 });
 
 export {
+  SHORTLINK_HOSTS,
   SHOPEE_PRODUCT_REGEX_CANONICAL,
   SHOPEE_PRODUCT_REGEX_SLUG_I,
   SHOPEE_SHORTLINK_REGEX,
+  isShopeeHost,
+  isShortlinkHost,
   parseShopeeUrl
 };
 export type { ShopeeUrlAnalysis, ShopeeUrlInvalidReason, ShopeeUrlKind };

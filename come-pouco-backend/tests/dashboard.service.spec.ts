@@ -53,11 +53,39 @@ describe('dashboard.service', () => {
     vi.clearAllMocks();
   });
 
-  it('filters conversion dashboard by the current employee for EMPLOYEE users', async () => {
-    const summary = await getConversionSummary(employeeScope, { range: '7d', employeeId: 99 });
+  it('shows company-wide conversion metrics for EMPLOYEE users by default', async () => {
+    const summary = await getConversionSummary(employeeScope, { range: '7d' });
 
     expect(summary.total).toBe(3);
     expect(mocks.prisma.user.findFirst).not.toHaveBeenCalled();
+    expect(mocks.prisma.conversion.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          companyId: 10
+        })
+      })
+    );
+    expect(mocks.prisma.conversion.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.not.objectContaining({
+          employeeId: expect.anything()
+        })
+      })
+    );
+  });
+
+  it('allows EMPLOYEE users to filter conversions by company employee', async () => {
+    await getConversionSummary(employeeScope, { range: '30d', employeeId: 7 });
+
+    expect(mocks.prisma.user.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 7,
+        companyId: 10
+      },
+      select: {
+        id: true
+      }
+    });
     expect(mocks.prisma.conversion.groupBy).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({

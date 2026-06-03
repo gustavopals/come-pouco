@@ -341,14 +341,10 @@ const resolveDashboardCompanyId = (scope: DashboardScope): number | null => {
 };
 
 const resolveDashboardEmployeeId = async (
-  scope: DashboardScope,
+  _scope: DashboardScope,
   requestedEmployeeId: number | undefined,
   companyId: number | null
 ): Promise<number | null> => {
-  if (scope.companyRole === 'EMPLOYEE') {
-    return scope.userId;
-  }
-
   if (!requestedEmployeeId) {
     return null;
   }

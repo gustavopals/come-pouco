@@ -79,7 +79,7 @@ Em **Build Variables** (não confundir com Environment Variables — esses são 
 | `PUBLIC_PLAUSIBLE_DOMAIN` | (vazio por enquanto — preencher quando ativar analytics) |
 | `PUBLIC_ANALYTICS_SCRIPT` | (vazio por enquanto)                                     |
 
-> ⚠️ Se você esquecer de configurar isso, o HTML vai apontar pros domínios default (`come-pouco.com.br`) e o form de lead vai falhar em produção.
+> ⚠️ Se você esquecer de configurar `PUBLIC_APP_URL` e `PUBLIC_LEAD_API_URL` no build, os CTAs e o form de lead podem apontar para URLs incorretas. Os defaults do Dockerfile já usam `app.auralinks.com.br` e `api.auralinks.com.br`.
 
 ### 2.4. Runtime envs (opcional)
 

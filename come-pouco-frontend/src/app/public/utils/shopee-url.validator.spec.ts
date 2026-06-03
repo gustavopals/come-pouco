@@ -15,6 +15,10 @@ describe('shopeeUrlValidator', () => {
     expect(isLikelyShopeeUrl('https://s.shopee.com.br/8f7Example')).toBe(true);
   });
 
+  it('aceita shortlink br.shp.ee', () => {
+    expect(isLikelyShopeeUrl('https://br.shp.ee/9ZkLmN4pQ')).toBe(true);
+  });
+
   it('rejeita dominio fora da Shopee', () => {
     expect(isLikelyShopeeUrl('https://example.com/produto')).toBe(false);
   });

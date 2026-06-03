@@ -116,6 +116,21 @@ describe('parseShopeeUrl', () => {
       kind: 'non-product',
       host: 's.shopee.com.br'
     });
+
+    expect(parseShopeeUrl('https://br.shp.ee/')).toMatchObject({
+      valid: true,
+      kind: 'non-product',
+      host: 'br.shp.ee'
+    });
+  });
+
+  it('recognizes br.shp.ee shortlinks', () => {
+    expect(parseShopeeUrl('https://br.shp.ee/9ZkLmN4pQ')).toMatchObject({
+      valid: true,
+      kind: 'short',
+      host: 'br.shp.ee',
+      normalizedUrl: 'https://br.shp.ee/9ZkLmN4pQ'
+    });
   });
 });
 

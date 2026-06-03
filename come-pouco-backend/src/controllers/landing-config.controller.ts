@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import multer from 'multer';
 
 import type {
   UpdateCompanyFallbackUrlBody,
@@ -7,6 +8,7 @@ import type {
   UpdateUserPublicSlugBody
 } from '../schemas/landing-config.schema';
 import * as landingConfigService from '../services/landing-config.service';
+import * as landingProfileImageService from '../services/landing-profile-image.service';
 import HttpError from '../utils/httpError';
 
 type IdParams = { id: string };
@@ -95,6 +97,59 @@ const updateUserPublicSlug = async (
   }
 };
 
+const uploadLandingProfileImage = async (
+  req: Request<IdParams>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.file) {
+      throw new HttpError(400, 'Envie uma imagem valida.', 'LANDING_PROFILE_IMAGE_MISSING');
+    }
+
+    const result = await landingProfileImageService.uploadLandingProfileImage(
+      Number(req.params.id),
+      {
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        originalname: req.file.originalname
+      },
+      getAccessScope(req)
+    );
+
+    res.status(200).json(result);
+  } catch (error) {
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      next(
+        new HttpError(
+          400,
+          'Imagem muito grande. O tamanho maximo e 2 MB.',
+          'LANDING_PROFILE_IMAGE_TOO_LARGE'
+        )
+      );
+      return;
+    }
+
+    next(error);
+  }
+};
+
+const removeLandingProfileImage = async (
+  req: Request<IdParams>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const result = await landingProfileImageService.removeLandingProfileImage(
+      Number(req.params.id),
+      getAccessScope(req)
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getAccessScope = (req: Request): landingConfigService.AccessScope => {
   if (!req.userRole) {
     throw new HttpError(401, 'Token invalido ou expirado.', 'AUTH_TOKEN_MISSING');
@@ -109,8 +164,10 @@ const getAccessScope = (req: Request): landingConfigService.AccessScope => {
 
 export {
   getLandingConfig,
+  removeLandingProfileImage,
   updateCompanyFallbackUrl,
   updateCompanyPublicSlug,
   updateLandingConfig,
-  updateUserPublicSlug
+  updateUserPublicSlug,
+  uploadLandingProfileImage
 };

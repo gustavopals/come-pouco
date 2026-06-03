@@ -24,6 +24,7 @@ const publicRouter = Router();
 
 publicRouter.use(publicSecurityMetadataMiddleware);
 publicRouter.get('/healthz', publicController.getPublicHealthz);
+publicRouter.get('/uploads/landing-logos/:filename', publicController.getLandingProfileImage);
 publicRouter.get(
   '/landing/:slug',
   publicLandingRateLimiter,

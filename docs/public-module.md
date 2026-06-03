@@ -1,6 +1,6 @@
 # Modulo publico Alli
 
-O modulo publico Alli permite que uma empresa tenha uma landing sem login em `/p/<companySlug>` ou `/p/<companySlug>/<employeeSlug>`. O visitante cola uma URL Shopee longa ou shortlink `shope.ee`, recebe um link afiliado e e redirecionado para a Shopee.
+O modulo publico Alli permite que uma empresa tenha uma landing sem login em `/p/<companySlug>` ou `/p/<companySlug>/<employeeSlug>`. O visitante cola uma URL Shopee longa ou shortlink (`shope.ee`, `br.shp.ee`, `s.shopee.com.br`), recebe um link afiliado e e redirecionado para a Shopee.
 
 ## Arquitetura
 

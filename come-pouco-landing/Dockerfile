@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY . .
 
 # Build args sobrescrevem PUBLIC_* em tempo de build (Astro injeta no HTML).
-ARG PUBLIC_SITE_URL=https://landing.palsincomehub.com
+ARG PUBLIC_SITE_URL=https://auralinks.com.br
 ARG PUBLIC_APP_URL=https://app.auralinks.com.br
 ARG PUBLIC_LEAD_API_URL=https://api.auralinks.com.br/api/public/leads
 ARG PUBLIC_PLAUSIBLE_DOMAIN=

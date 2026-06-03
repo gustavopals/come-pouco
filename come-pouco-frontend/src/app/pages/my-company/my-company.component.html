@@ -242,16 +242,51 @@
                 <mat-slide-toggle formControlName="isActive">Landing ativa</mat-slide-toggle>
 
                 <div class="landing-grid">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Slug publico</mat-label>
-                    <input
-                      matInput
-                      type="text"
-                      formControlName="publicSlug"
-                      placeholder="minha-loja"
-                    />
-                    <mat-hint>{{ slugStatusLabel(slugAvailability$ | async) }}</mat-hint>
-                  </mat-form-field>
+                  <div class="slug-field-block full-field">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Slug publico</mat-label>
+                      <input
+                        matInput
+                        type="text"
+                        formControlName="publicSlug"
+                        placeholder="minha-loja"
+                      />
+                      <mat-hint>{{ slugStatusLabel(slugAvailability$ | async) }}</mat-hint>
+                    </mat-form-field>
+
+                    <div class="public-link-bar" *ngIf="publicLandingUrl() as publicUrl">
+                      <label class="public-link-label" for="public-landing-url">Link publico</label>
+                      <div class="public-link-row">
+                        <input
+                          id="public-landing-url"
+                          class="public-link-input"
+                          type="text"
+                          readonly
+                          [value]="publicUrl"
+                          (click)="$any($event.target).select()"
+                        />
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          class="button-with-icon"
+                          (click)="copyPublicLandingUrl()"
+                        >
+                          <app-icon name="copy" [size]="16"></app-icon>
+                          Copiar
+                        </button>
+                        <a
+                          mat-stroked-button
+                          class="button-with-icon"
+                          [href]="publicUrl"
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          <app-icon name="external-link" [size]="16"></app-icon>
+                          Abrir
+                        </a>
+                      </div>
+                    </div>
+                  </div>
 
                   <mat-form-field appearance="outline">
                     <mat-label>URL de fallback Shopee</mat-label>
@@ -283,6 +318,54 @@
                     <textarea matInput rows="3" formControlName="heroSubtitle"></textarea>
                   </mat-form-field>
 
+                  <section class="profile-photo-field full-field">
+                    <div class="profile-photo-preview" aria-hidden="true">
+                      <img
+                        *ngIf="profileImageUrl() as imageUrl; else profilePhotoPlaceholder"
+                        [src]="imageUrl"
+                        alt=""
+                      />
+                      <ng-template #profilePhotoPlaceholder>
+                        <span class="profile-photo-placeholder">
+                          <app-icon name="user-round" [size]="28"></app-icon>
+                        </span>
+                      </ng-template>
+                    </div>
+
+                    <div class="profile-photo-copy">
+                      <h3>Foto do perfil publico</h3>
+                      <p>
+                        Aparece no topo da pagina em /p/seu-slug. JPEG, PNG, WebP ou GIF ate 2 MB.
+                      </p>
+                      <div class="profile-photo-actions">
+                        <input
+                          #profileImageInput
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/gif"
+                          hidden
+                          (change)="onProfileImageSelected($event)"
+                        />
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          (click)="profileImageInput.click()"
+                          [disabled]="isProfileImageUploading"
+                        >
+                          {{ isProfileImageUploading ? 'Enviando foto...' : 'Enviar foto' }}
+                        </button>
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          *ngIf="profileImageUrl()"
+                          (click)="removeProfileImage()"
+                          [disabled]="isProfileImageUploading"
+                        >
+                          Remover foto
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+
                   <div class="color-field">
                     <mat-form-field appearance="outline">
                       <mat-label>Cor primaria</mat-label>
@@ -301,14 +384,15 @@
                     />
                   </div>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Logo por URL</mat-label>
+                  <mat-form-field appearance="outline" class="full-field">
+                    <mat-label>Imagem por URL (opcional)</mat-label>
                     <input
                       matInput
                       type="url"
                       formControlName="logoUrl"
                       placeholder="https://..."
                     />
+                    <mat-hint>Use se preferir hospedar a imagem em outro lugar.</mat-hint>
                   </mat-form-field>
                 </div>
 
@@ -371,8 +455,31 @@
                 <p *ngIf="landingUpdatedAt">
                   Atualizado em {{ landingUpdatedAt | date: 'dd/MM/yyyy HH:mm' }}
                 </p>
+                <p class="preview-note">
+                  O iframe abaixo usa modo preview. Compartilhe o link publico.
+                </p>
               </div>
-              <a mat-stroked-button [href]="previewUrl()" target="_blank" rel="noopener">Abrir</a>
+              <div class="preview-actions" *ngIf="publicLandingUrl() as publicUrl">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="button-with-icon"
+                  (click)="copyPublicLandingUrl()"
+                >
+                  <app-icon name="copy" [size]="16"></app-icon>
+                  Copiar link
+                </button>
+                <a
+                  mat-stroked-button
+                  class="button-with-icon"
+                  [href]="publicUrl"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <app-icon name="external-link" [size]="16"></app-icon>
+                  Abrir pagina
+                </a>
+              </div>
             </div>
             <iframe title="Preview da landing publica" [attr.src]="previewUrl()"></iframe>
           </aside>

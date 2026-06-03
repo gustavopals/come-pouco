@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { footerSections, getAppUrl, primaryNav, socialLinks } from './navigation';
+import { footerSections, getAppOrigin, getAppUrl, primaryNav, socialLinks } from './navigation';
 
 describe('landing navigation', () => {
   it('keeps primary navigation anchored to first-page sections', () => {
@@ -29,6 +29,8 @@ describe('landing navigation', () => {
   });
 
   it('builds app URLs from the configured public app base', () => {
+    expect(getAppUrl('/login')).toBe('https://app.auralinks.com.br/login');
     expect(getAppUrl('/register')).toBe('https://app.auralinks.com.br/register');
+    expect(getAppOrigin()).toBe('https://app.auralinks.com.br');
   });
 });

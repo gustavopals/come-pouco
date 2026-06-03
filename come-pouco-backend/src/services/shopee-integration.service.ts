@@ -5,6 +5,8 @@ import prisma from '../config/prisma';
 import { recordShopeeApiCall } from '../lib/metrics';
 import HttpError from '../utils/httpError';
 import { postGraphql } from './shopee-affiliate-client.service';
+import { expandShortlink, ShortlinkExpansionError } from './shortlink-expander.service';
+import { parseShopeeUrl } from './shopee-url-parser.service';
 
 interface ShopeeGenerateShortLinksInput {
   appId: string;
@@ -147,7 +149,7 @@ const generateShopeeShortLinks = async ({
       return {
         originUrl,
         success: true,
-        shortLink: `https://shopee.mock/s/${hash}`
+        shortLink: `https://br.shp.ee/${hash}`
       };
     });
 
@@ -167,6 +169,22 @@ const generateShopeeShortLinks = async ({
     originUrls.map(async (originUrl) => {
       const startedAt = Date.now();
       try {
+        const resolvedOrigin = await resolveOriginUrlForGeneration(originUrl);
+
+        if (resolvedOrigin.error) {
+          recordShopeeApiCall({
+            mode: 'REAL',
+            success: false,
+            durationMs: Date.now() - startedAt
+          });
+
+          return {
+            originUrl,
+            success: false,
+            error: resolvedOrigin.error
+          } satisfies ShopeeShortLinkResult;
+        }
+
         const response = await postGraphql<GenerateShortLinkGraphqlData>({
           appId,
           secret,
@@ -174,7 +192,7 @@ const generateShopeeShortLinks = async ({
           body: {
             query: GENERATE_SHORT_LINK_MUTATION,
             variables: {
-              originUrl,
+              originUrl: resolvedOrigin.url,
               subIds: normalizedSubIds
             }
           }
@@ -214,5 +232,42 @@ const generateShopeeShortLinks = async ({
 const shouldForceMockFailure = (originUrl: string): boolean =>
   Boolean(env.shopeeMockFailurePattern && originUrl.includes(env.shopeeMockFailurePattern));
 
-export { generateShopeeShortLinks };
+const resolveOriginUrlForGeneration = async (
+  originUrl: string
+): Promise<{ url: string; error?: string }> => {
+  const analysis = parseShopeeUrl(originUrl);
+
+  if (!analysis.valid) {
+    return { url: originUrl.trim() };
+  }
+
+  if (analysis.kind !== 'short') {
+    return { url: analysis.normalizedUrl ?? originUrl.trim() };
+  }
+
+  try {
+    const expansion = await expandShortlink(analysis.normalizedUrl ?? originUrl);
+    const expandedAnalysis = parseShopeeUrl(expansion.finalUrl);
+
+    if (!expandedAnalysis.valid) {
+      return {
+        url: expansion.finalUrl,
+        error: 'Shortlink expandiu para URL invalida.'
+      };
+    }
+
+    return { url: expandedAnalysis.normalizedUrl ?? expansion.finalUrl };
+  } catch (error) {
+    const message =
+      error instanceof ShortlinkExpansionError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : 'Falha ao expandir shortlink Shopee.';
+
+    return { url: originUrl, error: message };
+  }
+};
+
+export { generateShopeeShortLinks, resolveOriginUrlForGeneration };
 export type { ShopeeGenerateShortLinksInput, ShopeeShortLinkResult };

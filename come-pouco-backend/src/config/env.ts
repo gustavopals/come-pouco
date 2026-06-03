@@ -1,3 +1,5 @@
+import path from 'path';
+
 import type { SignOptions } from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
@@ -39,6 +41,11 @@ interface EnvConfig {
   conversionRetentionDays: number;
   twoFaEncryptionKey: string;
   publicAppUrl: string;
+  publicApiUrl: string;
+  uploads: {
+    dir: string;
+    landingLogosSubdir: string;
+  };
   publicCacheMaxEntries: number;
   publicCacheDefaultTtlSec: number;
   publicCorsOrigins: string[];
@@ -145,6 +152,9 @@ const twoFaEncryptionKey =
     ? process.env.TWOFA_ENCRYPTION_KEY
     : 'dev-twofa-encryption-key-change-me';
 const publicAppUrl = process.env.PUBLIC_APP_URL?.trim() || 'http://localhost:4200';
+const defaultPort = Number(process.env.PORT) || 3000;
+const publicApiUrl = process.env.PUBLIC_API_URL?.trim() || `http://localhost:${defaultPort}/api`;
+const uploadsDir = process.env.UPLOADS_DIR?.trim() || path.join(process.cwd(), 'uploads');
 const publicIpHashSalt =
   process.env.PUBLIC_IP_HASH_SALT?.trim() || 'dev-public-ip-hash-salt-change-me';
 
@@ -195,6 +205,11 @@ const env: EnvConfig = {
   conversionRetentionDays: Math.max(1, Number(process.env.CONVERSION_RETENTION_DAYS || 180) || 180),
   twoFaEncryptionKey,
   publicAppUrl,
+  publicApiUrl,
+  uploads: {
+    dir: uploadsDir,
+    landingLogosSubdir: 'landing-logos'
+  },
   publicCacheMaxEntries: Math.max(
     1,
     Number(process.env.PUBLIC_CACHE_MAX_ENTRIES || 10_000) || 10_000

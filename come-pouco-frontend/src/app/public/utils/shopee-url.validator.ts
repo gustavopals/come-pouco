@@ -21,7 +21,14 @@ export const isLikelyShopeeUrl = (input: string): boolean => {
   }
 
   const host = parsed.hostname.toLowerCase();
-  return host === 'shope.ee' || host === 'shopee.com.br' || host.endsWith('.shopee.com.br');
+  return (
+    host === 'shope.ee' ||
+    host === 'shopee.com.br' ||
+    host.endsWith('.shopee.com.br') ||
+    host === 'br.shp.ee' ||
+    host === 'shp.ee' ||
+    host.endsWith('.shp.ee')
+  );
 };
 
 export const shopeeUrlValidator: ValidatorFn = (

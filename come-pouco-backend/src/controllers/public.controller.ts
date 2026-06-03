@@ -1,6 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
+import path from 'path';
+import { promises as fs } from 'fs';
 
+import env from '../config/env';
 import prisma from '../config/prisma';
+import { LANDING_PROFILE_FILENAME_PATTERN } from '../constants/landing-profile-image.constants';
 import { slugifyPublicSlug } from '../config/reserved-slugs';
 import {
   normalizePublicRateLimitIp,
@@ -137,4 +141,33 @@ const convert = async (
 const isHoneypotFilled = (...values: Array<string | undefined>): boolean =>
   values.some((value) => Boolean(value?.trim()));
 
-export { convert, getLanding, getPublicHealthz };
+type LandingProfileImageParams = { filename: string };
+
+const getLandingProfileImage = async (
+  req: Request<LandingProfileImageParams>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const filename = req.params.filename;
+
+    if (!LANDING_PROFILE_FILENAME_PATTERN.test(filename)) {
+      throw new HttpError(404, 'Imagem nao encontrada.', 'PUBLIC_PROFILE_IMAGE_NOT_FOUND');
+    }
+
+    const filePath = path.join(env.uploads.dir, env.uploads.landingLogosSubdir, filename);
+
+    try {
+      await fs.access(filePath);
+    } catch {
+      throw new HttpError(404, 'Imagem nao encontrada.', 'PUBLIC_PROFILE_IMAGE_NOT_FOUND');
+    }
+
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    res.sendFile(filePath);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { convert, getLanding, getLandingProfileImage, getPublicHealthz };

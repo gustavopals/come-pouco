@@ -58,7 +58,16 @@ export const socialLinks: NavItem[] = [
   }
 ];
 
+const DEFAULT_APP_ORIGIN = 'https://app.auralinks.com.br';
+
+/** Base URL da app autenticada (CTAs Entrar / Começar grátis). */
+export function getAppOrigin(): string {
+  const configured = import.meta.env.PUBLIC_APP_URL?.trim();
+  const base = configured || DEFAULT_APP_ORIGIN;
+  return base.replace(/\/+$/, '');
+}
+
 export function getAppUrl(path = '/login'): string {
-  const base = import.meta.env.PUBLIC_APP_URL ?? 'https://app.auralinks.com.br';
-  return `${base}${path}`;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${getAppOrigin()}${normalizedPath}`;
 }

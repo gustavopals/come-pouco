@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import {
   FormArray,
   FormBuilder,
@@ -107,6 +107,9 @@ export class MyCompanyComponent implements OnInit {
   protected landingCompanyName = '';
   protected landingUpdatedAt: string | null = null;
   protected isLandingSaving = false;
+  protected isProfileImageUploading = false;
+  protected readonly profileImageUrl = signal<string | null>(null);
+  protected readonly profileImageMaxBytes = 2 * 1024 * 1024;
   protected editingEmployeeSlugId: number | null = null;
   protected employeeSlugDraft = '';
   protected employeeSlugSavingId: number | null = null;
@@ -278,9 +281,117 @@ export class MyCompanyComponent implements OnInit {
       });
   }
 
+  protected publicLandingUrl(): string | null {
+    const slug = this.slugify(this.landingForm.controls.publicSlug.value || '');
+    return slug ? `${this.publicAppOrigin()}/p/${slug}` : null;
+  }
+
   protected previewUrl(): string {
     const slug = this.slugify(this.landingForm.controls.publicSlug.value || '');
     return slug ? `/p/${slug}?preview=true` : '/p/preview?preview=true';
+  }
+
+  protected copyPublicLandingUrl(): void {
+    const url = this.publicLandingUrl();
+
+    if (!url) {
+      this.landingSuccessMessage$.next(null);
+      this.landingErrorMessage$.next('Defina um slug publico antes de copiar o link.');
+      return;
+    }
+
+    void this.copyTextToClipboard(url).then((copied) => {
+      if (copied) {
+        this.landingErrorMessage$.next(null);
+        this.landingSuccessMessage$.next('Link publico copiado.');
+        return;
+      }
+
+      this.landingSuccessMessage$.next(null);
+      this.landingErrorMessage$.next('Nao foi possivel copiar o link. Copie manualmente.');
+    });
+  }
+
+  protected onProfileImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    const companyId = this.currentCompanyId();
+    if (!companyId) {
+      this.landingErrorMessage$.next('Empresa nao encontrada para enviar a foto.');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      this.landingSuccessMessage$.next(null);
+      this.landingErrorMessage$.next('Selecione um arquivo de imagem valido.');
+      return;
+    }
+
+    if (file.size > this.profileImageMaxBytes) {
+      this.landingSuccessMessage$.next(null);
+      this.landingErrorMessage$.next('A imagem deve ter no maximo 2 MB.');
+      return;
+    }
+
+    this.isProfileImageUploading = true;
+    this.landingErrorMessage$.next(null);
+    this.landingSuccessMessage$.next(null);
+
+    this.landingConfigService
+      .uploadProfileImage(companyId, file)
+      .pipe(
+        finalize(() => {
+          this.isProfileImageUploading = false;
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          this.applyLandingConfigResponse(response);
+          this.landingSuccessMessage$.next('Foto do perfil publico atualizada.');
+        },
+        error: (error) => {
+          this.landingErrorMessage$.next(
+            error?.error?.message || 'Nao foi possivel enviar a foto do perfil.',
+          );
+        },
+      });
+  }
+
+  protected removeProfileImage(): void {
+    const companyId = this.currentCompanyId();
+
+    if (!companyId || this.isProfileImageUploading) {
+      return;
+    }
+
+    this.isProfileImageUploading = true;
+    this.landingErrorMessage$.next(null);
+    this.landingSuccessMessage$.next(null);
+
+    this.landingConfigService
+      .removeProfileImage(companyId)
+      .pipe(
+        finalize(() => {
+          this.isProfileImageUploading = false;
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          this.applyLandingConfigResponse(response);
+          this.landingSuccessMessage$.next('Foto do perfil publico removida.');
+        },
+        error: (error) => {
+          this.landingErrorMessage$.next(
+            error?.error?.message || 'Nao foi possivel remover a foto do perfil.',
+          );
+        },
+      });
   }
 
   protected startEmployeeSlugEdit(user: User): void {
@@ -396,6 +507,7 @@ export class MyCompanyComponent implements OnInit {
       { emitEvent: false },
     );
     this.slugAvailability$.next(response.company.publicSlug ? 'current' : 'idle');
+    this.profileImageUrl.set(response.landingConfig.logoUrl || null);
   }
 
   private resetSteps(steps: string[]): void {
@@ -421,5 +533,46 @@ export class MyCompanyComponent implements OnInit {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .replace(/-{2,}/g, '-');
+  }
+
+  private publicAppOrigin(): string {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+
+    return window.location.origin;
+  }
+
+  private copyTextToClipboard(value: string): Promise<boolean> {
+    if (navigator.clipboard?.writeText) {
+      return navigator.clipboard
+        .writeText(value)
+        .then(() => true)
+        .catch(() => this.copyTextWithFallback(value));
+    }
+
+    return Promise.resolve(this.copyTextWithFallback(value));
+  }
+
+  private copyTextWithFallback(value: string): boolean {
+    const textArea = document.createElement('textarea');
+    textArea.value = value;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    textArea.style.pointerEvents = 'none';
+    document.body.appendChild(textArea);
+    textArea.select();
+
+    let copied = false;
+
+    try {
+      copied = document.execCommand('copy');
+    } catch {
+      copied = false;
+    }
+
+    document.body.removeChild(textArea);
+    return copied;
   }
 }

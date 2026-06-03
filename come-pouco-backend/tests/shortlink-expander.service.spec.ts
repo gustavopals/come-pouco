@@ -60,6 +60,24 @@ describe('expandShortlink', () => {
     expect(fetchImpl.mock.calls[0][0]).toBe('https://shope.ee/abc123');
   });
 
+  it('expands br.shp.ee shortlinks', async () => {
+    const fetchImpl = createFetchMock([
+      response(302, { location: 'https://shopee.com.br/product/555/777' }),
+      response(200)
+    ]);
+
+    const result = await expandShortlink('https://br.shp.ee/9ZkLmN4pQ', {
+      fetchImpl,
+      cache: null
+    });
+
+    expect(result).toEqual({
+      finalUrl: 'https://shopee.com.br/product/555/777',
+      hops: 1
+    });
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://br.shp.ee/9ZkLmN4pQ');
+  });
+
   it('falls back from HEAD to GET when HEAD is blocked', async () => {
     const fetchImpl = createFetchMock([
       response(405),

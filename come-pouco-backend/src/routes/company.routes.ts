@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import * as companyController from '../controllers/company.controller';
 import * as landingConfigController from '../controllers/landing-config.controller';
+import { landingProfileImageUploadMiddleware } from '../middlewares/landing-profile-upload.middleware';
 import requireRole from '../middlewares/role.middleware';
 import {
   companyParamsSchema,
@@ -35,6 +36,17 @@ companyRouter.get(
   '/:id/landing-config',
   validate({ params: landingConfigParamsSchema }),
   landingConfigController.getLandingConfig
+);
+companyRouter.post(
+  '/:id/landing-config/profile-image',
+  validate({ params: landingConfigParamsSchema }),
+  landingProfileImageUploadMiddleware,
+  landingConfigController.uploadLandingProfileImage
+);
+companyRouter.delete(
+  '/:id/landing-config/profile-image',
+  validate({ params: landingConfigParamsSchema }),
+  landingConfigController.removeLandingProfileImage
 );
 companyRouter.put(
   '/:id/landing-config',
